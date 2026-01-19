@@ -9,7 +9,7 @@ st.set_page_config(page_title="Inventario Web", page_icon="🌐")
 
 # --- CREDENCIALES ---
 # Tu clave de Google (pon la tuya real aquí)
-API_KEY = 'TU_CLAVE_AIZA_AQUI'
+API_KEY = 'AIzaSyAq2dk2s7V61xuusl3WvzjKqbKBdkFTs9k'
 
 # --- DATOS GITHUB YA RELLENOS ---
 GITHUB_TOKEN = "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"
