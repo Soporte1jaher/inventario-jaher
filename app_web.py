@@ -9,14 +9,15 @@ st.set_page_config(page_title="Inventario Web", page_icon="🌐")
 
 # --- CREDENCIALES ---
 try:
+    # Leemos las claves de la Caja Fuerte de Streamlit
     API_KEY = st.secrets["GOOGLE_API_KEY"]
+    GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ No encontré la clave en Secrets. Configúrala en Streamlit Cloud.")
+    st.error("❌ Faltan las claves en Secrets (Google o GitHub).")
     st.stop()
 
 # --- DATOS GITHUB ---
 # (Asegúrate de que estos datos sean correctos)
-GITHUB_TOKEN = "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"
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 GITHUB_FILE = "buzon.json"
