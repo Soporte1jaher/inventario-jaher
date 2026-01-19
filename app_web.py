@@ -9,7 +9,8 @@ st.set_page_config(page_title="Inventario Web", page_icon="🌐")
 
 # --- CREDENCIALES ---
 # Tu clave de Google (pon la tuya real aquí)
-API_KEY = 'AIzaSyAq2dk2s7V61xuusl3WvzjKqbKBdkFTs9k'
+# CREDENCIALES (Leemos desde la caja fuerte de Streamlit)
+API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # --- DATOS GITHUB YA RELLENOS ---
 GITHUB_TOKEN = "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"
