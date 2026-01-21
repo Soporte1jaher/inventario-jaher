@@ -7,24 +7,21 @@ import datetime
 from datetime import timedelta
 import pandas as pd
 
-# --- CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Inventario Inteligente Jaher", page_icon="🌐", layout="wide")
 
-# --- CREDENCIALES ---
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Faltan las claves en Secrets (GOOGLE_API_KEY y GITHUB_TOKEN).")
+    st.error("❌ Faltan las claves en Secrets.")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
-FILE_BUZON = "buzon.json"  
-FILE_HISTORICO = "historico.json" 
+FILE_BUZON = "buzon.json"
+FILE_HISTORICO = "historico.json"
 HEADERS_GITHUB = {"Authorization": f"token {GITHUB_TOKEN}"}
-
-# --- FUNCIONES DE GITHUB ---
 
 def obtener_archivo_github(nombre_archivo):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{nombre_archivo}"
@@ -39,31 +36,17 @@ def obtener_archivo_github(nombre_archivo):
     except:
         return [], None
 
-def guardar_datos_masivos(lista_nuevos_datos):
-    """Guarda registros en el Buzón (para Excel) y en el Histórico (para la IA)"""
-    # 1. Actualizar Buzón
+def guardar_datos_en_buzon(lista_datos):
     datos_buzon, sha_buzon = obtener_archivo_github(FILE_BUZON)
-    datos_buzon.extend(lista_nuevos_datos)
-    payload_buzon = {
-        "message": f"Nuevos registros: {len(lista_nuevos_datos)}",
+    datos_buzon.extend(lista_datos)
+    payload = {
+        "message": "Nueva orden IA",
         "content": base64.b64encode(json.dumps(datos_buzon, indent=4).encode('utf-8')).decode('utf-8'),
-        "sha": sha_buzon if sha_buzon else None
+        "sha": sha_buzon
     }
-    res_b = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}", 
-                         headers=HEADERS_GITHUB, json=payload_buzon)
-
-    # 2. Actualizar Histórico
-    datos_hist, sha_hist = obtener_archivo_github(FILE_HISTORICO)
-    datos_hist.extend(lista_nuevos_datos)
-    payload_hist = {
-        "message": "Actualización histórico",
-        "content": base64.b64encode(json.dumps(datos_hist, indent=4).encode('utf-8')).decode('utf-8'),
-        "sha": sha_hist if sha_hist else None
-    }
-    res_h = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_HISTORICO}", 
-                         headers=HEADERS_GITHUB, json=payload_hist)
-    
-    return res_b.status_code in [200, 201] and res_h.status_code in [200, 201]
+    res = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}", 
+                       headers=HEADERS_GITHUB, json=payload)
+    return res.status_code in [200, 201]
 
 def extraer_json(texto):
     try:
@@ -76,86 +59,47 @@ def extraer_json(texto):
 
 # --- INTERFAZ ---
 st.title("🌐 Sistema de Inventario Jaher")
-
-tab1, tab2, tab3 = st.tabs(["📝 Registrar Movimiento", "💬 Consultar IA", "📊 Ver Historial"])
+tab1, tab2, tab3 = st.tabs(["📝 Registrar", "💬 Consultar/Borrar IA", "📊 Ver Historial"])
 
 with tab1:
-    st.subheader("Registrar nuevo movimiento")
-    texto_input = st.text_area("Describe el movimiento (Ej: Laptop Dell serie ABC llega de Manta con cargador):")
-    
-    if st.button("Procesar y Guardar", type="primary"):
-        if texto_input:
-            with st.spinner("La IA está analizando los datos..."):
-                try:
-                    client = genai.Client(api_key=API_KEY)
-                    prompt = f"""
-                    Analiza: "{texto_input}"
-                    REGLAS:
-                    1. Si el equipo trae accesorios (cargador, mouse, etc.), ponlo TODO EN UNA SOLA FILA. No separes el cargador en otra fila.
-                    2. Si hay varios equipos distintos, usa una fila para cada equipo principal.
-                    3. Campos: serie (si no hay usa 'S/S'), equipo, accion, ubicacion, reporte (menciona los accesorios aquí).
-                    Devuelve una LISTA JSON: [{{...}}, {{...}}]
-                    """
-                    
-                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                    datos_ia = json.loads(extraer_json(resp.text))
-                    if isinstance(datos_ia, dict): datos_ia = [datos_ia]
-
-                    # HORA ECUADOR (UTC-5)
-                    hora_ec = (datetime.datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    
-                    for item in datos_ia:
-                        item["fecha"] = hora_ec
-                    
-                    if guardar_datos_masivos(datos_ia):
-                        st.success(f"✅ Se registraron {len(datos_ia)} equipos.")
-                        st.balloons()
-                    else:
-                        st.error("Error al guardar en GitHub.")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+    st.subheader("Nuevo movimiento")
+    texto_input = st.text_area("Ej: Laptop HP serie 555 llega de Quito")
+    if st.button("Procesar y Guardar"):
+        client = genai.Client(api_key=API_KEY)
+        prompt = f"Analiza: {texto_input}. Devuelve JSON: [{{'serie': '...', 'equipo': '...', 'accion': 'llega', 'ubicacion': '...', 'reporte': '...'}}]"
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+        datos_ia = json.loads(extraer_json(resp.text))
+        
+        hora_ec = (datetime.datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+        for item in datos_ia: item["fecha"] = hora_ec
+        
+        if guardar_datos_en_buzon(datos_ia):
+            st.success("✅ Registro enviado al buzón.")
 
 with tab2:
-    st.subheader("Asistente Inteligente")
-    pregunta = st.text_input("¿Qué deseas hacer? (Ej: 'Borra el equipo con serie ABC')")
-    
+    st.subheader("Asistente IA")
+    pregunta = st.text_input("¿Qué deseas hacer? (Ej: 'Borra la serie 12345')")
     if st.button("Ejecutar"):
         historial, _ = obtener_archivo_github(FILE_HISTORICO)
-        contexto = json.dumps(historial, indent=2)
+        contexto = json.dumps(historial)
         
-        prompt_especial = f"""
-        Actúa como un administrador de base de datos.
+        prompt_ia = f"""
         Datos actuales: {contexto}
-        
-        Si el usuario quiere BORRAR un equipo, responde ÚNICAMENTE con este JSON:
-        {{"accion": "BORRAR", "serie": "aquí_el_numero_de_serie"}}
-        
-        Si el usuario solo está preguntando, responde normal.
-        
-        Usuario dice: {pregunta}
+        Si el usuario quiere BORRAR, responde SOLAMENTE el JSON: [{{"serie": "LA_SERIE", "accion": "borrar"}}]
+        Si el usuario solo pregunta, responde normal.
+        Pregunta: {pregunta}
         """
-        
         client = genai.Client(api_key=API_KEY)
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_especial)
-        respuesta_ia = resp.text
-
-        if '"accion": "BORRAR"' in respuesta_ia:
-            # Extraer el JSON de borrado
-            datos_borrado = json.loads(extraer_json(respuesta_ia))
-            # Mandar al buzón como una orden especial
-            orden = {
-                "tipo": "BORRAR",
-                "serie": datos_borrado["serie"],
-                "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-            }
-            if guardar_datos_masivos([orden]):
-                st.warning(f"⚠️ Orden de eliminación enviada para la serie: {datos_borrado['serie']}. Se procesará en unos segundos en tu Excel.")
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_ia)
+        
+        if '"accion": "borrar"' in resp.text:
+            datos_borrado = json.loads(extraer_json(resp.text))
+            if guardar_datos_en_buzon(datos_borrado):
+                st.warning(f"🗑️ Orden de borrado enviada para: {datos_borrado[0]['serie']}")
         else:
-            st.info(respuesta_ia)
+            st.info(resp.text)
 
 with tab3:
-    st.subheader("Registros en el Histórico")
     if st.button("Cargar Tabla"):
         datos, _ = obtener_archivo_github(FILE_HISTORICO)
-        if datos:
-            st.dataframe(pd.DataFrame(datos), use_container_width=True)
+        if datos: st.dataframe(pd.DataFrame(datos), use_container_width=True)
