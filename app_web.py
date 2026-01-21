@@ -6,161 +6,124 @@ import base64
 import datetime
 import pandas as pd
 
-# --- CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Inventario Inteligente Jaher", page_icon="🌐", layout="wide")
 
-# --- CREDENCIALES ---
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Faltan las claves en Secrets (GOOGLE_API_KEY y GITHUB_TOKEN).")
+    st.error("❌ Faltan las claves en Secrets.")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
-GITHUB_FILE = "buzon.json"
-URL_GITHUB = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+# USAMOS DOS ARCHIVOS
+FILE_BUZON = "buzon.json"    # El que SharePoint lee y borra
+FILE_HISTORICO = "historico.json" # El que la IA usa como memoria eterna
 HEADERS_GITHUB = {"Authorization": f"token {GITHUB_TOKEN}"}
 
 # --- FUNCIONES DE GITHUB ---
 
-def obtener_datos_github():
-    """Lee el inventario actual desde GitHub"""
+def obtener_archivo_github(nombre_archivo):
+    """Lee cualquier archivo JSON desde GitHub"""
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{nombre_archivo}"
     try:
-        resp = requests.get(URL_GITHUB, headers=HEADERS_GITHUB)
+        resp = requests.get(url, headers=HEADERS_GITHUB)
         if resp.status_code == 200:
             content = resp.json()
             sha = content['sha']
-            texto_b64 = content['content']
-            texto = base64.b64decode(texto_b64).decode('utf-8')
+            texto = base64.b64decode(content['content']).decode('utf-8')
             return json.loads(texto) if texto.strip() else [], sha
-        elif resp.status_code == 404:
-            # Si el archivo no existe, retornamos lista vacía y SHA None
-            return [], None
-    except Exception as e:
-        st.error(f"Error al leer base de datos: {e}")
-    return [], None
+        return [], None
+    except:
+        return [], None
 
-def guardar_en_github(nuevo_dato):
-    """Agrega un registro nuevo a GitHub"""
-    datos_actuales, sha = obtener_datos_github()
-    datos_actuales.append(nuevo_dato)
+def guardar_doble_registro(nuevo_dato):
+    """Guarda el dato en el buzón (para SharePoint) y en el histórico (para la IA)"""
+    exito = True
     
-    nuevo_json = json.dumps(datos_actuales, indent=4, ensure_ascii=False)
-    nuevo_b64 = base64.b64encode(nuevo_json.encode('utf-8')).decode('utf-8')
-    
-    payload = {
-        "message": f"Registro auto: {nuevo_dato.get('equipo', 'nuevo')}",
-        "content": nuevo_b64
+    # 1. ACTUALIZAR BUZÓN (Lo que se borrará)
+    datos_buzon, sha_buzon = obtener_archivo_github(FILE_BUZON)
+    datos_buzon.append(nuevo_dato)
+    payload_buzon = {
+        "message": "Nuevo registro para SharePoint",
+        "content": base64.b64encode(json.dumps(datos_buzon, indent=4).encode('utf-8')).decode('utf-8'),
+        "sha": sha_buzon if sha_buzon else None
     }
-    if sha:
-        payload["sha"] = sha
+    res_b = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}", 
+                         headers=HEADERS_GITHUB, json=payload_buzon)
+
+    # 2. ACTUALIZAR HISTÓRICO (La memoria de la IA)
+    datos_hist, sha_hist = obtener_archivo_github(FILE_HISTORICO)
+    datos_hist.append(nuevo_dato)
+    payload_hist = {
+        "message": "Actualizando histórico para IA",
+        "content": base64.b64encode(json.dumps(datos_hist, indent=4).encode('utf-8')).decode('utf-8'),
+        "sha": sha_hist if sha_hist else None
+    }
+    res_h = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_HISTORICO}", 
+                         headers=HEADERS_GITHUB, json=payload_hist)
     
-    put_resp = requests.put(URL_GITHUB, headers=HEADERS_GITHUB, json=payload)
-    return put_resp.status_code in [200, 201]
+    return res_b.status_code in [200, 201] and res_h.status_code in [200, 201]
 
 def extraer_json(texto):
-    """Limpia la respuesta de la IA para obtener solo el JSON"""
     try:
         inicio = texto.find("{")
         fin = texto.rfind("}") + 1
-        if inicio != -1 and fin != 0:
-            return texto[inicio:fin]
-        return texto
-    except:
-        return texto
+        return texto[inicio:fin]
+    except: return texto
 
 # --- INTERFAZ ---
-st.title("🌐 Sistema de Inventario con IA")
+st.title("🌐 Sistema de Inventario con Memoria Histórica")
 
-# Pestañas
-tab1, tab2, tab3 = st.tabs(["📝 Registrar Movimiento", "💬 Consultar IA", "📊 Ver Inventario"])
+tab1, tab2, tab3 = st.tabs(["📝 Registrar", "💬 Consultar IA", "📊 Historial Completo"])
 
 with tab1:
     st.subheader("Registrar nuevo movimiento")
-    texto_input = st.text_area("Describe el movimiento:", 
-                              placeholder="Ej: Se entregó laptop HP serie 12345 a Juan Perez en la agencia Quito el día de hoy")
+    texto_input = st.text_area("Describe el movimiento:")
     
     if st.button("Procesar y Guardar", type="primary"):
         if texto_input:
-            with st.spinner("La IA está analizando los datos..."):
+            with st.spinner("IA procesando..."):
+                client = genai.Client(api_key=API_KEY)
+                prompt = f"Analiza: '{texto_input}'. Devuelve SOLO un JSON con: serie, equipo, accion, ubicacion, reporte."
+                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+                
                 try:
-                    client = genai.Client(api_key=API_KEY)
-                    prompt = f"""
-                    Analiza el siguiente texto y extrae la información de inventario.
-                    Texto: "{texto_input}"
-                    
-                    Responde ÚNICAMENTE un objeto JSON con estas llaves:
-                    - serie: (string o "N/A")
-                    - equipo: (tipo de dispositivo)
-                    - accion: (entrega, recepción, traslado, etc.)
-                    - ubicacion: (ciudad o agencia)
-                    - reporte: (resumen breve de quién recibe/entrega)
-                    
-                    No incluyas explicaciones, solo el JSON puro.
-                    """
-                    
-                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                    limpio = extraer_json(resp.text)
-                    
-                    info = json.loads(limpio)
+                    info = json.loads(extraer_json(resp.text))
                     info["fecha"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                     
-                    if guardar_en_github(info):
-                        st.success("✅ ¡Registrado con éxito!")
-                        st.json(info) # Mostrar qué se guardó
-                        st.balloons()
+                    if guardar_doble_registro(info):
+                        st.success("✅ Guardado en Buzón y en Histórico.")
                     else:
-                        st.error("Error al subir a GitHub. Verifica el Token y los permisos.")
+                        st.error("Error al guardar en GitHub.")
                 except Exception as e:
-                    st.error(f"Error procesando la información: {e}")
-        else:
-            st.warning("Por favor escribe una descripción.")
+                    st.error(f"Error de formato: {e}")
 
 with tab2:
-    st.subheader("Consulta al Asistente")
-    pregunta = st.text_input("Haz una pregunta sobre el inventario:", 
-                            placeholder="¿Quién tiene la laptop HP 12345?")
+    st.subheader("Consulta al Asistente (Memoria del Histórico)")
+    pregunta = st.text_input("Pregunta sobre cualquier equipo registrado:")
     
     if st.button("Consultar"):
-        if pregunta:
-            with st.spinner("Consultando registros..."):
-                inventario_actual, _ = obtener_datos_github()
-                
-                if not inventario_actual:
-                    st.info("El inventario está vacío actualmente.")
-                else:
-                    contexto_inventario = json.dumps(inventario_actual, indent=2)
-                    
-                    prompt_consulta = f"""
-                    Eres un asistente de inventario para la empresa Jaher.
-                    Aquí tienes la base de datos completa en JSON:
-                    {contexto_inventario}
-                    
-                    Responde de forma clara y amable a la siguiente pregunta basándote solo en los datos proporcionados:
-                    "{pregunta}"
-                    
-                    Si la información no existe, indícalo.
-                    """
-                    
-                    try:
-                        client = genai.Client(api_key=API_KEY)
-                        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_consulta)
-                        st.markdown("---")
-                        st.write(resp.text)
-                    except Exception as e:
-                        st.error(f"Error en la consulta: {e}")
+        # AQUÍ LA IA LEE EL HISTÓRICO, NO EL BUZÓN
+        inventario_completo, _ = obtener_archivo_github(FILE_HISTORICO)
+        
+        if not inventario_completo:
+            st.warning("No hay datos en el histórico todavía.")
+        else:
+            contexto = json.dumps(inventario_completo, indent=2)
+            prompt_consulta = f"Datos de inventario:\n{contexto}\n\nPregunta: {pregunta}"
+            
+            client = genai.Client(api_key=API_KEY)
+            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_consulta)
+            st.info(resp.text)
 
 with tab3:
-    st.subheader("Registros Históricos")
-    if st.button("Actualizar Tabla"):
-        datos, _ = obtener_datos_github()
+    st.subheader("Todos los registros acumulados")
+    if st.button("Cargar Historial"):
+        datos, _ = obtener_archivo_github(FILE_HISTORICO)
         if datos:
-            df = pd.DataFrame(datos)
-            # Reordenar columnas para mejor lectura
-            columnas = ['fecha', 'equipo', 'serie', 'accion', 'ubicacion', 'reporte']
-            df = df[[c for c in columnas if c in df.columns]]
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(pd.DataFrame(datos), use_container_width=True)
         else:
-            st.write("No hay datos registrados aún.")
+            st.write("Historial vacío.")
