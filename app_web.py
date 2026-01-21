@@ -37,9 +37,7 @@ def obtener_archivo_github(nombre_archivo):
         return [], None
 
 def guardar_datos_en_buzon(lista_datos):
-    # Asegurar que sea una lista
     if isinstance(lista_datos, dict): lista_datos = [lista_datos]
-    
     datos_buzon, sha_buzon = obtener_archivo_github(FILE_BUZON)
     datos_buzon.extend(lista_datos)
     payload = {
@@ -52,52 +50,79 @@ def guardar_datos_en_buzon(lista_datos):
     return res.status_code in [200, 201]
 
 def extraer_json(texto):
+    """Extrae el bloque JSON de la respuesta de la IA de forma segura"""
     try:
         inicio = texto.find("[")
         if inicio == -1: inicio = texto.find("{")
         fin = texto.rfind("]") + 1
         if fin <= 0: fin = texto.rfind("}") + 1
-        return texto[inicio:fin]
-    except: return texto
+        
+        if inicio != -1 and fin > 0:
+            return texto[inicio:fin]
+        return ""
+    except:
+        return ""
 
 # --- INTERFAZ ---
-st.title("🌐 Inventario Inteligente")
-tab1, tab2, tab3 = st.tabs(["📝 Registrar", "💬 Consultar/Borrar", "📊 Ver Historial"])
+st.title("🌐 Inventario Inteligente Jaher")
+tab1, tab2, tab3 = st.tabs(["📝 Registrar Equipo", "💬 Consultar o Borrar", "📊 Ver Historial"])
 
 with tab1:
-    texto_input = st.text_area("Registro rápido:")
-    if st.button("Procesar"):
-        client = genai.Client(api_key=API_KEY)
-        prompt = f"Analiza: {texto_input}. Devuelve JSON: [{{'serie': '...', 'equipo': '...', 'accion': 'llega', 'ubicacion': '...', 'reporte': '...'}}]"
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-        datos_ia = json.loads(extraer_json(resp.text))
-        hora_ec = (datetime.datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-        if isinstance(datos_ia, dict): datos_ia = [datos_ia]
-        for item in datos_ia: item["fecha"] = hora_ec
-        if guardar_datos_en_buzon(datos_ia): st.success("Registrado.")
+    st.subheader("Registrar nuevo movimiento")
+    texto_input = st.text_area("Describe el equipo (Ej: Laptop Dell serie ABC llega de Manta):", key="reg")
+    if st.button("Procesar Registro"):
+        if texto_input:
+            client = genai.Client(api_key=API_KEY)
+            prompt = f"Analiza: {texto_input}. Devuelve SOLO un JSON tipo lista: [{{'serie': '...', 'equipo': '...', 'accion': 'llega', 'ubicacion': '...', 'reporte': '...'}}]"
+            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+            
+            # --- VALIDACIÓN SEGURA ---
+            json_limpio = extraer_json(resp.text)
+            if json_limpio:
+                try:
+                    datos_ia = json.loads(json_limpio)
+                    hora_ec = (datetime.datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    if isinstance(datos_ia, dict): datos_ia = [datos_ia]
+                    for item in datos_ia: item["fecha"] = hora_ec
+                    
+                    if guardar_datos_en_buzon(datos_ia):
+                        st.success("✅ Enviado al Excel.")
+                except:
+                    st.error("❌ La IA respondió algo extraño. Intenta ser más claro con el equipo.")
+            else:
+                st.error("❌ No se detectaron datos de equipo. Si quieres borrar, usa la pestaña 'Consultar o Borrar'.")
 
 with tab2:
-    pregunta = st.text_input("¿Qué quieres hacer?")
-    if st.button("Ejecutar"):
-        historial, _ = obtener_archivo_github(FILE_HISTORICO)
-        contexto = json.dumps(historial)
-        prompt_ia = f"""
-        Datos: {contexto}
-        Si el usuario quiere BORRAR, responde solo JSON: [{{"serie": "NUMERO_DE_SERIE", "accion": "borrar"}}]
-        Si solo pregunta, responde normal.
-        Usuario dice: {pregunta}
-        """
-        client = genai.Client(api_key=API_KEY)
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_ia)
-        
-        if '"accion": "borrar"' in resp.text:
-            datos_borrado = json.loads(extraer_json(resp.text))
-            if guardar_datos_en_buzon(datos_borrado):
-                st.warning("🗑️ Orden de borrado enviada.")
-        else:
-            st.info(resp.text)
+    st.subheader("Asistente de Consultas y Borrado")
+    pregunta = st.text_input("¿Qué quieres hacer? (Ej: '¿Qué hay en Manta?' o 'Borra la serie 12345')")
+    if st.button("Ejecutar Acción"):
+        if pregunta:
+            historial, _ = obtener_archivo_github(FILE_HISTORICO)
+            contexto = json.dumps(historial)
+            
+            prompt_ia = f"""
+            Datos actuales: {contexto}
+            REGLAS:
+            1. Si piden BORRAR, responde SOLAMENTE el JSON: [{{"serie": "LA_SERIE", "accion": "borrar"}}]
+            2. Si es una pregunta, responde normal.
+            Usuario dice: {pregunta}
+            """
+            client = genai.Client(api_key=API_KEY)
+            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_ia)
+            
+            if '"accion": "borrar"' in resp.text:
+                json_b = extraer_json(resp.text)
+                if json_b:
+                    datos_borrado = json.loads(json_b)
+                    if guardar_datos_en_buzon(datos_borrado):
+                        st.warning(f"🗑️ Orden de borrado enviada para: {datos_borrado[0]['serie']}")
+                else:
+                    st.error("No pude procesar el borrado.")
+            else:
+                st.info(resp.text)
 
 with tab3:
-    if st.button("Cargar Datos"):
+    if st.button("Cargar Tabla Actual"):
         datos, _ = obtener_archivo_github(FILE_HISTORICO)
-        if datos: st.dataframe(pd.DataFrame(datos), use_container_width=True)
+        if datos:
+            st.dataframe(pd.DataFrame(datos), use_container_width=True)
