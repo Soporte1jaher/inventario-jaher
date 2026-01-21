@@ -18,15 +18,13 @@ except:
 
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
-# USAMOS DOS ARCHIVOS
-FILE_BUZON = "buzon.json"    # El que SharePoint lee y borra
-FILE_HISTORICO = "historico.json" # El que la IA usa como memoria eterna
+FILE_BUZON = "buzon.json"  
+FILE_HISTORICO = "historico.json" 
 HEADERS_GITHUB = {"Authorization": f"token {GITHUB_TOKEN}"}
 
 # --- FUNCIONES DE GITHUB ---
 
 def obtener_archivo_github(nombre_archivo):
-    """Lee cualquier archivo JSON desde GitHub"""
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{nombre_archivo}"
     try:
         resp = requests.get(url, headers=HEADERS_GITHUB)
@@ -39,26 +37,26 @@ def obtener_archivo_github(nombre_archivo):
     except:
         return [], None
 
-def guardar_doble_registro(nuevo_dato):
-    """Guarda el dato en el buzón (para SharePoint) y en el histórico (para la IA)"""
+def guardar_datos_masivos(lista_nuevos_datos):
+    """Guarda una lista de registros en ambos archivos de una sola vez"""
     exito = True
     
-    # 1. ACTUALIZAR BUZÓN (Lo que se borrará)
+    # 1. ACTUALIZAR BUZÓN
     datos_buzon, sha_buzon = obtener_archivo_github(FILE_BUZON)
-    datos_buzon.append(nuevo_dato)
+    datos_buzon.extend(lista_nuevos_datos) # Agregamos la lista completa
     payload_buzon = {
-        "message": "Nuevo registro para SharePoint",
+        "message": f"Registrados {len(lista_nuevos_datos)} equipos",
         "content": base64.b64encode(json.dumps(datos_buzon, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha_buzon if sha_buzon else None
     }
     res_b = requests.put(f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}", 
                          headers=HEADERS_GITHUB, json=payload_buzon)
 
-    # 2. ACTUALIZAR HISTÓRICO (La memoria de la IA)
+    # 2. ACTUALIZAR HISTÓRICO
     datos_hist, sha_hist = obtener_archivo_github(FILE_HISTORICO)
-    datos_hist.append(nuevo_dato)
+    datos_hist.extend(lista_nuevos_datos) # Agregamos la lista completa
     payload_hist = {
-        "message": "Actualizando histórico para IA",
+        "message": f"Actualizado histórico: +{len(lista_nuevos_datos)} registros",
         "content": base64.b64encode(json.dumps(datos_hist, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha_hist if sha_hist else None
     }
@@ -68,11 +66,15 @@ def guardar_doble_registro(nuevo_dato):
     return res_b.status_code in [200, 201] and res_h.status_code in [200, 201]
 
 def extraer_json(texto):
+    """Función mejorada para extraer listas o celdas individuales"""
     try:
-        inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
-        return texto[inicio:fin]
-    except: return texto
+        inicio = min(texto.find("[") if "[" in texto else float('inf'), 
+                     texto.find("{") if "{" in texto else float('inf'))
+        fin = max(texto.rfind("]") if "]" in texto else -1, 
+                  texto.rfind("}") if "}" in texto else -1) + 1
+        return texto[int(inicio):int(fin)]
+    except:
+        return texto
 
 # --- INTERFAZ ---
 st.title("🌐 Sistema de Inventario con Memoria Histórica")
@@ -81,40 +83,54 @@ tab1, tab2, tab3 = st.tabs(["📝 Registrar", "💬 Consultar IA", "📊 Histori
 
 with tab1:
     st.subheader("Registrar nuevo movimiento")
-    texto_input = st.text_area("Describe el movimiento:")
+    texto_input = st.text_area("Describe el movimiento (puedes poner varios equipos):", 
+                              placeholder="Ej: Laptop HP serie 123 llega de Quito. Laptop Lenovo serie 456 llega de Ambato...")
     
     if st.button("Procesar y Guardar", type="primary"):
         if texto_input:
-            with st.spinner("IA procesando..."):
-                client = genai.Client(api_key=API_KEY)
-                prompt = f"Analiza: '{texto_input}'. Devuelve SOLO un JSON con: serie, equipo, accion, ubicacion, reporte."
-                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                
+            with st.spinner("IA analizando datos..."):
                 try:
-                    info = json.loads(extraer_json(resp.text))
-                    info["fecha"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    client = genai.Client(api_key=API_KEY)
+                    # Prompt mejorado para pedir una LISTA obligatoriamente
+                    prompt = f"""
+                    Analiza: '{texto_input}'. 
+                    Extrae cada equipo mencionado y devuélvelos en una LISTA de objetos JSON.
+                    Formato: [{{ "serie": "...", "equipo": "...", "accion": "...", "ubicacion": "...", "reporte": "..." }}]
+                    Si solo hay uno, igual ponlo dentro de una lista [].
+                    Responde SOLO el JSON.
+                    """
+                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
                     
-                    if guardar_doble_registro(info):
-                        st.success("✅ Guardado en Buzón y en Histórico.")
+                    datos_ia = json.loads(extraer_json(resp.text))
+                    
+                    # Normalizar: Asegurarnos de que sea una lista
+                    if isinstance(datos_ia, dict):
+                        datos_ia = [datos_ia]
+                    
+                    # Añadir fecha a cada registro
+                    fecha_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    for item in datos_ia:
+                        item["fecha"] = fecha_actual
+                    
+                    if guardar_datos_masivos(datos_ia):
+                        st.success(f"✅ ¡{len(datos_ia)} registros guardados correctamente!")
+                        st.balloons()
                     else:
-                        st.error("Error al guardar en GitHub.")
+                        st.error("Error al subir a GitHub.")
                 except Exception as e:
-                    st.error(f"Error de formato: {e}")
+                    st.error(f"Error procesando los datos: {e}")
 
 with tab2:
     st.subheader("Consulta al Asistente (Memoria del Histórico)")
     pregunta = st.text_input("Pregunta sobre cualquier equipo registrado:")
     
     if st.button("Consultar"):
-        # AQUÍ LA IA LEE EL HISTÓRICO, NO EL BUZÓN
         inventario_completo, _ = obtener_archivo_github(FILE_HISTORICO)
-        
         if not inventario_completo:
             st.warning("No hay datos en el histórico todavía.")
         else:
             contexto = json.dumps(inventario_completo, indent=2)
             prompt_consulta = f"Datos de inventario:\n{contexto}\n\nPregunta: {pregunta}"
-            
             client = genai.Client(api_key=API_KEY)
             resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_consulta)
             st.info(resp.text)
