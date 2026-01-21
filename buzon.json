@@ -14,5 +14,21 @@
         "ubicacion": "ambato",
         "reporte": "desconocido",
         "fecha": "2026-01-21 18:27"
+    },
+    {
+        "serie": "qwert",
+        "equipo": "laptop Dell",
+        "accion": "llega",
+        "ubicacion": "Tena",
+        "reporte": "Equipo recibido en Tena sin incidentes.",
+        "fecha": "2026-01-21 18:27"
+    },
+    {
+        "serie": "asdfg",
+        "equipo": "laptop Dell",
+        "accion": "llega",
+        "ubicacion": "Tena",
+        "reporte": "Equipo recibido en Tena sin incidentes.",
+        "fecha": "2026-01-21 18:27"
     }
 ]
