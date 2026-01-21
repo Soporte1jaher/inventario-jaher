@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "5CD4323NC4",
+        "equipo": "laptop",
+        "accion": "llega",
+        "ubicacion": "riobamba",
+        "reporte": "con cargador",
+        "fecha": "2026-01-21 20:43"
+    },
+    {
+        "serie": "5CD43235tyfd",
+        "equipo": "laptop",
+        "accion": "llega",
+        "ubicacion": "ambato",
+        "reporte": "sin cargador",
+        "fecha": "2026-01-21 20:43"
+    }
+]
