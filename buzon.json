@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "serie": "12345",
+        "equipo": "Impresora HP LaserJet",
+        "accion": "llega",
+        "ubicacion": "Almac\u00e9n Central",
+        "reporte": "Incidencia #20231026-A",
+        "fecha": "2026-01-21 18:07"
+    }
+]
