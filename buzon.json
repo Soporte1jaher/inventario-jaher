@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "serie": "12345",
+        "equipo": "equipo",
+        "accion": "borra",
+        "ubicacion": "S/U",
+        "reporte": "S/A",
+        "fecha": "2026-01-21 16:35"
+    }
+]
