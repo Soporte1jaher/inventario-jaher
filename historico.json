@@ -62,5 +62,13 @@
         "ubicacion": "Manta",
         "reporte": "Cargador",
         "fecha": "2026-01-21 15:57"
+    },
+    {
+        "serie": "12345",
+        "equipo": "laptop dell",
+        "accion": "llega a matriz",
+        "ubicacion": "matriz",
+        "reporte": "pantalla rota, sin cargador",
+        "fecha": "2026-01-21 16:04"
     }
 ]
