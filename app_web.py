@@ -116,18 +116,42 @@ with tab1:
                     st.error(f"Error: {e}")
 
 with tab2:
-    st.subheader("Consulta al Asistente")
-    pregunta = st.text_input("¿Qué deseas saber del inventario?")
-    if st.button("Preguntar"):
+    st.subheader("Asistente Inteligente")
+    pregunta = st.text_input("¿Qué deseas hacer? (Ej: 'Borra el equipo con serie ABC')")
+    
+    if st.button("Ejecutar"):
         historial, _ = obtener_archivo_github(FILE_HISTORICO)
-        if historial:
-            contexto = json.dumps(historial, indent=2)
-            prompt_c = f"Basado en estos datos:\n{contexto}\nResponde: {pregunta}"
-            client = genai.Client(api_key=API_KEY)
-            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_c)
-            st.info(resp.text)
+        contexto = json.dumps(historial, indent=2)
+        
+        prompt_especial = f"""
+        Actúa como un administrador de base de datos.
+        Datos actuales: {contexto}
+        
+        Si el usuario quiere BORRAR un equipo, responde ÚNICAMENTE con este JSON:
+        {{"accion": "BORRAR", "serie": "aquí_el_numero_de_serie"}}
+        
+        Si el usuario solo está preguntando, responde normal.
+        
+        Usuario dice: {pregunta}
+        """
+        
+        client = genai.Client(api_key=API_KEY)
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_especial)
+        respuesta_ia = resp.text
+
+        if '"accion": "BORRAR"' in respuesta_ia:
+            # Extraer el JSON de borrado
+            datos_borrado = json.loads(extraer_json(respuesta_ia))
+            # Mandar al buzón como una orden especial
+            orden = {
+                "tipo": "BORRAR",
+                "serie": datos_borrado["serie"],
+                "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
+            if guardar_datos_masivos([orden]):
+                st.warning(f"⚠️ Orden de eliminación enviada para la serie: {datos_borrado['serie']}. Se procesará en unos segundos en tu Excel.")
         else:
-            st.write("No hay historial para consultar.")
+            st.info(respuesta_ia)
 
 with tab3:
     st.subheader("Registros en el Histórico")
