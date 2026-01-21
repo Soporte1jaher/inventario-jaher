@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "serie": "09876",
+        "accion": "borrar"
+    },
+    {
+        "serie": "qwert",
+        "accion": "borrar"
+    },
+    {
+        "serie": "asdfg",
+        "accion": "borrar"
+    }
+]
