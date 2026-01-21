@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "serie": "763574",
+        "equipo": "Equipo",
+        "accion": "Borrar de inventario",
+        "ubicacion": "Inventario",
+        "reporte": "Borrar serie 763574 y sus datos (Se asume que 'sus datos' incluye cualquier accesorio asociado al equipo).",
+        "fecha": "2026-01-21 16:24"
+    }
+]
