@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "12345",
+        "equipo": "paute",
+        "accion": "llega",
+        "ubicacion": "desconocida",
+        "reporte": "desconocido",
+        "fecha": "2026-01-21 18:27"
+    },
+    {
+        "serie": "09876",
+        "equipo": "cpu",
+        "accion": "llega",
+        "ubicacion": "ambato",
+        "reporte": "desconocido",
+        "fecha": "2026-01-21 18:27"
+    }
+]
