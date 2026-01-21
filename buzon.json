@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "ABC",
+        "equipo": "Laptop Dell",
+        "accion": "llega",
+        "ubicacion": "Manta",
+        "reporte": "con cargador",
+        "fecha": "2026-01-21 15:56"
+    },
+    {
+        "serie": "zcvcdf",
+        "equipo": "Laptop Lenovo",
+        "accion": "llega",
+        "ubicacion": "Manta",
+        "reporte": "sin cargador",
+        "fecha": "2026-01-21 15:56"
+    }
+]
