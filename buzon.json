@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "09876",
+        "equipo": "laptop Dell",
+        "accion": "llega",
+        "ubicacion": "Loja",
+        "reporte": "Sin accesorios reportados",
+        "fecha": "2026-01-21 16:34"
+    },
+    {
+        "serie": "qwert",
+        "equipo": "monitor marca AOC",
+        "accion": "llega",
+        "ubicacion": "Guayaquil",
+        "reporte": "Sin accesorios reportados",
+        "fecha": "2026-01-21 16:34"
+    }
+]
