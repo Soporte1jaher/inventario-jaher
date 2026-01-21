@@ -1,42 +1,26 @@
 [
     {
-        "serie": "12345",
-        "equipo": "laptop",
-        "accion": "llega de paute",
-        "ubicacion": "paute",
-        "reporte": "sin cargador",
-        "fecha": "2026-01-21 16:33"
+        "fecha": "2026-01-21 18:27",
+        "serie": "09876",
+        "equipo": "cpu",
+        "accion": "llega",
+        "ubicacion": "ambato",
+        "reporte": "desconocido"
     },
     {
-        "serie": "09876",
+        "fecha": "2026-01-21 18:27",
+        "serie": "qwert",
         "equipo": "laptop Dell",
         "accion": "llega",
-        "ubicacion": "Loja",
-        "reporte": "Sin accesorios reportados",
-        "fecha": "2026-01-21 16:34"
+        "ubicacion": "Tena",
+        "reporte": "Equipo recibido en Tena sin incidentes."
     },
     {
-        "serie": "qwert",
-        "equipo": "monitor marca AOC",
+        "fecha": "2026-01-21 18:27",
+        "serie": "asdfg",
+        "equipo": "laptop Dell",
         "accion": "llega",
-        "ubicacion": "Guayaquil",
-        "reporte": "Sin accesorios reportados",
-        "fecha": "2026-01-21 16:34"
-    },
-    {
-        "serie": "12345",
-        "equipo": "equipo",
-        "accion": "borra",
-        "ubicacion": "S/U",
-        "reporte": "S/A",
-        "fecha": "2026-01-21 16:35"
-    },
-    {
-        "serie": "12345",
-        "equipo": "equipo",
-        "accion": "borra",
-        "ubicacion": "S/U",
-        "reporte": "S/R",
-        "fecha": "2026-01-21 16:35"
+        "ubicacion": "Tena",
+        "reporte": "Equipo recibido en Tena sin incidentes."
     }
 ]
