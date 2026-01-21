@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "1234",
+        "equipo": "laptop lenovo",
+        "accion": "reparaci\u00f3n",
+        "ubicacion": "riobamba",
+        "reporte": "pantalla rota, sin cargador",
+        "fecha": "2026-01-21 16:21"
+    },
+    {
+        "serie": "507645",
+        "equipo": "cpu xtratech",
+        "accion": "uso",
+        "ubicacion": "paute",
+        "reporte": "configurado como punto de venta",
+        "fecha": "2026-01-21 16:21"
+    }
+]
