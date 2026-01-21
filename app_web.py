@@ -5,93 +5,118 @@ import requests
 import base64
 import datetime
 
-st.set_page_config(page_title="Inventario Web", page_icon="🌐")
+st.set_page_config(page_title="Inventario Inteligente Jaher", page_icon="🌐", layout="wide")
 
 # --- CREDENCIALES ---
 try:
-    # Leemos las claves de la Caja Fuerte de Streamlit
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Faltan las claves en Secrets (Google o GitHub).")
+    st.error("❌ Faltan las claves en Secrets.")
     st.stop()
 
-# --- DATOS GITHUB ---
-# (Asegúrate de que estos datos sean correctos)
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 GITHUB_FILE = "buzon.json"
+URL_GITHUB = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{GITHUB_FILE}"
+HEADERS_GITHUB = {"Authorization": f"token {GITHUB_TOKEN}"}
 
-def guardar_en_github(nuevo_dato):
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{GITHUB_FILE}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    
-    datos_actuales = []
-    sha = None
-    
-    # 1. Intentar leer lo que hay
+# --- FUNCIONES DE GITHUB ---
+
+def obtener_datos_github():
+    """Lee el inventario actual desde GitHub"""
     try:
-        resp = requests.get(url, headers=headers)
+        resp = requests.get(URL_GITHUB, headers=HEADERS_GITHUB)
         if resp.status_code == 200:
             content = resp.json()
             sha = content['sha']
             texto_b64 = content['content']
-            # Decodificar
             texto = base64.b64decode(texto_b64).decode('utf-8')
-            
-            # Si el archivo tiene texto, intentamos convertirlo a lista
-            if texto.strip(): 
-                datos_actuales = json.loads(texto)
+            return json.loads(texto) if texto.strip() else [], sha
     except Exception as e:
-        print(f"Nota: Archivo nuevo o vacío ({e})")
-        datos_actuales = []
+        st.error(f"Error al leer base de datos: {e}")
+    return [], None
 
-    # 2. Agregar el nuevo
+def guardar_en_github(nuevo_dato):
+    """Agrega un registro nuevo a GitHub"""
+    datos_actuales, sha = obtener_datos_github()
     datos_actuales.append(nuevo_dato)
     
-    # 3. Subir
     nuevo_json = json.dumps(datos_actuales, indent=4)
     nuevo_b64 = base64.b64encode(nuevo_json.encode('utf-8')).decode('utf-8')
     
     payload = {
-        "message": "Nuevo registro",
+        "message": f"Registro auto: {nuevo_dato.get('equipo', 'nuevo')}",
         "content": nuevo_b64,
         "sha": sha
     }
     
-    put_resp = requests.put(url, headers=headers, json=payload)
+    put_resp = requests.put(URL_GITHUB, headers=HEADERS_GITHUB, json=payload)
     return put_resp.status_code in [200, 201]
 
 # --- INTERFAZ ---
-st.title("🌐 Registro de Inventario")
+st.title("🌐 Sistema de Inventario IA")
 
-texto = st.text_area("Movimiento:", placeholder="Ej: Laptop Dell enviada a Quito")
+# Pestañas para separar Registro de Consulta
+tab1, tab2 = st.tabs(["📝 Registrar Movimiento", "💬 Chatear con Inventario"])
 
-if st.button("Guardar en Nube", type="primary"):
-    if texto:
-        try:
-            client = genai.Client(api_key=API_KEY)
-            prompt = f"""Analiza: "{texto}". Devuelve SOLO JSON. Keys: fecha, serie, equipo, accion, ubicacion, reporte."""
-            
-            resp = client.models.generate_content(model="gemini-flash-latest", contents=prompt)
-            
-            # Limpieza robusta de la respuesta de la IA
-            limpio = resp.text.replace("```json", "").replace("```", "").strip()
-            
-            if not limpio:
-                st.error("La IA devolvió una respuesta vacía. Intenta de nuevo.")
-            else:
-                info = json.loads(limpio)
-                info["fecha"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                info["reporte"] = texto
-                
-                if guardar_en_github(info):
-                    st.success("✅ ¡Guardado! Se procesará al encender tu PC.")
-                else:
-                    st.error("Error conectando con GitHub (Revisa el Token).")
+with tab1:
+    st.subheader("Registrar nuevo movimiento")
+    texto_input = st.text_area("Describe el movimiento:", placeholder="Ej: Se entregó laptop HP serie 12345 a Juan Perez en Quito")
+    
+    if st.button("Guardar en Nube", type="primary"):
+        if texto_input:
+            with st.spinner("La IA está procesando el registro..."):
+                try:
+                    client = genai.Client(api_key=API_KEY)
+                    # Usamos el modelo Flash 2.0 que es el más actual y rápido
+                    prompt = f"""Analiza este texto de inventario: "{texto_input}". 
+                    Devuelve un objeto JSON con estas llaves: fecha, serie, equipo, accion, ubicacion, reporte. 
+                    Sé preciso."""
                     
-        except json.JSONDecodeError:
-            st.error("Error leyendo la respuesta de la IA (No fue JSON válido).")
-            st.write("Respuesta cruda:", limpio)
-        except Exception as e:
-            st.error(f"Error general: {e}")
+                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+                    limpio = resp.text.replace("```json", "").replace("```", "").strip()
+                    
+                    info = json.loads(limpio)
+                    info["fecha"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    
+                    if guardar_en_github(info):
+                        st.success("✅ ¡Registrado con éxito en GitHub!")
+                        st.balloons()
+                    else:
+                        st.error("Error al subir a GitHub.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+with tab2:
+    st.subheader("Consulta al Asistente")
+    pregunta = st.text_input("Haz una pregunta sobre el inventario:", placeholder="¿Está la serie 4567 en el inventario?")
+    
+    if st.button("Consultar IA"):
+        if pregunta:
+            with st.spinner("Buscando en los registros..."):
+                # 1. Obtener los datos reales de GitHub
+                inventario_actual, _ = obtener_datos_github()
+                
+                # 2. Preparar el contexto para la IA
+                # Convertimos el JSON a string para que la IA lo lea
+                contexto_inventario = json.dumps(inventario_actual, indent=2)
+                
+                prompt_consulta = f"""
+                Eres un asistente de inventario. Aquí tienes la base de datos actual en formato JSON:
+                {contexto_inventario}
+                
+                Basado EXCLUSIVAMENTE en esos datos, responde la siguiente pregunta del usuario:
+                "{pregunta}"
+                
+                Si no encuentras la información, dilo amablemente.
+                """
+                
+                try:
+                    client = genai.Client(api_key=API_KEY)
+                    # Usamos Gemini 3 Flash (2.0 Flash) para razonar sobre los datos
+                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_consulta)
+                    st.markdown("### Respuesta:")
+                    st.write(resp.text)
+                except Exception as e:
+                    st.error(f"Error en la consulta: {e}")
