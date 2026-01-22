@@ -4,5 +4,11 @@
         "serie": null,
         "equipo": null,
         "motivo": "registros que dicen \"sin serie\""
+    },
+    {
+        "accion": "borrar_sin_detalle",
+        "serie": null,
+        "equipo": null,
+        "motivo": "agregados"
     }
 ]
