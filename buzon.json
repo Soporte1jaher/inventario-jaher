@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "Desconocido",
+        "equipo": "cargador",
+        "motivo": "Petici\u00f3n del usuario de borrar los cargadores."
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "Desconocido",
+        "equipo": "cargador",
+        "motivo": "Petici\u00f3n del usuario de borrar los cargadores."
+    }
+]
