@@ -70,5 +70,8 @@
         "ubicacion": "Stock",
         "reporte": "Se recibieron 10 cables HDMI para inventario.",
         "fecha": "2026-01-22 18:52"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
