@@ -1,1 +1,62 @@
-[]
+[
+    {
+        "destino": "agencia latacunga",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "838474",
+        "estado": "No especificada",
+        "ubicacion": "No especificada",
+        "reporte": "Envio de CPU Xtech serie 838474 a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:23"
+    },
+    {
+        "destino": "agencia latacunga",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "serie": "hgbcbcbbc",
+        "estado": "No especificada",
+        "ubicacion": "No especificada",
+        "reporte": "Envio de Monitor Samsung serie hgbcbcbbc a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:23"
+    },
+    {
+        "destino": "agencia latacunga",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "No especificada",
+        "estado": "No especificada",
+        "ubicacion": "No especificada",
+        "reporte": "Envio de Mouse a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:23"
+    },
+    {
+        "destino": "agencia latacunga",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "No especificada",
+        "estado": "No especificada",
+        "ubicacion": "No especificada",
+        "reporte": "Envio de Teclado a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:23"
+    },
+    {
+        "destino": "agencia latacunga",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "No especificada",
+        "estado": "Nuevo",
+        "ubicacion": "No especificada",
+        "reporte": "Envio de Cable HDMI a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:23"
+    }
+]
