@@ -179,15 +179,15 @@ with t1:
           resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
           json_limpio = extraer_json(resp.text)
            
-          if json_limpio:
+         if json_limpio:
             datos = json.loads(json_limpio)
             fecha = obtener_fecha_ecuador()
              
-            # --- CAPA DE SEGURIDAD PYTHON ---
-           for d in datos: 
+            # --- CAPA DE SEGURIDAD PYTHON (WEB) ---
+            for d in datos: 
               d["fecha"] = fecha
               
-              # 1. Forzar CANTIDAD a 1 si la IA la dejó vacía
+              # 1. Cantidad forzada a 1
               try:
                 d["cantidad"] = int(d.get("cantidad", 1))
               except:
@@ -195,17 +195,18 @@ with t1:
 
               # 2. Normalizar TIPO
               tipo_raw = str(d.get("tipo", "")).lower()
-              if "env" in tipo_raw or "sal" in tipo_raw: d["tipo"] = "Enviado"
-              else: d["tipo"] = "Recibido"
+              if "env" in tipo_raw or "sal" in tipo_raw: 
+                d["tipo"] = "Enviado"
+              else: 
+                d["tipo"] = "Recibido"
 
               # 3. FIX CRÍTICO PARA TU EXCEL: Normalizar SERIE
-              # Si la serie dice "No especificada", la cambiamos a "N/A"
-              # Esto hará que tu script de la laptop SI reste el equipo.
+              # Cambiamos "No especificada" por "N/A" para que tu laptop SI reste.
               ser_raw = str(d.get("serie", "")).lower().strip()
               if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
                 d["serie"] = "N/A"
               else:
-                d["serie"] = d["serie"].upper() # Series siempre en mayúsculas
+                d["serie"] = d["serie"].upper()
 
               # 4. Normalizar MARCA
               m_raw = str(d.get("marca", "")).lower().strip()
@@ -213,11 +214,8 @@ with t1:
                 d["marca"] = "Genérica"
               else:
                 d["marca"] = d["marca"].title()
-              # 3. Corregir Estado Dañado
-              est_raw = str(d.get("estado", "")).lower()
-              if "dañ" in est_raw or "mal" in est_raw or "rot" in est_raw:
-                d["estado"] = "Dañado"
 
+            # --- ENVÍO AL BUZÓN ---
             if enviar_buzon(datos):
               st.success(f"✅ LAIA procesó {len(datos)} registros independientes.")
               st.table(pd.DataFrame(datos))
