@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 import pandas as pd
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Inventario Inteligente Jaher", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Inventario Jaher", page_icon="🤖", layout="wide")
 
 # --- CREDENCIALES ---
 try:
@@ -67,7 +67,7 @@ t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA", "🗑️ Borrar", "�
 
 # --- TAB 1: REGISTRAR ---
 with t1:
-    st.subheader("📝 Registro de Movimientos Inteligente")
+    st.subheader("📝 Registro de Movimientos ")
     st.info("La IA clasificará automáticamente: Tipo (Recibido/Enviado), Marca, Equipo y Ubicación.")
     
     texto_input = st.text_area(
