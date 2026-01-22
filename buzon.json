@@ -1,14 +1,1 @@
-[
-    {
-        "destino": "Movimientos",
-        "tipo": "Recibido",
-        "cantidad": 1,
-        "equipo": "CPU",
-        "marca": "Xtech",
-        "serie": "zxcvbfg",
-        "estado": "Da\u00f1ado",
-        "ubicacion": "Desconocido",
-        "reporte": "Pendiente de informe tecnico",
-        "fecha": "2026-01-21 22:15"
-    }
-]
+[]
