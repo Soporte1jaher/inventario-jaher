@@ -1,12 +1,1 @@
-[
-    {
-        "accion": "borrar_vacios",
-        "columna": null,
-        "valor": null
-    },
-    {
-        "accion": "borrar_contiene",
-        "columna": null,
-        "valor": "N/A"
-    }
-]
+[]
