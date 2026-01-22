@@ -1,38 +1,3 @@
 [
-    {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"monitor",
-        "marca":"lg",
-        "serie":"12345",
-        "estado":"Da\u00f1ado",
-        "ubicacion":null,
-        "reporte":null,
-        "fecha":"2026-01-21 22:39"
-    },
-    {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"cpu",
-        "marca":"xtech",
-        "serie":"456756",
-        "estado":"Nuevo",
-        "ubicacion":null,
-        "reporte":null,
-        "fecha":"2026-01-21 22:39"
-    },
-    {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"camara",
-        "marca":null,
-        "serie":"7377373",
-        "estado":"Nuevo",
-        "ubicacion":null,
-        "reporte":null,
-        "fecha":"2026-01-21 22:39"
-    }
+
 ]
