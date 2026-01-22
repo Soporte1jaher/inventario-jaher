@@ -1,3 +1,86 @@
 [
-
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"76466453",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Incluye cables.",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"LG",
+        "serie":"jdddjjd",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Retirado del stock de nuevos.",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Retirado del stock de nuevos.",
+        "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"N\/A",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"N\/A",
+        "reporte":"Pantalla rota y sin cargador. Sospecha de no ser activo fijo.",
+        "fecha":"2026-01-22 11:27"
+    }
 ]
