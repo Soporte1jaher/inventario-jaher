@@ -14,5 +14,13 @@
         "ubicacion": "Puyo",
         "reporte": "env\u00edo de laptop Lenovo a Puyo serie zxcvbnm",
         "fecha": "2026-01-21 19:36"
+    },
+    {
+        "serie": null,
+        "equipo": null,
+        "accion": "listar",
+        "ubicacion": null,
+        "reporte": null,
+        "fecha": "2026-01-21 19:37"
     }
 ]
