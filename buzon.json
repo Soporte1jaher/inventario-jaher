@@ -1,11 +1,1 @@
-[
-    {
-        "accion": "borrar_filtro",
-        "columna": "marca",
-        "valor": "dell"
-    },
-    {
-        "accion": "borrar_contiene",
-        "valor": "cargador"
-    }
-]
+[]
