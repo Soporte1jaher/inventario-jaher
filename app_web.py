@@ -82,50 +82,64 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Limpieza de nombres de columnas (Arregla "Cant" vs "cantidad")
-    df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado'}
-    df_c = df_c.rename(columns=mapa_cols)
-
-    # Asegurar columnas
+    # --- PARCHE 1: ARREGLAR NOMBRES DE COLUMNAS (Cant -> cantidad) ---
+    # Convertimos encabezados a minúsculas y quitamos espacios
+    df_c.columns = df_c.columns.str.strip().str.lower()
+    
+    # Mapeamos los nombres de tu foto a lo que usa el cálculo
+    mapa = {
+        'cant': 'cantidad', 
+        'condición': 'estado', 
+        'condicion': 'estado',
+        'cond': 'estado'
+    }
+    df_c = df_c.rename(columns=mapa)
+    
+    # --- PARCHE 2: ARREGLAR "None" vs "Genérica" ---
+    # Aseguramos que existan las columnas y sean texto minúscula
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
-        if col not in df_c.columns: df_c[col] = "N/A"
-        df_c[col] = df_c[col].astype(str).str.strip()
+        if col not in df_c.columns: df_c[col] = "n/a"
+        df_c[col] = df_c[col].astype(str).str.strip().str.lower()
+
+    # Convertimos cualquier variante de "vacío" a una palabra estándar
+    # Así "Cable HDMI None" (Salida) restará a "Cable HDMI Genérica" (Entrada)
+    nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
     
-    # 2. LIMPIEZA DE "NONE" PARA QUE RESTEN
-    # Aquí está la solución: Convertimos "None", "N/A", "nan" a "Genérica" a la fuerza
-    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
+    df_c['marca'] = df_c['marca'].replace(nulos, 'genérica')
+    df_c['estado'] = df_c['estado'].replace(nulos, 'nuevo')
     
-    df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
-    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
-    
-    # Asegurar números
+    # Asegurar números (Si falla, pone 1)
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 3. Lógica de Resta
+    # --- PARCHE 3: MATEMÁTICA (+/-) ---
     def flujo(row):
-        tipo = str(row['tipo']).lower()
-        dest = str(row['destino']).lower()
-        ser = str(row['serie']).lower()
+        tipo = row['tipo']
+        dest = row['destino']
+        ser = row['serie']
         cant = row['cantidad']
         
-        # Si es activo único (serie larga), no suma al bulto
-        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin'])
+        # Si tiene serie larga (>3 letras) y no es nula, es Activo Único -> NO se suma al bulto
+        es_activo = len(ser) > 3 and not any(x in ser for x in nulos) and ser != "sin serie"
         if es_activo: return 0
         
+        # Entradas a stock suman
         if dest == 'stock': return cant
-        if 'enviado' in tipo or 'salida' in tipo: return -cant
+        
+        # Salidas restan
+        if 'env' in tipo or 'sal' in tipo: return -cant
+        
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 4. Agrupar
+    # --- AGRUPAR RESULTADOS ---
     df_c['equipo'] = df_c['equipo'].str.capitalize()
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
+    
+    # Devolver tabla bonita con columnas correctas
     stock.columns = ['Equipo', 'Marca', 'Cantidad']
     
-    # Solo devolvemos lo que tiene saldo positivo
     return stock[stock['Cantidad'] > 0]
 
 # --- INTERFAZ ---
