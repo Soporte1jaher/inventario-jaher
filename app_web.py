@@ -85,35 +85,45 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO & ESTRATEGIA (CON MÁS NEURONAS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA Entrena: Puedes dictar órdenes complejas: 'Llegaron 50 mouses, reparte 10 a Manta, 10 a Quito y el resto a bodega'")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Escribe aquí el movimiento...")
+    st.info("💡 IA Entrena: Si dices 'Laptop con cargador', el cargador se guardará dentro del reporte de la laptop, no separado.")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Recibí 1 Laptop HP serie 123 con su cargador y mouse...")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA procesando lógica de distribución..."):
+            with st.spinner("LAIA clasificando Activos vs Accesorios..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
-                    # CORREGIDO: Se insertó {texto_input} en el prompt
+                    
+                    # --- AQUÍ ESTÁ LA CORRECCIÓN DE INTELIGENCIA ---
                     prompt = f"""
-                    Actúa como un Ingeniero de Datos Logísticos.
-                    TEXTO: "{texto_input}"
-                    TAREAS:
-                    1. Clasifica: 'Stock' (periféricos) o 'Movimientos' (equipos con serie).
-                    2. Si el texto pide repartir, calcula las cantidades exactas y crea registros individuales.
-                    3. Identifica: Marca, Serie, Estado (Nuevo, Usado, Dañado) y Ubicación.
-                    FORMATO JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": n, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+                    Actúa como un Gerente de Inventario Experto.
+                    TEXTO DE ENTRADA: "{texto_input}"
+                    
+                    REGLAS OBLIGATORIAS:
+                    1. **ACTIVOS PRINCIPALES**: Crea filas SOLO para equipos reales (Laptop, CPU, Monitor, Impresora, Celular, Scanner).
+                    2. **ACCESORIOS (IMPORTANTE)**: Si el texto menciona "cargador", "cable", "mouse", "funda" o "teclado" JUNTO a un activo principal, **NO** crees una fila nueva para ellos.
+                       - **ACCIÓN**: Agrégalos en el campo 'reporte' del activo principal.
+                       - Ejemplo: Si dice "Laptop con cargador", crea 1 fila para Laptop y en reporte pon: "Incluye cargador".
+                    3. **STOCK SUELTO**: Solo crea fila para accesorio si es stock masivo (ej: "Llegaron 50 cargadores sueltos").
+                    4. Extrae: Marca, Serie, Estado y Ubicación.
+                    
+                    RESPONDE SOLO EL JSON:
+                    [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "Laptop", "marca": "HP", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "Incluye cargador original y mouse" }}]
                     """
+                    
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
                     json_limpio = extraer_json(resp.text)
+                    
                     if json_limpio:
                         datos = json.loads(json_limpio)
                         fecha = obtener_fecha_ecuador()
                         for d in datos: d["fecha"] = fecha
+                        
                         if enviar_buzon(datos):
-                            st.success(f"✅ LAIA generó {len(datos)} registros.")
+                            st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
                             st.table(pd.DataFrame(datos))
+                            
                 except Exception as e:
-                    # CORREGIDO: Se insertó {e} para ver el error
                     st.error(f"Error en IA: {e}")
 
 # --- TAB 2: CHAT IA (CON CONTEXTO DE INVENTARIO) ---
