@@ -7,7 +7,9 @@
         "equipo": "Laptop",
         "accion": "Env\u00edo",
         "ubicacion": "Riobamba",
-        "reporte": "Laptop Lenovo serie 12345 enviada a Riobamba con cargador."
+        "reporte": "Laptop Lenovo serie 12345 enviada a Riobamba con cargador.",
+        "cantidad": "",
+        "estado": ""
     },
     {
         "fecha": "2026-01-21 20:49",
@@ -17,7 +19,9 @@
         "equipo": "Laptop",
         "accion": "Recepci\u00f3n",
         "ubicacion": "Shushufindi",
-        "reporte": "Laptop Lenovo serie 09876 llega de Shushufindi sin cargador y con la pantalla rota."
+        "reporte": "Laptop Lenovo serie 09876 llega de Shushufindi sin cargador y con la pantalla rota.",
+        "cantidad": "",
+        "estado": ""
     },
     {
         "fecha": "2026-01-21 20:49",
@@ -27,7 +31,9 @@
         "equipo": "Monitor",
         "accion": "Recepci\u00f3n",
         "ubicacion": "Shushufindi",
-        "reporte": "Monitor LG llega partido a la mitad a la agencia de Shushufindi."
+        "reporte": "Monitor LG llega partido a la mitad a la agencia de Shushufindi.",
+        "cantidad": "",
+        "estado": ""
     },
     {
         "fecha": "2026-01-21 20:49",
@@ -37,6 +43,44 @@
         "equipo": "CPU",
         "accion": "Env\u00edo",
         "ubicacion": "Paute",
-        "reporte": "CPU con configuraci\u00f3n para ventas, enviada a Paute."
+        "reporte": "CPU con configuraci\u00f3n para ventas, enviada a Paute.",
+        "cantidad": "",
+        "estado": ""
+    },
+    {
+        "fecha": "2026-01-21 21:13",
+        "tipo": "Recibido",
+        "serie": "Sin serie",
+        "marca": "Desconocida",
+        "equipo": "Mouse",
+        "accion": "registrar",
+        "ubicacion": "Pendiente",
+        "reporte": "Recibidos 50 mouses sin n\u00famero de serie. Investigar la omisi\u00f3n de n\u00fameros de serie y determinar la marca para registro adecuado.",
+        "cantidad": 50.0,
+        "estado": "Nuevo"
+    },
+    {
+        "fecha": "2026-01-21 21:13",
+        "tipo": "Recibido",
+        "serie": "Sin serie",
+        "marca": "Desconocida",
+        "equipo": "Teclado",
+        "accion": "registrar",
+        "ubicacion": "Pendiente",
+        "reporte": "Recibidos 50 teclados sin n\u00famero de serie. Investigar la omisi\u00f3n de n\u00fameros de serie y determinar la marca para registro adecuado.",
+        "cantidad": 50.0,
+        "estado": "Nuevo"
+    },
+    {
+        "fecha": "2026-01-21 21:17",
+        "tipo": "Enviado",
+        "serie": "",
+        "marca": "",
+        "equipo": "Mouse",
+        "accion": "consultar",
+        "ubicacion": "",
+        "reporte": "Solicitud de consulta de stock de mouses.",
+        "cantidad": 1.0,
+        "estado": "Operativo"
     }
 ]
