@@ -70,5 +70,17 @@
         "ubicacion":"N\/A",
         "reporte":"Sin serie",
         "fecha":"2026-01-22 10:58"
+    },
+    {
+        "destino":"Taller",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"zxcvbnm",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"Puyo",
+        "reporte":"Teclado da\u00f1ado y pantalla trizada.",
+        "fecha":"2026-01-22 11:08"
     }
 ]
