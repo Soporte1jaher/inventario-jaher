@@ -63,31 +63,33 @@ def extraer_json(texto):
 st.title("🤖 LAIA: Asistente de Inventario Inteligente")
 t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA & Análisis", "🗑️ Borrar", "📊 Historial"])
 
-# --- TAB 1: REGISTRAR (MEJORADO CON ESTADO Y CANTIDAD) ---
+# --- TAB 1: REGISTRAR ---
 with t1:
     st.subheader("📝 Registro de Movimientos Pro")
-    st.info("LAIA ahora entiende cantidades y estados (Dañado, Operativo, Reparación, Nuevo).")
+    st.info("LAIA detectará si el equipo va a 'Movimientos' (con serie) o a 'Stock' (consumibles).")
     
     texto_input = st.text_area(
         "Describe el movimiento:", 
-        placeholder="Ej: llegaron 50 mouses Genius nuevos de Manta y 2 teclados dañados...",
+        placeholder="Ej: envío de una laptop dell serie 676534 o llegaron 50 mouses genius...",
         height=150
     )
     
     if st.button("🚀 Procesar e Ingresar al Inventario", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA analizando stock, estados y ubicación..."):
+            with st.spinner("LAIA analizando y clasificando destino..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
                     prompt = f"""
                     Actúa como experto en logística. Analiza: "{texto_input}"
                     TAREAS:
-                    1. CLASIFICACIÓN: 'Recibido' si entra, 'Enviado' si sale.
-                    2. CANTIDAD: Extrae el número. Si no hay, es 1.
-                    3. ESTADO: Clasifica en 'Operativo', 'Dañado', 'Nuevo' o 'En Reparación'.
-                    4. CORRECCIÓN: 'sansum'->'Samsung', 'dell'->'Dell', etc.
+                    1. DESTINO: Si el equipo tiene serie única (Laptop, Monitor, CPU, etc.) destino='Movimientos'. 
+                       Si es por cantidad o periféricos pequeños (Mouses, Teclados, Pads, Cables) destino='Stock'.
+                    2. CLASIFICACIÓN: 'Recibido' (entra) o 'Enviado' (sale).
+                    3. CANTIDAD: Extrae el número. Si no hay, es 1.
+                    4. ESTADO: 'Nuevo', 'Operativo', 'Dañado' o 'En Reparación'.
                     Devuelve LISTA JSON:
                     [{{
+                        "destino": "Movimientos o Stock",
                         "tipo": "Recibido o Enviado",
                         "cantidad": número,
                         "estado": "...",
@@ -111,38 +113,31 @@ with t1:
                         
                         if enviar_buzon(datos_ia):
                             st.balloons()
-                            st.success(f"✅ Registrado con éxito en el sistema.")
+                            st.success(f"✅ Registrado con éxito.")
                             st.table(pd.DataFrame(datos_ia))
                         else: st.error("❌ Error con GitHub.")
                 except Exception as e: st.error(f"❌ Error: {e}")
 
-# --- TAB 2: CHAT IA (MEJORADO: BÚSQUEDA SEMÁNTICA Y PREDICTIVA) ---
+# --- TAB 2: CHAT IA (BÚSQUEDA SEMÁNTICA Y PREDICTIVA) ---
 with t2:
-    st.subheader("💬 Consulta Inteligente y Análisis de Stock")
+    st.subheader("💬 Consulta Inteligente y Análisis")
     if "messages" not in st.session_state: st.session_state.messages = []
 
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if p_chat := st.chat_input("Ej: ¿Cuántos mouses nos quedan? o ¿Qué llegó de Manta ayer?"):
+    if p_chat := st.chat_input("¿Qué deseas saber del stock o movimientos?"):
         st.session_state.messages.append({"role": "user", "content": p_chat})
         with st.chat_message("user"): st.markdown(p_chat)
         
         historial, _ = obtener_github(FILE_HISTORICO)
-        
-        # PROMPT MAMADÍSIMO PARA CÁLCULOS Y BÚSQUEDA SEMÁNTICA
         contexto = f"""
-        Eres LAIA, experta en inventario de Jaher. 
-        Datos actuales: {json.dumps(historial[-100:])}
+        Eres LAIA, experta en inventario de Jaher. Datos: {json.dumps(historial[-150:])}
         Hoy es {obtener_fecha_ecuador()}.
-        
-        Instrucciones:
-        1. Si piden stock: Suma 'Recibido' y resta 'Enviado' para ese equipo.
-        2. Si preguntan por fallas: Busca los estados 'Dañado'.
-        3. Si preguntan por fechas: Filtra los datos semánticamente (ej. 'ayer').
-        4. Responde de forma ejecutiva y profesional.
+        Si preguntan stock, suma Recibidos y resta Enviados de la hoja Stock.
+        Si preguntan por fallas, busca estados 'Dañado'.
+        Responde profesionalmente.
         """
-        
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + f"\nPregunta: {p_chat}")
         
@@ -162,12 +157,10 @@ with t3:
             if lista_borrar and enviar_buzon(lista_borrar):
                 st.warning("✅ Órdenes de borrado enviadas.")
 
-# --- TAB 4: HISTORIAL (COLUMNAS ACTUALIZADAS) ---
+# --- TAB 4: HISTORIAL ---
 with t4:
     if st.button("🔄 Cargar Datos Actuales"):
         datos, _ = obtener_github(FILE_HISTORICO)
         if datos:
             df = pd.DataFrame(datos)
-            cols = ["fecha", "tipo", "cantidad", "estado", "serie", "marca", "equipo", "ubicacion", "reporte"]
-            df = df.reindex(columns=[c for c in cols if c in df.columns])
             st.dataframe(df, use_container_width=True)
