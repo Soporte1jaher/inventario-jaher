@@ -70,5 +70,53 @@
         "ubicacion":"N\/A",
         "reporte":"N\/A",
         "fecha":"2026-01-22 15:44"
+    },
+    {
+        "destino":"Latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtrech",
+        "serie":"12345",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"Incluye monitor serie 09876, teclado y mouse.",
+        "fecha":"2026-01-22 15:45"
+    },
+    {
+        "destino":"Latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"Desconocida",
+        "serie":"09876",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"Forma parte del env\u00edo del CPU.",
+        "fecha":"2026-01-22 15:45"
+    },
+    {
+        "destino":"Latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Desconocida",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"Forma parte del env\u00edo del CPU.",
+        "fecha":"2026-01-22 15:45"
+    },
+    {
+        "destino":"Latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"Desconocida",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"Forma parte del env\u00edo del CPU.",
+        "fecha":"2026-01-22 15:45"
     }
 ]
