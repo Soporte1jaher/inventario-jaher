@@ -52,7 +52,7 @@ def extraer_json(texto):
     except: return ""
 
 # --- INTERFAZ ---
-st.title("🤖 Asistente Jaher Inteligente")
+st.title(" Asistente Jaher ")
 t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA", "🗑️ Borrar", "📊 Historial"])
 
 with t1:
