@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "S/N",
+        "equipo": "Ponchadora RJ45",
+        "motivo": "Eliminar ponchadora seg\u00fan la solicitud del usuario"
+    }
+]
