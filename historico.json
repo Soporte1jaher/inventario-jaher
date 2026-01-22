@@ -130,5 +130,29 @@
         "ubicacion":null,
         "reporte":"Falta cargador.",
         "fecha":"2026-01-22 15:25"
+    },
+    {
+        "destino":"paute",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 15:28"
+    },
+    {
+        "destino":"paute",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 15:28"
     }
 ]
