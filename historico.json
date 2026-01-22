@@ -1,1 +1,42 @@
-[]
+[
+    {
+        "fecha": "2026-01-21 20:49",
+        "tipo": "Enviado",
+        "serie": "12345",
+        "marca": "Lenovo",
+        "equipo": "Laptop",
+        "accion": "Env\u00edo",
+        "ubicacion": "Riobamba",
+        "reporte": "Laptop Lenovo serie 12345 enviada a Riobamba con cargador."
+    },
+    {
+        "fecha": "2026-01-21 20:49",
+        "tipo": "Recibido",
+        "serie": "09876",
+        "marca": "Lenovo",
+        "equipo": "Laptop",
+        "accion": "Recepci\u00f3n",
+        "ubicacion": "Shushufindi",
+        "reporte": "Laptop Lenovo serie 09876 llega de Shushufindi sin cargador y con la pantalla rota."
+    },
+    {
+        "fecha": "2026-01-21 20:49",
+        "tipo": "Recibido",
+        "serie": "qwertyuiop",
+        "marca": "LG",
+        "equipo": "Monitor",
+        "accion": "Recepci\u00f3n",
+        "ubicacion": "Shushufindi",
+        "reporte": "Monitor LG llega partido a la mitad a la agencia de Shushufindi."
+    },
+    {
+        "fecha": "2026-01-21 20:49",
+        "tipo": "Enviado",
+        "serie": "109867",
+        "marca": "Gen\u00e9rico",
+        "equipo": "CPU",
+        "accion": "Env\u00edo",
+        "ubicacion": "Paute",
+        "reporte": "CPU con configuraci\u00f3n para ventas, enviada a Paute."
+    }
+]
