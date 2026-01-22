@@ -15,7 +15,7 @@ try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets.")
+    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY).")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
@@ -57,74 +57,66 @@ def extraer_json(texto):
         return ""
     except: return ""
 
-st.title("🤖 LAIA: Inteligencia Logística Pro")
-t1, t2, t3, t4 = st.tabs(["📝 Registro & Estrategia", "💬 Chat IA", "🗑️ Borrado Masivo", "📊 Historial"])
+st.title("🤖 LAIA: Inteligencia Logística Pro V5.0")
+t1, t2, t3, t4 = st.tabs(["📝 Registro & Estrategia", "💬 Chat IA", "🗑️ Limpieza Inteligente", "📊 Historial"])
 
 with t1:
     st.subheader("📝 Gestión de Movimientos y Distribución")
-    st.info("Puedes decir: 'Reparte 100 mouses a 10 agencias' o pegar 50 series de golpe.")
-    
-    texto_input = st.text_area("Orden logística:", height=200, placeholder="Ej: Registra estas series: [Pega 50 series aquí] o 'Divide 50 teclados para 5 agencias'")
+    st.info("LAIA procesa cientos de series o cálculos de reparto automáticamente.")
+    texto_input = st.text_area("Orden logística:", height=200, placeholder="Ej: Registra estas 50 series... o 'Divide 100 mouses para 10 agencias'...")
     
     if st.button("🚀 Ejecutar Orden", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA calculando y procesando..."):
+            with st.spinner("LAIA calculando logística..."):
                 client = genai.Client(api_key=API_KEY)
                 prompt = f"""
-                Eres una Estratega Logística. Analiza: "{texto_input}"
+                Eres una Estratega Logística Pro. Analiza: "{texto_input}"
                 TAREAS:
-                1. SI HAY MUCHAS SERIES: Crea un objeto JSON por cada serie.
-                2. SI HAY DISTRIBUCIÓN (ej. repartir stock): Calcula la división y genera registros 'Enviado' con la cantidad resultante para cada destino.
-                3. DESTINO: 'Movimientos' (equipos con serie) o 'Stock' (periféricos/cantidad).
-                4. FORMATO: Devuelve una LISTA de objetos JSON.
-                JSON: [{{ "destino": "...", "tipo": "Enviado/Recibido", "cantidad": n, "equipo": "...", "marca": "...", "serie": "...", "ubicacion": "...", "reporte": "Cálculo automático LAIA" }}]
+                1. SI HAY MUCHAS SERIES: Genera un registro individual por cada serie.
+                2. SI HAY REPARTO/DIVISIÓN: Calcula la cantidad por agencia y genera los registros de 'Enviado'.
+                3. DESTINO: 'Movimientos' (con serie) o 'Stock' (periféricos).
+                JSON: [{{ "destino": "...", "tipo": "Enviado/Recibido", "cantidad": n, "equipo": "...", "marca": "...", "serie": "...", "ubicacion": "...", "reporte": "Procesado por LAIA" }}]
                 """
                 resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                json_limpio = extraer_json(resp.text)
-                if json_limpio:
-                    datos = json.loads(json_limpio)
-                    fecha = obtener_fecha_ecuador()
-                    for d in datos: d["fecha"] = fecha
-                    if enviar_buzon(datos):
-                        st.balloons()
-                        st.success(f"✅ LAIA generó {len(datos)} registros.")
-                        st.table(pd.DataFrame(datos).head(10))
-                else: st.error("LAIA no pudo procesar la lógica de esa orden.")
+                datos = json.loads(extraer_json(resp.text))
+                fecha = obtener_fecha_ecuador()
+                for d in datos: d["fecha"] = fecha
+                if enviar_buzon(datos):
+                    st.success(f"✅ LAIA procesó {len(datos)} registros.")
+                    st.table(pd.DataFrame(datos).head(10))
 
 with t2:
-    st.subheader("💬 Consulta Inteligente")
-    if p_chat := st.chat_input("Pregunta sobre stock o historial..."):
+    st.subheader("💬 Consulta Semántica")
+    if p_chat := st.chat_input("¿Qué deseas consultar?"):
         hist, _ = obtener_github(FILE_HISTORICO)
-        contexto = f"Datos: {json.dumps(hist[-150:])}. Responde pro. Si preguntan stock de mouses/teclados, suma Recibidos y resta Enviados de 'Stock'."
+        contexto = f"Datos: {json.dumps(hist[-150:])}. Responde pro. Si preguntan stock, suma Recibidos y resta Enviados de 'Stock'."
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + p_chat)
         st.markdown(resp.text)
 
 with t3:
-    st.subheader("🗑️ Eliminación ")
-    txt_borrar = st.text_area("Dime qué limpiar:", placeholder="Ej: 'borra las series vacías', 'limpia los mouses', 'borra lo que no tiene reporte'...")
+    st.subheader("🗑️ Motor de Limpieza Universal")
+    st.info("Elimina por cualquier criterio: 'vacíos', 'por marca', 'por tipo', 'por contenido'...")
+    txt_borrar = st.text_area("Orden de limpieza:", placeholder="Ej: 'borra los recibidos', 'borra lo que dice sin serie', 'borra marcas patito'...")
     
-    if st.button("🗑️ EJECUTAR LIMPIEZA CRÍTICA"):
-        if txt_borrar:
-            with st.spinner("LAIA analizando criterios de limpieza..."):
-                client = genai.Client(api_key=API_KEY)
-                prompt_b = f"""
-                Analiza esta orden de eliminación: "{txt_borrar}"
-                Debes clasificar la orden en uno de estos tipos de acción:
-                1. 'borrar_vacios': Si pide borrar series vacías o celdas en blanco.
-                2. 'borrar_sin_detalle': Si pide borrar registros sin reporte o sin descripción.
-                3. 'borrar_equipo': Si menciona un nombre de equipo (ej. Mouse, Teclado) para limpiar su historial.
-                4. 'borrar_serie': Si da números de serie específicos.
-                5. 'borrar_todo': Si pide vaciar todo el inventario.
-
-                Devuelve una LISTA JSON:
-                [{{"accion": "tipo_de_accion", "serie": "...", "equipo": "...", "motivo": "..."}}]
-                """
-                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-                lista_borrar = json.loads(extraer_json(resp.text))
-                if enviar_buzon(lista_borrar):
-                    st.warning(f"✅ LAIA ha enviado {len(lista_borrar)} instrucciones de limpieza.")
-                    st.json(lista_borrar)
+    if st.button("🗑️ EJECUTAR LIMPIEZA"):
+        client = genai.Client(api_key=API_KEY)
+        prompt_b = f"""
+        Analiza la orden: "{txt_borrar}"
+        Clasifica la acción:
+        1. 'borrar_todo': Borrar todo el inventario.
+        2. 'borrar_vacios': Series vacías, 'nan', 'sin serie', 'no aplica'.
+        3. 'borrar_filtro': Borrar por una columna específica (ej: tipo: recibido, marca: hp).
+        4. 'borrar_contiene': Borrar si cualquier celda contiene una palabra.
+        
+        Devuelve LISTA JSON:
+        [{{"accion": "...", "columna": "nombre_columna", "valor": "valor_a_buscar"}}]
+        """
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+        lista_borrar = json.loads(extraer_json(resp.text))
+        if enviar_buzon(lista_borrar):
+            st.warning("⚠️ Orden de limpieza enviada al sistema local.")
+            st.json(lista_borrar)
 
 with t4:
     if st.button("🔄 Cargar Historial"):
