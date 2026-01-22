@@ -1,3 +1,86 @@
 [
-
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de pantalla",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de equipos",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":10,
+        "equipo":"Cable HDMI",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Cable RJ45",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:45"
+    }
 ]
