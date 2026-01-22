@@ -54,5 +54,19 @@
         "reporte":"Procesado por LAIA",
         "destino":"Stock",
         "observaciones":null
+    },
+    {
+        "fecha":"2026-01-21 22:08",
+        "tipo":"Recibido",
+        "cantidad":50.0,
+        "estado":"Nuevo",
+        "serie":null,
+        "marca":null,
+        "equipo":"teclado",
+        "accion":null,
+        "ubicacion":"bodega 3",
+        "reporte":null,
+        "destino":"Stock",
+        "observaciones":null
     }
 ]
