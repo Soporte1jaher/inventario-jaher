@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_todo",
+        "columna": null,
+        "valor": null
+    }
+]
