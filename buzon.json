@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "destino": "Macas",
+        "tipo": "Enviado",
+        "cantidad": 6,
+        "equipo": "Mouse",
+        "marca": null,
+        "serie": null,
+        "estado": null,
+        "ubicacion": null,
+        "reporte": "Gu\u00eda: 1234567890",
+        "fecha": "2026-01-22 12:32"
+    },
+    {
+        "destino": "Macas",
+        "tipo": "Enviado",
+        "cantidad": 4,
+        "equipo": "Teclado",
+        "marca": null,
+        "serie": null,
+        "estado": null,
+        "ubicacion": null,
+        "reporte": "Gu\u00eda: 1234567890",
+        "fecha": "2026-01-22 12:32"
+    }
+]
