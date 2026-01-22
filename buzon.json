@@ -1,12 +1,1 @@
-[
-    {
-        "accion": "borrar_contiene",
-        "columna": "descripcion",
-        "valor": "mouse"
-    },
-    {
-        "accion": "borrar_contiene",
-        "columna": "descripcion",
-        "valor": "teclado"
-    }
-]
+[]
