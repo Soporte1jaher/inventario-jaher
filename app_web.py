@@ -8,14 +8,14 @@ from datetime import timedelta, timezone
 import pandas as pd
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Inventario Jaher PRO", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="LAIA Intelligence PRO", page_icon="🤖", layout="wide")
 
 # --- CREDENCIALES ---
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY) en Streamlit.")
+    st.error("❌ Configura los Secrets.")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
@@ -24,7 +24,6 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"}
 
-# --- FUNCIONES DE APOYO ---
 def obtener_fecha_ecuador():
     return (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
@@ -43,7 +42,7 @@ def enviar_buzon(datos):
     actuales, sha = obtener_github(FILE_BUZON)
     actuales.extend(datos)
     payload = {
-        "message": "Web Update LAIA PRO",
+        "message": "LAIA STRATEGIC UPDATE",
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
@@ -53,114 +52,67 @@ def enviar_buzon(datos):
 def extraer_json(texto):
     try:
         i = texto.find("[")
-        if i == -1: i = texto.find("{")
         f = texto.rfind("]") + 1
-        if f <= 0: f = texto.rfind("}") + 1
-        return texto[i:f]
+        if i != -1 and f != 0: return texto[i:f]
+        return ""
     except: return ""
 
-# --- INTERFAZ ---
-st.title("🤖 LAIA: Asistente de Inventario Inteligente")
-t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA & Análisis", "🗑️ Borrar", "📊 Historial"])
+st.title("🤖 LAIA: Inteligencia Logística Pro")
+t1, t2, t3, t4 = st.tabs(["📝 Registro & Estrategia", "💬 Chat IA", "🗑️ Borrado Masivo", "📊 Historial"])
 
-# --- TAB 1: REGISTRAR ---
 with t1:
-    st.subheader("📝 Registro de Movimientos Pro")
-    st.info("LAIA detectará si el equipo va a 'Movimientos' (con serie) o a 'Stock' (consumibles).")
+    st.subheader("📝 Gestión de Movimientos y Distribución")
+    st.info("Puedes decir: 'Reparte 100 mouses a 10 agencias' o pegar 50 series de golpe.")
     
-    texto_input = st.text_area(
-        "Describe el movimiento:", 
-        placeholder="Ej: envío de una laptop dell serie 676534 o llegaron 50 mouses genius...",
-        height=150
-    )
+    texto_input = st.text_area("Orden logística:", height=200, placeholder="Ej: Registra estas series: [Pega 50 series aquí] o 'Divide 50 teclados para 5 agencias'")
     
-    if st.button("🚀 Procesar e Ingresar al Inventario", type="primary"):
+    if st.button("🚀 Ejecutar Orden", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA analizando y clasificando destino..."):
-                try:
-                    client = genai.Client(api_key=API_KEY)
-                    prompt = f"""
-                    Actúa como experto en logística. Analiza: "{texto_input}"
-                    TAREAS:
-                    1. DESTINO: Si el equipo tiene serie única (Laptop, Monitor, CPU, etc.) destino='Movimientos'. 
-                       Si es por cantidad o periféricos pequeños (Mouses, Teclados, Pads, Cables) destino='Stock'.
-                    2. CLASIFICACIÓN: 'Recibido' (entra) o 'Enviado' (sale).
-                    3. CANTIDAD: Extrae el número. Si no hay, es 1.
-                    4. ESTADO: 'Nuevo', 'Operativo', 'Dañado' o 'En Reparación'.
-                    Devuelve LISTA JSON:
-                    [{{
-                        "destino": "Movimientos o Stock",
-                        "tipo": "Recibido o Enviado",
-                        "cantidad": número,
-                        "estado": "...",
-                        "serie": "...",
-                        "marca": "...",
-                        "equipo": "...",
-                        "accion": "registrar",
-                        "ubicacion": "...",
-                        "reporte": "..."
-                    }}]
-                    """
-                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                    json_limpio = extraer_json(resp.text)
-                    
-                    if json_limpio:
-                        datos_ia = json.loads(json_limpio)
-                        if isinstance(datos_ia, dict): datos_ia = [datos_ia]
-                        
-                        fecha_actual = obtener_fecha_ecuador()
-                        for item in datos_ia: item["fecha"] = fecha_actual
-                        
-                        if enviar_buzon(datos_ia):
-                            st.balloons()
-                            st.success(f"✅ Registrado con éxito.")
-                            st.table(pd.DataFrame(datos_ia))
-                        else: st.error("❌ Error con GitHub.")
-                except Exception as e: st.error(f"❌ Error: {e}")
+            with st.spinner("LAIA calculando y procesando..."):
+                client = genai.Client(api_key=API_KEY)
+                prompt = f"""
+                Eres una Estratega Logística. Analiza: "{texto_input}"
+                TAREAS:
+                1. SI HAY MUCHAS SERIES: Crea un objeto JSON por cada serie.
+                2. SI HAY DISTRIBUCIÓN (ej. repartir stock): Calcula la división y genera registros 'Enviado' con la cantidad resultante para cada destino.
+                3. DESTINO: 'Movimientos' (equipos con serie) o 'Stock' (periféricos/cantidad).
+                4. FORMATO: Devuelve una LISTA de objetos JSON.
+                JSON: [{{ "destino": "...", "tipo": "Enviado/Recibido", "cantidad": n, "equipo": "...", "marca": "...", "serie": "...", "ubicacion": "...", "reporte": "Cálculo automático LAIA" }}]
+                """
+                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+                json_limpio = extraer_json(resp.text)
+                if json_limpio:
+                    datos = json.loads(json_limpio)
+                    fecha = obtener_fecha_ecuador()
+                    for d in datos: d["fecha"] = fecha
+                    if enviar_buzon(datos):
+                        st.balloons()
+                        st.success(f"✅ LAIA generó {len(datos)} registros.")
+                        st.table(pd.DataFrame(datos).head(10))
+                else: st.error("LAIA no pudo procesar la lógica de esa orden.")
 
-# --- TAB 2: CHAT IA (BÚSQUEDA SEMÁNTICA Y PREDICTIVA) ---
 with t2:
-    st.subheader("💬 Consulta Inteligente y Análisis")
-    if "messages" not in st.session_state: st.session_state.messages = []
-
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if p_chat := st.chat_input("¿Qué deseas saber del stock o movimientos?"):
-        st.session_state.messages.append({"role": "user", "content": p_chat})
-        with st.chat_message("user"): st.markdown(p_chat)
-        
-        historial, _ = obtener_github(FILE_HISTORICO)
-        contexto = f"""
-        Eres LAIA, experta en inventario de Jaher. Datos: {json.dumps(historial[-150:])}
-        Hoy es {obtener_fecha_ecuador()}.
-        Si preguntan stock, suma Recibidos y resta Enviados de la hoja Stock.
-        Si preguntan por fallas, busca estados 'Dañado'.
-        Responde profesionalmente.
-        """
+    st.subheader("💬 Consulta Inteligente")
+    if p_chat := st.chat_input("Pregunta sobre stock o historial..."):
+        hist, _ = obtener_github(FILE_HISTORICO)
+        contexto = f"Datos: {json.dumps(hist[-150:])}. Responde pro. Si preguntan stock de mouses/teclados, suma Recibidos y resta Enviados de 'Stock'."
         client = genai.Client(api_key=API_KEY)
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + f"\nPregunta: {p_chat}")
-        
-        with st.chat_message("assistant"): st.markdown(resp.text)
-        st.session_state.messages.append({"role": "assistant", "content": resp.text})
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + p_chat)
+        st.markdown(resp.text)
 
-# --- TAB 3: BORRAR ---
 with t3:
-    st.subheader("🗑️ Eliminación Inteligente")
-    txt_borrar = st.text_area("Dime qué quieres borrar:", placeholder="Ej: borra la serie 12345")
+    st.subheader("🗑️ Control de Eliminación")
+    txt_borrar = st.text_area("¿Qué quieres eliminar?", placeholder="Ej: 'Elimina todas las series de Manta' o 'Borra la serie 12345'")
     if st.button("🗑️ EJECUTAR BORRADO"):
-        if txt_borrar:
-            client = genai.Client(api_key=API_KEY)
-            prompt_b = f"Extrae las series de: '{txt_borrar}'. Devuelve JSON: [{{'serie': '...', 'accion': 'borrar'}}]"
-            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-            lista_borrar = json.loads(extraer_json(resp.text))
-            if lista_borrar and enviar_buzon(lista_borrar):
-                st.warning("✅ Órdenes de borrado enviadas.")
+        client = genai.Client(api_key=API_KEY)
+        # LAIA decide si es un borrado selectivo o total
+        prompt_b = f"Analiza: '{txt_borrar}'. Si pide borrar TODO, devuelve [{{'accion': 'borrar_todo'}}]. Si son series, extráelas: [{{'serie': '...', 'accion': 'borrar'}}]"
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+        lista_borrar = json.loads(extraer_json(resp.text))
+        if enviar_buzon(lista_borrar):
+            st.warning("✅ Orden de borrado enviada al sincronizador.")
 
-# --- TAB 4: HISTORIAL ---
 with t4:
-    if st.button("🔄 Cargar Datos Actuales"):
+    if st.button("🔄 Cargar Historial"):
         datos, _ = obtener_github(FILE_HISTORICO)
-        if datos:
-            df = pd.DataFrame(datos)
-            st.dataframe(df, use_container_width=True)
+        if datos: st.dataframe(pd.DataFrame(datos), use_container_width=True)
