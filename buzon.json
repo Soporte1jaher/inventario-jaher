@@ -1,1 +1,62 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 12:18"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 6,
+        "equipo": "Limpiador de pantalla",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "Color: Verde",
+        "fecha": "2026-01-22 12:18"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 7,
+        "equipo": "Limpiador de equipos",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "Color: Azul",
+        "fecha": "2026-01-22 12:18"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Pasta t\u00e9rmica",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 12:18"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Cable HDMI",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 12:18"
+    }
+]
