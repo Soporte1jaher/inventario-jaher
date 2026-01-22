@@ -130,5 +130,29 @@
         "ubicacion":"Bodega",
         "reporte":"",
         "fecha":"2026-01-22 16:49"
+    },
+    {
+        "destino":"mchala 1",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Limpiador de pantalla",
+        "marca":"",
+        "serie":"",
+        "estado":"",
+        "ubicacion":"",
+        "reporte":"",
+        "fecha":"2026-01-22 16:50"
+    },
+    {
+        "destino":"mchala 1",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Limpiador de equipo",
+        "marca":"",
+        "serie":"",
+        "estado":"",
+        "ubicacion":"",
+        "reporte":"",
+        "fecha":"2026-01-22 16:50"
     }
 ]
