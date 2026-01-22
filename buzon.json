@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_filtro",
+        "columna": "serie",
+        "valor": "636353"
+    }
+]
