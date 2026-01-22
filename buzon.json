@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibieron 20 mouses para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibieron 20 teclados para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibi\u00f3 1 ponchadora RJ45 para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de Pantalla",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibieron 5 limpiadores de pantalla para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de Equipos",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibieron 5 limpiadores de equipos para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Stock",
+        "reporte": "Se recibieron 10 cables HDMI para agregar al stock.",
+        "fecha": "2026-01-22 18:53"
+    }
+]
