@@ -34,5 +34,41 @@
         "ubicacion":"latacunga",
         "reporte":"CPU Xtech enviado a Latacunga con las configuraciones necesarias.",
         "fecha":"2026-01-22 10:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":50,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"S\/S",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Sin serie",
+        "fecha":"2026-01-22 10:58"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":40,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"S\/S",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Sin serie",
+        "fecha":"2026-01-22 10:58"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"N\/A",
+        "serie":"S\/S",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"Sin serie",
+        "fecha":"2026-01-22 10:58"
     }
 ]
