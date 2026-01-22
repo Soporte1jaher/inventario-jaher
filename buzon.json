@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de pantalla",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de equipos",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "N/A",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 16:59"
+    }
+]
