@@ -301,6 +301,7 @@ with t3:
                     st.error(f"Error inesperado: {e}")
 
 # --- TAB 4: DASHBOARD (ESTRUCTURA ORIGINAL CON NÚMEROS CORREGIDOS) ---
+# --- TAB 4: BI & HISTORIAL (MEJORADO CON STOCK REAL Y KPIs) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -310,50 +311,48 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # CÁLCULO DE STOCK REAL
-        df_stock_real = calcular_stock_web(df) # <--- LLAMADA A LA NUEVA FUNCION
-        
-        # Filtros básicos
-        for col in ['destino', 'estado', 'marca', 'equipo', 'tipo', 'serie']:
-            if col not in df.columns: df[col] = "N/A"
-            
-        df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
+        # CÁLCULO DE STOCK REAL (CORREGIDO PARA CABLES)
+        df_stock_real = calcular_stock_web(df)
+        df_bad = pd.DataFrame()
+        if 'estado' in df.columns:
+            df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
         # KPIs
-        total_items = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
-        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')])
-        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')])
+        total_stock = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
+        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')]) if 'tipo' in df.columns else 0
+        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
         
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("📤 Total Enviados", cant_env, delta="Salidas", delta_color="off")
-        col2.metric("📥 Total Recibidos", cant_rec, delta="Entradas", delta_color="normal")
-        col3.metric("📦 En Stock (Real)", total_items, delta="Unidades Disponibles")
-        col4.metric("⚠️ Dañados", len(df_bad), delta="Atención", delta_color="inverse")
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
+        kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
+        kpi3.metric("📦 En Stock Real", total_stock, delta="Disponibles")
+        kpi4.metric("⚠️ Dañados", len(df_bad), delta="Atención", delta_color="inverse")
         
         st.divider()
+
+        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
         
-        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📦 STOCK REAL", "📂 Historial Completo", "🚚 Tráfico", "⚠️ Dañados", "🕵️ Auditoría"])
-        
-        with st_t1: # MUESTRA EL STOCK CALCULADO (19, 8, etc)
+        with st_t1:
+            st.dataframe(df, use_container_width=True)
+
+        with st_t2: # STOCK REAL
             if not df_stock_real.empty:
-                st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
+                st.dataframe(df_stock_real, use_container_width=True)
             else:
                 st.warning("Bodega calculada vacía.")
-                
-        with st_t2:
-            st.dataframe(df, use_container_width=True)
-            
-        with st_t3:
-            filtro = st.radio("Ver:", ["Enviados", "Recibidos"], horizontal=True)
-            if filtro == "Enviados":
-                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('env')], use_container_width=True)
-            else:
-                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('rec')], use_container_width=True)
-        
-        with st_t4:
+
+        with st_t3: # TRÁFICO
+            if 'tipo' in df.columns:
+                filtro = st.radio("Ver:", ["Enviados", "Recibidos"], horizontal=True)
+                if filtro == "Enviados":
+                    st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
+                else:
+                    st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('recibido')], use_container_width=True)
+
+        with st_t4: # DAÑADOS
             st.dataframe(df_bad, use_container_width=True)
-            
-        with st_t5:
+
+        with st_t5: # AUDITORÍA
             series_prob = []
             if 'serie' in df.columns:
                 df['serie_clean'] = df['serie'].astype(str).str.strip().str.lower()
