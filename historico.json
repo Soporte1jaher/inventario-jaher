@@ -1,41 +1,5 @@
 [
     {
-        "destino":"Stock",
-        "tipo":"Recibido",
-        "cantidad":20,
-        "equipo":"Teclado",
-        "marca":"Sin Marca",
-        "serie":"Sin Serie",
-        "estado":"Nuevo",
-        "ubicacion":"Data Center",
-        "reporte":"",
-        "fecha":"2026-01-22 11:49"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Recibido",
-        "cantidad":20,
-        "equipo":"Mouse",
-        "marca":"Sin Marca",
-        "serie":"Sin Serie",
-        "estado":"Nuevo",
-        "ubicacion":"Data Center",
-        "reporte":"",
-        "fecha":"2026-01-22 11:49"
-    },
-    {
-        "destino":"Latacunga",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"Laptop",
-        "marca":"Lenovo",
-        "serie":"Sin Serie",
-        "estado":"Da\u00f1ado",
-        "ubicacion":"Pendiente IT",
-        "reporte":"[REQUIERE IT] Recibido con Cargador",
-        "fecha":"2026-01-22 11:49"
-    },
-    {
         "destino":"Destino Desconocido",
         "tipo":"Enviado",
         "cantidad":1,
@@ -66,30 +30,6 @@
         "equipo":"CPU",
         "marca":"STech",
         "serie":"74656",
-        "estado":"",
-        "ubicacion":"",
-        "reporte":"",
-        "fecha":"2026-01-22 11:50"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"Teclado",
-        "marca":"",
-        "serie":"",
-        "estado":"",
-        "ubicacion":"",
-        "reporte":"",
-        "fecha":"2026-01-22 11:50"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"Mouse",
-        "marca":"",
-        "serie":"",
         "estado":"",
         "ubicacion":"",
         "reporte":"",
