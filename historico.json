@@ -82,5 +82,65 @@
         "ubicacion":null,
         "reporte":null,
         "fecha":"2026-01-22 12:35"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"12345",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"",
+        "fecha":"2026-01-22 12:36"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"LG",
+        "serie":"09876",
+        "estado":"Nuevo",
+        "ubicacion":"Origen",
+        "reporte":"",
+        "fecha":"2026-01-22 12:36"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-22 12:36"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-22 12:36"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-22 12:36"
     }
 ]
