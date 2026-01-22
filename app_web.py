@@ -206,24 +206,124 @@ with t3:
                 else:
                     st.error("LAIA no pudo identificar qué registro borrar.")
 
-# --- TAB 4: HISTORIAL & BI (MEJORADO) ---
+# --- TAB 4: BI & HISTORIAL (DASHBOARD INTELIGENTE V2.0) ---
 with t4:
-    col1, col2, col3 = st.columns(3)
+    # 1. Cabecera y Botón de Recarga
+    c_head1, c_head2 = st.columns([3, 1])
+    c_head1.subheader("📊 Dashboard de Control de Activos")
+    if c_head2.button("🔄 Actualizar Datos en Tiempo Real"):
+        st.rerun()
+
     datos, _ = obtener_github(FILE_HISTORICO)
     
     if datos:
         df = pd.DataFrame(datos)
-        col1.metric("Total Registros", len(df))
-        # Validar si existen las columnas antes de filtrar para evitar errores
-        if 'destino' in df.columns:
-            col2.metric("En Stock", len(df[df['destino']=='Stock']))
-            col3.metric("Movimientos", len(df[df['destino']=='Movimientos']))
         
-        st.subheader("📋 Base de Datos Maestra")
-        st.dataframe(df, use_container_width=True)
+        # --- PRE-PROCESAMIENTO INTELIGENTE ---
+        # Aseguramos columnas clave
+        for col in ['destino', 'estado', 'marca', 'equipo', 'tipo']:
+            if col not in df.columns: df[col] = "N/A"
+            
+        # Filtros Automáticos
+        df_stock = df[df['destino'].str.lower() == 'stock'].copy()
+        df_mov = df[df['destino'].str.lower() != 'stock'].copy()
+        df_bad = df[df['estado'].str.lower() == 'dañado'].copy()
         
-        # Botón para descargar CSV
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Descargar Inventario Completo", data=csv, file_name="inventario_jaher.csv", mime="text/csv")
+        # --- METRICAS KPI (Key Performance Indicators) ---
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("📦 Total Activos", len(df), delta="Inventario Global")
+        kpi2.metric("✅ En Stock", len(df_stock), delta="Disponibles", delta_color="normal")
+        kpi3.metric("🚚 Movimientos", len(df_mov), delta="Enviados/Recibidos", delta_color="off")
+        kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención Requerida", delta_color="inverse")
+        
+        st.divider()
+
+        # --- SUB-PESTAÑAS DE CLASIFICACIÓN ---
+        st_t1, st_t2, st_t3, st_t4 = st.tabs(["📂 Maestro General", "📦 Bodega (Stock)", "🚚 Tráfico (Enviados/Recibidos)", "⚠️ HOSPITAL (Dañados)"])
+        
+        # 1. MAESTRO GENERAL + GRÁFICOS
+        with st_t1:
+            st.markdown("### 📈 Tendencias de Inventario")
+            col_g1, col_g2 = st.columns(2)
+            
+            # Gráfico 1: Top Marcas
+            if 'marca' in df.columns:
+                conteo_marca = df['marca'].value_counts().head(5)
+                col_g1.bar_chart(conteo_marca, color="#2e7d32")
+                col_g1.caption("Top 5 Marcas en Inventario")
+            
+            # Gráfico 2: Distribución por Estado
+            if 'estado' in df.columns:
+                conteo_estado = df['estado'].value_counts()
+                col_g2.bar_chart(conteo_estado, color="#1F4E78")
+                col_g2.caption("Estado de Salud de los Equipos")
+
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # 2. VISTA DE STOCK (Agrupado)
+        with st_t2:
+            st.info("Vista filtrada: Solo equipos disponibles en Bodega/Stock.")
+            if not df_stock.empty:
+                # Mostramos tabla normal
+                st.dataframe(
+                    df_stock, 
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "cantidad": st.column_config.NumberColumn("Cant", format="%d"),
+                        "estado": st.column_config.TextColumn("Condición")
+                    }
+                )
+                # Resumen rápido por tipo
+                st.caption("Resumen Rápido de Stock:")
+                st.json(df_stock['equipo'].value_counts().to_dict())
+            else:
+                st.warning("Bodega vacía. No hay stock registrado.")
+
+        # 3. VISTA DE MOVIMIENTOS
+        with st_t3:
+            st.markdown("### 🚦 Historial de Envíos y Recepciones")
+            # Filtros interactivos
+            filtro_tipo = st.radio("Filtrar por:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
+            
+            df_show = df_mov
+            if filtro_tipo == "Enviados":
+                df_show = df_mov[df_mov['tipo'].astype(str).str.lower().str.contains('enviado')]
+            elif filtro_tipo == "Recibidos":
+                df_show = df_mov[df_mov['tipo'].astype(str).str.lower().str.contains('recibido')]
+            
+            st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+        # 4. VISTA DE DAÑADOS (La IA detecta esto)
+        with st_t4:
+            st.error("🚨 ZONA ROJA: Equipos que requieren reparación o baja.")
+            if not df_bad.empty:
+                # Reordenar columnas para ver el reporte primero
+                cols = list(df_bad.columns)
+                if 'reporte' in cols:
+                    cols.insert(0, cols.pop(cols.index('reporte')))
+                
+                st.data_editor(
+                    df_bad[cols], 
+                    use_container_width=True, 
+                    hide_index=True, 
+                    disabled=True
+                )
+            else:
+                st.success("¡Excelente! No hay equipos reportados como dañados.")
+
+        # --- BOTÓN DE DESCARGA GLOBAL ---
+        st.divider()
+        col_d1, col_d2 = st.columns([3,1])
+        with col_d2:
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar Excel Completo (.csv)",
+                data=csv,
+                file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                type="primary"
+            )
+            
     else:
-        st.info("El inventario está vacío.")
+        st.warning("⚠️ No se pudo conectar con el Histórico. Verifica tu internet o el Token.")
