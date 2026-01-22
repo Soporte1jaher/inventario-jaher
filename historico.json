@@ -58,5 +58,65 @@
         "ubicacion":"N\/A",
         "reporte":"",
         "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Ambato",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"383883",
+        "estado":"Nuevo",
+        "ubicacion":"Bodega",
+        "reporte":"Se env\u00eda con Mouse y Teclado de Stock.",
+        "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Ambato",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Ambato",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 12:04"
     }
 ]
