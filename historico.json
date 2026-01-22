@@ -1,10 +1,32 @@
 [
     {
         "fecha": "2026-01-21 19:43",
+        "tipo": "",
         "serie": "12345",
+        "marca": "",
         "equipo": "monitor AOC",
         "accion": "registro",
         "ubicacion": "Paute",
         "reporte": "llegada"
+    },
+    {
+        "fecha": "2026-01-21 19:54",
+        "tipo": "Recibido",
+        "serie": "654356",
+        "marca": "Dell",
+        "equipo": "Laptop",
+        "accion": "A\u00f1ade",
+        "ubicacion": "Paute",
+        "reporte": "Recepci\u00f3n de laptop Dell con serie 654356 en Paute."
+    },
+    {
+        "fecha": "2026-01-21 19:54",
+        "tipo": "Enviado",
+        "serie": "874636",
+        "marca": "Xtratech",
+        "equipo": "CPU",
+        "accion": "Env\u00edo",
+        "ubicacion": "Guayaquil",
+        "reporte": "Env\u00edo de CPU Xtratech con serie 874636 a Guayaquil."
     }
 ]
