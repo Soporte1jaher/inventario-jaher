@@ -1,14 +1,1 @@
-[
-    {
-        "serie": "series vacias",
-        "accion": "borrar"
-    },
-    {
-        "serie": "series que no tengan detalles",
-        "accion": "borrar"
-    },
-    {
-        "serie": "esto",
-        "accion": "borrar"
-    }
-]
+[]
