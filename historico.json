@@ -70,5 +70,29 @@
         "ubicacion":"...",
         "reporte":"",
         "fecha":"2026-01-22 12:11"
+    },
+    {
+        "destino":"paute",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Teclado",
+        "marca":null,
+        "serie":null,
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":null,
+        "fecha":"2026-01-22 12:12"
+    },
+    {
+        "destino":"paute",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Mouse",
+        "marca":null,
+        "serie":null,
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":null,
+        "fecha":"2026-01-22 12:12"
     }
 ]
