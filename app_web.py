@@ -55,20 +55,46 @@ def extraer_json(texto):
 st.title(" Asistente Jaher ")
 t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA", "🗑️ Borrar", "📊 Historial"])
 
+# --- REEMPLAZA EL TAB 1 EN TU STREAMLIT ---
 with t1:
-    st.subheader("Ingreso de Equipos (Corrección Automática)")
-    txt = st.text_area("Describe el equipo (la IA corregirá errores):")
+    st.subheader("Registro Detallado con IA")
+    txt = st.text_area("Describe el movimiento (Ej: Se guarda en bodega monitor AOC serie 12345 que llega de Paute):")
+    
     if st.button("✨ Procesar e Ingresar"):
         if txt:
             client = genai.Client(api_key=API_KEY)
-            prompt = f"Corrige ortografía y devuelve JSON LISTA (serie, equipo, accion, ubicacion, reporte): {txt}"
+            # PROMPT AVANZADO
+            prompt = f"""
+            Analiza el siguiente texto de inventario: "{txt}"
+            
+            REGLAS DE CLASIFICACIÓN:
+            1. tipo: Determina si el equipo está entrando ("Recibido") o saliendo ("Enviado").
+            2. marca: Extrae solo la marca (ej: AOC, Dell, HP). Si no hay, usa "S/M".
+            3. equipo: El tipo de dispositivo (ej: Monitor, Laptop, Impresora).
+            4. accion: Una frase corta del estado (ej: "Guardado en bodega", "Ingreso por reparación").
+            5. reporte: Detalla accesorios o estado físico mencionado.
+            
+            Corrige ortografía. Devuelve una LISTA JSON con este formato:
+            [{{
+                "tipo": "Recibido/Enviado",
+                "serie": "...",
+                "marca": "...",
+                "equipo": "...",
+                "accion": "...",
+                "ubicacion": "...",
+                "reporte": "..."
+            }}]
+            """
             resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
             datos_ia = json.loads(extraer_json(resp.text))
-            if isinstance(datos_ia, dict): datos_ia = [datos_ia]
+            
             fecha = obtener_fecha_ecuador()
+            if isinstance(datos_ia, dict): datos_ia = [datos_ia]
             for d in datos_ia: d["fecha"] = fecha
+            
             if enviar_buzon(datos_ia):
-                st.success("✅ Registro enviado. La IA corrigió los textos.")
+                st.success("✅ Registro detallado enviado al buzón.")
+                st.json(datos_ia)
 
 with t2:
     st.subheader("Chat sobre el Inventario")
