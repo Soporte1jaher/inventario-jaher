@@ -1,1 +1,34 @@
-[]
+[
+    {
+        "serie": "674763737",
+        "equipo": "monitor samsung",
+        "accion": "enviado a",
+        "ubicacion": "paute",
+        "reporte": "envio",
+        "fecha": "2026-01-21 19:09"
+    },
+    {
+        "serie": "hdfhhdhd",
+        "equipo": "monitor aoc",
+        "accion": "enviado a",
+        "ubicacion": "riobamba",
+        "reporte": "envio",
+        "fecha": "2026-01-21 19:09"
+    },
+    {
+        "serie": "09675775",
+        "equipo": "cpu aoc",
+        "accion": "enviado a",
+        "ubicacion": "loja",
+        "reporte": "envio",
+        "fecha": "2026-01-21 19:09"
+    },
+    {
+        "serie": "765673",
+        "equipo": "cpu xtratech",
+        "accion": "recibido de",
+        "ubicacion": "9 de octubre",
+        "reporte": "recepcion",
+        "fecha": "2026-01-21 19:09"
+    }
+]
