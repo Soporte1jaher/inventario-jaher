@@ -184,24 +184,35 @@ with t1:
             fecha = obtener_fecha_ecuador()
              
             # --- CAPA DE SEGURIDAD PYTHON ---
-            for d in datos: 
+           for d in datos: 
               d["fecha"] = fecha
               
-              # 1. Corregir Tipo
-              tipo_raw = str(d.get("tipo", "")).lower()
-              if "env" in tipo_raw or "sal" in tipo_raw: 
-                d["tipo"] = "Enviado"
-              else: 
-                d["tipo"] = "Recibido"
+              # 1. Forzar CANTIDAD a 1 si la IA la dejó vacía
+              try:
+                d["cantidad"] = int(d.get("cantidad", 1))
+              except:
+                d["cantidad"] = 1
 
-              # 2. Corregir Marca para que el Stock reste bien en Tab 4
+              # 2. Normalizar TIPO
+              tipo_raw = str(d.get("tipo", "")).lower()
+              if "env" in tipo_raw or "sal" in tipo_raw: d["tipo"] = "Enviado"
+              else: d["tipo"] = "Recibido"
+
+              # 3. FIX CRÍTICO PARA TU EXCEL: Normalizar SERIE
+              # Si la serie dice "No especificada", la cambiamos a "N/A"
+              # Esto hará que tu script de la laptop SI reste el equipo.
+              ser_raw = str(d.get("serie", "")).lower().strip()
+              if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
+                d["serie"] = "N/A"
+              else:
+                d["serie"] = d["serie"].upper() # Series siempre en mayúsculas
+
+              # 4. Normalizar MARCA
               m_raw = str(d.get("marca", "")).lower().strip()
-              nulos = ["", "none", "null", "n/a", "no especificada", "no especificado", "generico"]
-              if any(x == m_raw for x in nulos) or "especifica" in m_raw:
+              if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
                 d["marca"] = "Genérica"
               else:
                 d["marca"] = d["marca"].title()
-
               # 3. Corregir Estado Dañado
               est_raw = str(d.get("estado", "")).lower()
               if "dañ" in est_raw or "mal" in est_raw or "rot" in est_raw:
