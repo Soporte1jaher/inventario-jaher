@@ -1,3 +1,86 @@
 [
-
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"N\/A",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"N\/A",
+        "serie":"76543",
+        "estado":"Usado",
+        "ubicacion":"Pedernales",
+        "reporte":"Incluye Cargador",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"Loja",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtratech",
+        "serie":"6354783",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"Loja",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"LG",
+        "serie":"hdgdghs",
+        "estado":"N\/A",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"Loja",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    },
+    {
+        "destino":"Loja",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"N\/A",
+        "ubicacion":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-22 11:39"
+    }
 ]
