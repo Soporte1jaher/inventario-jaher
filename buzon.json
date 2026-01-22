@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_contiene",
+        "columna": "todas",
+        "valor": "sin serie"
+    }
+]
