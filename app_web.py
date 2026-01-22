@@ -89,19 +89,30 @@ with t2:
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
 with t3:
-    st.subheader("Eliminar Equipo")
-    # Usamos unselectbox para no equivocarnos con la serie o un text_input
-    ser_b = st.text_input("Escribe la SERIE a eliminar:")
-    confirmar = st.checkbox("Confirmo que deseo eliminar este equipo")
+    st.subheader("Eliminación Inteligente")
+    txt_borrar = st.text_area("Dime qué quieres borrar (puedes poner varias series o frases):", 
+                              placeholder="Ej: borra la serie 9876, 674763 y la hdfhhdhd")
     
-    if st.button("🗑️ EJECUTAR BORRADO"):
-        if ser_b and confirmar:
-            # Enviamos la orden clara al buzón
-            exito = enviar_buzon([{"serie": str(ser_b).strip(), "accion": "borrar"}])
-            if exito:
-                st.warning(f"✅ Orden de borrado enviada para la serie {ser_b}. En 15 segundos desaparecerá de la tabla.")
-        elif not confirmar:
-            st.error("Por favor, marca la casilla de confirmación.")
+    if st.button("🗑️ EJECUTAR BORRADO INTELIGENTE"):
+        if txt_borrar:
+            with st.spinner("La IA está identificando las series..."):
+                client = genai.Client(api_key=API_KEY)
+                # Le pedimos a la IA que extraiga CADA serie por separado
+                prompt_b = f"""
+                Del siguiente texto, extrae TODAS las series mencionadas: "{txt_borrar}"
+                Devuelve estrictamente una LISTA JSON de objetos:
+                [ {{"serie": "SERIE1", "accion": "borrar"}}, {{"serie": "SERIE2", "accion": "borrar"}} ]
+                Si no hay series claras, devuelve []
+                """
+                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+                lista_para_borrar = json.loads(extraer_json(resp.text))
+                
+                if lista_para_borrar:
+                    if enviar_buzon(lista_para_borrar):
+                        st.warning(f"✅ Se enviaron {len(lista_para_borrar)} órdenes de borrado. El PC las procesará una por una.")
+                        st.json(lista_para_borrar)
+                else:
+                    st.error("La IA no detectó ninguna serie en tu texto.")
 
 with t4:
     if st.button("🔄 Cargar Datos"):
