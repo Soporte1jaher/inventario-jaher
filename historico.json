@@ -178,5 +178,65 @@
         "ubicacion":"Desconocido",
         "reporte":"",
         "fecha":"2026-01-22 15:47"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"zxcvb",
+        "estado":"Nuevo",
+        "ubicacion":"Imbabura",
+        "reporte":"Incluye monitor serie asdfg",
+        "fecha":"2026-01-22 15:48"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Imbabura",
+        "reporte":"",
+        "fecha":"2026-01-22 15:48"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Imbabura",
+        "reporte":"",
+        "fecha":"2026-01-22 15:48"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Imbabura",
+        "reporte":"",
+        "fecha":"2026-01-22 15:48"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Limpiador de pantalla",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Imbabura",
+        "reporte":"",
+        "fecha":"2026-01-22 15:48"
     }
 ]
