@@ -89,33 +89,26 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. ARREGLAR NOMBRES DE COLUMNAS (Cant -> cantidad)
-    # Esto es vital para que lea tu Excel actual
+    # 1. Normalización de columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {
-        'cant': 'cantidad', 
-        'condición': 'estado', 
-        'condicion': 'estado', 
-        'equipos': 'equipo'
-    }
+    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
     df_c = df_c.rename(columns=mapa_cols)
 
-    # 2. RELLENAR VACÍOS Y NORMALIZAR TEXTO
+    # 2. Rellenar vacíos
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # 3. UNIFICAR "None" PARA QUE RESTEN
-    # Convertimos cualquier variante de "vacío" a una palabra estándar
+    # 3. Unificar "None", "N/A" -> "Genérica"
     valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
     df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
     df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
     
-    # 4. ASEGURAR NÚMEROS
+    # 4. Asegurar números
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 5. LÓGICA DE FLUJO (+/-)
+    # 5. Lógica de Flujo (+/-)
     def flujo(row):
         tipo = str(row['tipo']).lower()
         dest = str(row['destino']).lower()
@@ -135,7 +128,7 @@ def calcular_stock_web(df):
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 6. AGRUPAR COMO EN EL EXCEL
+    # 6. Agrupar
     df_c['equipo'] = df_c['equipo'].str.capitalize()
     df_c['marca'] = df_c['marca'].str.capitalize()
     
@@ -146,16 +139,16 @@ def calcular_stock_web(df):
     return stock[stock['Stock_Disponible'] > 0]
 
 # ==========================================
-# 5. INTERFAZ Y PESTAÑAS
+# 5. INTERFAZ
 # ==========================================
-st.title("🤖 LAIA NEURAL ENGINE v19.0 (FINAL)")
+st.title("🤖 LAIA NEURAL ENGINE v20.0 FINAL")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
-# --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
+# --- TAB 1: REGISTRO ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
     st.info("💡 IA V16.5: Detecta si 'de stock' es origen (Resta) o destino (Suma).")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta) / Recibí mouse a Stock... (Suma)")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta)")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
@@ -165,24 +158,10 @@ with t1:
                     
                     prompt = f"""
                     Actúa como un Gerente de Logística Experto. TEXTO: "{texto_input}"
-                    
-                    TU MISIÓN: Determinar si el inventario SUMA o RESTA.
-
                     REGLAS DE ORO:
-                    1. SALIDAS (RESTA):
-                       - Palabras clave: "Envié", "Salida", "Despacho", "Mandar a", "Salió".
-                       - Si dice "de stock", significa que SALE de la bodega.
-                       - ACCIÓN: TIPO="Enviado". DESTINO="[Ciudad/Lugar]". (NUNCA pongas 'Stock' en destino si es salida).
-
-                    2. ENTRADAS (SUMA):
-                       - Palabras clave: "Recibí", "Llegó", "Ingreso", "A stock", "Devolución".
-                       - ACCIÓN: TIPO="Recibido". DESTINO="Stock".
-
-                    3. PROCESAMIENTO:
-                       - "20 mouses" -> cantidad: 20.
-                       - "Laptop con cargador" -> Cargador va en 'reporte', NO fila nueva.
-                       - "cragador" -> "Cargador".
-
+                    1. SALIDAS (RESTA): "Envié", "Salida", "Despacho". DESTINO NO PUEDE SER STOCK.
+                    2. ENTRADAS (SUMA): "Recibí", "Llegó", "Ingreso". DESTINO ES STOCK.
+                    3. MATH: "20 mouses" -> cantidad: 20.
                     JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
                     """
                     
@@ -195,40 +174,38 @@ with t1:
                         
                         for d in datos: 
                             d["fecha"] = fecha
-                            
-                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA) ---
+                            # Seguridad Python
                             tipo_ia = str(d.get("tipo", "")).lower()
                             dest_ia = str(d.get("destino", "")).lower()
                             
-                            # REGLA 1: Si es salida explícita, se respeta como ENVIADO (Resta)
+                            # Regla Salida
                             if any(x in tipo_ia for x in ["env", "sal", "desp"]):
                                 d["tipo"] = "Enviado"
-                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos
                                 if "stock" in dest_ia: d["destino"] = "Destino Externo"
                             
-                            # REGLA 2: Si es entrada explícita o destino stock, es RECIBIDO (Suma)
+                            # Regla Entrada
                             elif any(x in tipo_ia for x in ["rec", "lleg", "ing"]) or "stock" in dest_ia:
                                 d["tipo"] = "Recibido"
                                 d["destino"] = "Stock"
                             
-                            # REGLA 3: Corrección de Estado
+                            # Regla Estado
                             est = str(d.get("estado", "")).lower()
-                            if "dañ" in est or "rot" in est: d["estado"] = "Dañado"
+                            if "dañ" in est: d["estado"] = "Dañado"
 
                         if enviar_buzon(datos):
                             st.success(f"✅ Procesado: {len(datos)} registros.")
                             if any(d.get('estado') == 'Dañado' for d in datos):
-                                st.warning("⚠️ Se detectaron equipos DAÑADOS.")
+                                st.warning("⚠️ DAÑADOS DETECTADOS.")
                             st.table(pd.DataFrame(datos))
                         else: st.error("Error GitHub")
                 except Exception as e: st.error(f"Error IA: {e}")
 
-# --- TAB 2: CHAT IA (MATEMÁTICO + RESET) ---
+# --- TAB 2: CHAT ---
 with t2:
     c1, c2 = st.columns([4, 1])
     with c1: st.subheader("💬 Consulta Inteligente")
     with c2: 
-        if st.button("🧹 Limpiar Chat"):
+        if st.button("🧹 Limpiar"):
             st.session_state.messages = []
             st.rerun()
 
@@ -236,112 +213,65 @@ with t2:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if p_chat := st.chat_input("Consulta tu stock..."):
+    if p_chat := st.chat_input("Consulta stock..."):
         st.session_state.messages.append({"role": "user", "content": p_chat})
         with st.chat_message("user"): st.markdown(p_chat)
         
         hist, _ = obtener_github(FILE_HISTORICO)
-        # Calculamos Stock Real para dárselo a la IA
         df_real = calcular_stock_web(pd.DataFrame(hist))
         
         contexto = f"""
-        INVENTARIO DISPONIBLE (Saldos):
-        {df_real.to_string(index=False) if not df_real.empty else "Bodega Vacía"}
-        
-        HISTORIAL COMPLETO: {json.dumps(hist[-50:])}
-        USUARIO: {p_chat}
+        STOCK REAL (Saldos): {df_real.to_string(index=False) if not df_real.empty else "Vacío"}
+        HISTORIAL: {json.dumps(hist[-50:])}
+        PREGUNTA: {p_chat}
         """
-        
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
-        
         with st.chat_message("assistant"): st.markdown(resp.text)
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
-# --- TAB 3: LIMPIEZA ---
-Tienes toda la razón, disculpa. La IA intentó buscar un equipo que se llamara "todo" en lugar de entenderlo como un comando global. Fue demasiado literal.
-
-Para arreglar esto y darle "Super Inteligencia" al borrado (que entienda "borar", "todo", "vacíos", o borrados específicos por serie), debemos cambiar el Prompt de la Pestaña 3.
-
-Aquí tienes el código SOLO DE LA PESTAÑA 3. Borra donde dice with t3: y pega este bloque blindado:
-
-🛠️ CAMBIO EN TAB 3 (Inteligencia de Borrado V2.0):
-# --- TAB 3: LIMPIEZA QUIRÚRGICA (CON MANEJO DE ERRORES CORREGIDO) ---
+# --- TAB 3: LIMPIEZA BLINDADA ---
 with t3:
     st.subheader("🗑️ Eliminación y Limpieza")
-    st.info("💡 IA V20: Entiende comandos globales ('Borrar todo'), limpieza ('Borrar vacíos') y específicos ('Borrar serie 123').")
-    txt_borrar = st.text_input("Orden de eliminación:", placeholder="Ej: 'Borrar todo', 'Limpiar vacíos', o 'Borrar laptop serie 123'")
+    st.info("💡 IA V20: Entiende comandos globales.")
+    txt_borrar = st.text_input("Orden de eliminación:", placeholder="Ej: 'Borrar todo', 'Limpiar vacíos'")
     
     if st.button("🔥 EJECUTAR BORRADO", type="primary"):
         if txt_borrar:
             with st.spinner("LAIA analizando intención de borrado..."):
-                # Obtenemos historial para darle contexto
                 hist, _ = obtener_github(FILE_HISTORICO)
                 client = genai.Client(api_key=API_KEY)
                 
-                # PROMPT ESPECÍFICO PARA INTERPRETAR COMANDOS DE BORRADO
                 prompt_b = f"""
-                Actúa como un Administrador de Base de Datos (DBA). 
-                DATOS ACTUALES (Muestra): {json.dumps(hist[-20:])}
-                ORDEN DEL USUARIO: "{txt_borrar}"
-                
-                TU TRABAJO ES CLASIFICAR LA ORDEN Y GENERAR EL JSON CORRECTO.
-                IGNORA ERRORES ORTOGRÁFICOS (Ej: "borar" = "borrar").
-
-                CASO 1: BORRADO TOTAL (PELIGROSO)
-                - Si el usuario dice: "borrar todo", "eliminar todo", "resetear", "limpiar base", "borar todo".
-                - JSON: [{{"accion": "borrar_todo"}}]
-
-                CASO 2: LIMPIEZA DE BASURA
-                - Si el usuario dice: "borrar vacíos", "limpiar nulos", "quitar sin serie", "limpiar basura".
-                - JSON: [{{"accion": "borrar_vacios"}}]
-
-                CASO 3: BORRADO POR FILTRO (GRUPO)
-                - Si dice "borrar todos los mouses", "borrar marca hp", "borrar estado dañado".
-                - JSON: [{{"accion": "borrar_filtro", "columna": "equipo/marca/estado", "valor": "..."}}]
-
-                CASO 4: BORRADO QUIRÚRGICO (ESPECÍFICO)
-                - Si especifica una serie: "borrar serie 12345".
-                - JSON: [{{"accion": "borrar", "serie": "12345"}}]
-                
-                CASO 5: BORRADO POR CONTENIDO
-                - Si dice "borrar lo que diga 'pedernales'".
-                - JSON: [{{"accion": "borrar_contiene", "valor": "pedernales"}}]
-
-                RESPONDE SOLO EL JSON.
+                Actúa como DBA. DATOS: {json.dumps(hist[-20:])}. ORDEN: "{txt_borrar}"
+                JSON RESPUESTA:
+                1. BORRADO TOTAL -> {{"accion": "borrar_todo"}}
+                2. LIMPIEZA -> {{"accion": "borrar_vacios"}}
+                3. ESPECÍFICO -> {{"accion": "borrar", "serie": "..."}}
                 """
                 
                 try:
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-                    
-                    # Usamos la función de extracción para limpiar el texto de la IA
                     orden_json = extraer_json(resp.text)
                     
                     if orden_json:
-                        # Intentamos convertir el texto limpio a JSON real
                         data_borrado = json.loads(orden_json)
-                        
-                        # Mostrar qué entendió la IA antes de enviarlo (Feedback visual)
                         st.success("🤖 Interpretación Correcta:")
                         st.json(data_borrado)
                         
                         if enviar_buzon(data_borrado):
-                            st.toast("✅ Orden enviada al sistema.", icon="🗑️")
-                            st.balloons()
+                            st.toast("✅ Orden enviada.", icon="🗑️")
                         else:
-                            st.error("Error conectando con el buzón de GitHub.")
+                            st.error("Error conectando con GitHub.")
                     else:
-                        st.warning("No se encontró una orden válida en la respuesta de la IA.")
+                        st.warning("Orden no reconocida.")
                         
                 except json.JSONDecodeError:
-                    # ESTE ES EL BLOQUE QUE TE FALTABA PARA EVITAR LA PANTALLA ROJA
-                    st.error("⚠️ La IA devolvió un formato incorrecto. Intenta reformular tu orden.")
-                    st.code(resp.text) # Muestra qué devolvió mal para depurar
-                    
+                    st.error("⚠️ Error de formato JSON.")
                 except Exception as e:
                     st.error(f"Error inesperado: {e}")
 
-# --- TAB 4: DASHBOARD (REORGANIZADO: DAÑADOS -> STOCK -> MOVIMIENTOS) ---
+# --- TAB 4: DASHBOARD (ORDEN CORREGIDO) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -351,31 +281,26 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # 1. Calculamos el Stock igual que en el Excel
+        # 1. Calculamos Stock
         df_stock_real = calcular_stock_web(df)
-        
-        # Filtros
         df_bad = pd.DataFrame()
         if 'estado' in df.columns:
             df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
         # 2. KPIs
         total_items = int(df_stock_real['Stock_Disponible'].sum()) if not df_stock_real.empty else 0
-        if 'tipo' in df.columns:
-            cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')])
-            cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')])
-        else:
-            cant_env, cant_rec = 0, 0
+        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')]) if 'tipo' in df.columns else 0
+        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
             
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad Alta", delta_color="inverse")
+        kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad", delta_color="inverse")
         kpi2.metric("📦 Stock Disp.", total_items)
         kpi3.metric("📤 Enviados", cant_env, delta_color="off")
         kpi4.metric("📥 Recibidos", cant_rec)
         
         st.divider()
 
-        # 3. PESTAÑAS EN EL ORDEN QUE PEDISTE
+        # 3. PESTAÑAS ORDENADAS
         t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
         
         # PESTAÑA 1: DAÑADOS
@@ -388,9 +313,9 @@ with t4:
             else:
                 st.success("Sin equipos dañados.")
 
-        # PESTAÑA 2: STOCK (LA TABLA RESUMIDA)
+        # PESTAÑA 2: STOCK (RESUMEN)
         with t_stock:
-            st.info("Inventario Real Disponible (Calculado: Entradas - Salidas).")
+            st.info("Inventario Real Disponible (Calculado).")
             if not df_stock_real.empty:
                 st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
             else:
