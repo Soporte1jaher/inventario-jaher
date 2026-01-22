@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "accion": "borrar_sin_detalle",
+        "serie": null,
+        "equipo": null,
+        "motivo": "sin serie"
+    }
+]
