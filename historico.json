@@ -34,5 +34,29 @@
         "ubicacion":"",
         "reporte":"",
         "fecha":"2026-01-22 11:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:04"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 12:04"
     }
 ]
