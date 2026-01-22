@@ -266,7 +266,7 @@ Para arreglar esto y darle "Super Inteligencia" al borrado (que entienda "borar"
 Aquí tienes el código SOLO DE LA PESTAÑA 3. Borra donde dice with t3: y pega este bloque blindado:
 
 🛠️ CAMBIO EN TAB 3 (Inteligencia de Borrado V2.0):
-# --- TAB 3: LIMPIEZA QUIRÚRGICA (LÓGICA SUPERIOR) ---
+# --- TAB 3: LIMPIEZA QUIRÚRGICA (CON MANEJO DE ERRORES CORREGIDO) ---
 with t3:
     st.subheader("🗑️ Eliminación y Limpieza")
     st.info("💡 IA V20: Entiende comandos globales ('Borrar todo'), limpieza ('Borrar vacíos') y específicos ('Borrar serie 123').")
@@ -275,6 +275,7 @@ with t3:
     if st.button("🔥 EJECUTAR BORRADO", type="primary"):
         if txt_borrar:
             with st.spinner("LAIA analizando intención de borrado..."):
+                # Obtenemos historial para darle contexto
                 hist, _ = obtener_github(FILE_HISTORICO)
                 client = genai.Client(api_key=API_KEY)
                 
@@ -312,22 +313,33 @@ with t3:
                 
                 try:
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+                    
+                    # Usamos la función de extracción para limpiar el texto de la IA
                     orden_json = extraer_json(resp.text)
                     
                     if orden_json:
+                        # Intentamos convertir el texto limpio a JSON real
                         data_borrado = json.loads(orden_json)
-                        # Mostrar qué entendió la IA antes de enviarlo
-                        st.write("🤖 Interpretación:", data_borrado)
+                        
+                        # Mostrar qué entendió la IA antes de enviarlo (Feedback visual)
+                        st.success("🤖 Interpretación Correcta:")
+                        st.json(data_borrado)
                         
                         if enviar_buzon(data_borrado):
-                            st.success("✅ Orden enviada al sistema.")
+                            st.toast("✅ Orden enviada al sistema.", icon="🗑️")
                             st.balloons()
                         else:
-                            st.error("Error conectando con el buzón.")
+                            st.error("Error conectando con el buzón de GitHub.")
                     else:
-                        st.error("No se entendió la orden de borrado.")
+                        st.warning("No se encontró una orden válida en la respuesta de la IA.")
+                        
+                except json.JSONDecodeError:
+                    # ESTE ES EL BLOQUE QUE TE FALTABA PARA EVITAR LA PANTALLA ROJA
+                    st.error("⚠️ La IA devolvió un formato incorrecto. Intenta reformular tu orden.")
+                    st.code(resp.text) # Muestra qué devolvió mal para depurar
+                    
                 except Exception as e:
-                    st.error(f"Error en IA de borrado: {e}")
+                    st.error(f"Error inesperado: {e}")
 
 # --- TAB 4: DASHBOARD (REORGANIZADO: DAÑADOS -> STOCK -> MOVIMIENTOS) ---
 with t4:
