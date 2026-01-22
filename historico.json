@@ -1,3 +1,74 @@
 [
-
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de pantalla",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de equipos",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":10,
+        "equipo":"Cable HDMI",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 16:48"
+    }
 ]
