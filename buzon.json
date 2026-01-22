@@ -1,1 +1,12 @@
-[]
+[
+    {
+        "accion": "borrar_filtro",
+        "columna": "xtratech",
+        "valor": "7478474"
+    },
+    {
+        "accion": "borrar_filtro",
+        "columna": "lenovo",
+        "valor": "djdjdjjdjd"
+    }
+]
