@@ -1,29 +1,5 @@
 [
     {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"laptop",
-        "marca":"dell",
-        "serie":"N\/A",
-        "estado":"Usado",
-        "ubicacion":"rioamba",
-        "reporte":"Sin cargador",
-        "fecha":"2026-01-21 22:24"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"cargador",
-        "marca":"dell",
-        "serie":"N\/A",
-        "estado":"N\/A",
-        "ubicacion":"rioamba",
-        "reporte":"Faltante",
-        "fecha":"2026-01-21 22:24"
-    },
-    {
         "destino":"Stock",
         "tipo":"Recibido",
         "cantidad":50,
