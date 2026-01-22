@@ -179,7 +179,7 @@ with t1:
           resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
           json_limpio = extraer_json(resp.text)
            
-         if json_limpio:
+        if json_limpio:
             datos = json.loads(json_limpio)
             fecha = obtener_fecha_ecuador()
              
@@ -200,15 +200,14 @@ with t1:
               else: 
                 d["tipo"] = "Recibido"
 
-              # 3. FIX CRÍTICO PARA TU EXCEL: Normalizar SERIE
-              # Cambiamos "No especificada" por "N/A" para que tu laptop SI reste.
+              # 3. FIX PARA TU LAPTOP: Serie debe ser "N/A" para que reste
               ser_raw = str(d.get("serie", "")).lower().strip()
               if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
                 d["serie"] = "N/A"
               else:
                 d["serie"] = d["serie"].upper()
 
-              # 4. Normalizar MARCA
+              # 4. Normalizar MARCA a "Genérica"
               m_raw = str(d.get("marca", "")).lower().strip()
               if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
                 d["marca"] = "Genérica"
@@ -217,12 +216,12 @@ with t1:
 
             # --- ENVÍO AL BUZÓN ---
             if enviar_buzon(datos):
-              st.success(f"✅ LAIA procesó {len(datos)} registros independientes.")
+              st.success(f"✅ LAIA procesó {len(datos)} registros.")
               st.table(pd.DataFrame(datos))
             else:
               st.error("Error al guardar en GitHub.")
           else:
-            st.warning("La IA no pudo crear el formato. Sé más específico.")
+            st.warning("La IA no pudo crear el formato.")
         except Exception as e:
           st.error(f"Error crítico: {e}")
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
