@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "N/A",
+        "serie": "N/A",
+        "estado": "Usado",
+        "ubicacion": "Call Center",
+        "reporte": "N/A",
+        "fecha": "2026-01-22 10:57"
+    }
+]
