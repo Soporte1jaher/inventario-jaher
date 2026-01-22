@@ -82,5 +82,29 @@
         "ubicacion":"N\/A",
         "reporte":"Pantalla rota y sin cargador. Sospecha de no ser activo fijo.",
         "fecha":"2026-01-22 11:27"
+    },
+    {
+        "destino":"California 1",
+        "tipo":"Enviado",
+        "cantidad":3,
+        "equipo":"Teclado",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 11:37"
+    },
+    {
+        "destino":"California 1",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":null,
+        "serie":null,
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 11:37"
     }
 ]
