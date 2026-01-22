@@ -22,5 +22,21 @@
         "ubicacion": null,
         "reporte": null,
         "fecha": "2026-01-21 19:37"
+    },
+    {
+        "serie": "1234567890",
+        "equipo": "laptop Dell",
+        "accion": "env\u00edo",
+        "ubicacion": null,
+        "reporte": "con cargador",
+        "fecha": "2026-01-21 19:38"
+    },
+    {
+        "serie": "zxcvbnm",
+        "equipo": "laptop HP",
+        "accion": "env\u00edo",
+        "ubicacion": null,
+        "reporte": "sin cargador",
+        "fecha": "2026-01-21 19:38"
     }
 ]
