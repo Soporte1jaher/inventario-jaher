@@ -202,5 +202,17 @@
         "ubicacion":"Por determinar",
         "reporte":"Sin cargador.  Recibido de la agencia Portete.",
         "fecha":"2026-01-22 17:52"
+    },
+    {
+        "destino":"Agencia Portete",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"Agencia Portete",
+        "reporte":"[REQUIERE IT] Pantalla trizada, no enciende y falta cargador.",
+        "fecha":"2026-01-22 17:56"
     }
 ]
