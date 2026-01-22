@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "serie": "ytrewq",
+        "equipo": "laptop Dell",
+        "accion": "llegada",
+        "ubicacion": "Quito",
+        "reporte": "llegada de equipo de Quito laptop Dell serie ytrewq",
+        "fecha": "2026-01-21 19:36"
+    },
+    {
+        "serie": "zxcvbnm",
+        "equipo": "laptop Lenovo",
+        "accion": "env\u00edo",
+        "ubicacion": "Puyo",
+        "reporte": "env\u00edo de laptop Lenovo a Puyo serie zxcvbnm",
+        "fecha": "2026-01-21 19:36"
+    }
+]
