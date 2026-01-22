@@ -1,13 +1,1 @@
-[
-    {
-        "destino": "Stock",
-        "tipo": "Recibido",
-        "cantidad": 50,
-        "equipo": "Mouse",
-        "marca": "Desconocida",
-        "serie": "Sin Serie",
-        "ubicacion": "Bodega 2",
-        "reporte": "Procesado por LAIA",
-        "fecha": "2026-01-21 22:01"
-    }
-]
+[]
