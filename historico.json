@@ -106,5 +106,29 @@
         "ubicacion":"Stock",
         "reporte":"Desde Stock.",
         "fecha":"2026-01-22 12:57"
+    },
+    {
+        "destino":null,
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"09876",
+        "estado":null,
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 12:58"
+    },
+    {
+        "destino":null,
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"LG",
+        "serie":"qwerty",
+        "estado":null,
+        "ubicacion":null,
+        "reporte":"Incluye 2 cables HDMI",
+        "fecha":"2026-01-22 12:58"
     }
 ]
