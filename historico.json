@@ -154,5 +154,41 @@
         "ubicacion":"N\/A",
         "reporte":"",
         "fecha":"2026-01-22 13:06"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":3,
+        "equipo":"Mouse",
+        "marca":null,
+        "serie":null,
+        "estado":"Nuevo",
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 13:07"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":4,
+        "equipo":"Teclado",
+        "marca":null,
+        "serie":null,
+        "estado":"Nuevo",
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 13:07"
+    },
+    {
+        "destino":"Paute",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":null,
+        "serie":null,
+        "estado":"Nuevo",
+        "ubicacion":null,
+        "reporte":null,
+        "fecha":"2026-01-22 13:07"
     }
 ]
