@@ -58,5 +58,41 @@
         "ubicacion":"Destino Desconocido",
         "reporte":"Enviado con CPU Stech serie 83764, un teclado y un mouse de stock",
         "fecha":"2026-01-22 11:49"
+    },
+    {
+        "destino":"",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"STech",
+        "serie":"74656",
+        "estado":"",
+        "ubicacion":"",
+        "reporte":"",
+        "fecha":"2026-01-22 11:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"",
+        "serie":"",
+        "estado":"",
+        "ubicacion":"",
+        "reporte":"",
+        "fecha":"2026-01-22 11:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"",
+        "serie":"",
+        "estado":"",
+        "ubicacion":"",
+        "reporte":"",
+        "fecha":"2026-01-22 11:50"
     }
 ]
