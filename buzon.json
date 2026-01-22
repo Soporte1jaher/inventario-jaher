@@ -1,1 +1,62 @@
-[]
+[
+    {
+        "destino": "Paute",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "123456",
+        "estado": "Nuevo",
+        "ubicacion": null,
+        "reporte": "Se env\u00eda con cargador.",
+        "fecha": "2026-01-22 15:25"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": null,
+        "estado": "Nuevo",
+        "ubicacion": null,
+        "reporte": null,
+        "fecha": "2026-01-22 15:25"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": null,
+        "estado": "Nuevo",
+        "ubicacion": null,
+        "reporte": null,
+        "fecha": "2026-01-22 15:25"
+    },
+    {
+        "destino": null,
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "poiuyt",
+        "estado": "Da\u00f1ado",
+        "ubicacion": null,
+        "reporte": "Faltan antenas wifi y no enciende.",
+        "fecha": "2026-01-22 15:25"
+    },
+    {
+        "destino": null,
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "jhstyg",
+        "estado": "Nuevo",
+        "ubicacion": null,
+        "reporte": "Falta cargador.",
+        "fecha": "2026-01-22 15:25"
+    }
+]
