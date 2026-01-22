@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Estanter\u00eda A",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    },
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Estanter\u00eda B",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    },
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Caj\u00f3n de Herramientas",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    },
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de Pantalla",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Estanter\u00eda C",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    },
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de Equipos",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Estanter\u00eda C",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    },
+    {
+        "destino": "Almac\u00e9n Principal",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Estanter\u00eda D",
+        "reporte": "Recepci\u00f3n est\u00e1ndar seg\u00fan albar\u00e1n de entrega.",
+        "fecha": "2026-01-22 18:36"
+    }
+]
