@@ -28,20 +28,6 @@
         "observaciones":null
     },
     {
-        "fecha":"2026-01-21 21:17",
-        "tipo":"Enviado",
-        "cantidad":1.0,
-        "estado":"Operativo",
-        "serie":"",
-        "marca":"",
-        "equipo":"Mouse",
-        "accion":"consultar",
-        "ubicacion":"",
-        "reporte":"Solicitud de consulta de stock de mouses.",
-        "destino":"Movimientos",
-        "observaciones":null
-    },
-    {
         "fecha":"2026-01-21 21:40",
         "tipo":"Recibido",
         "cantidad":1.0,
