@@ -1,3 +1,74 @@
 [
-
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 20 mouses para inventario.",
+        "fecha":"2026-01-22 18:44"
+    },
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 20 teclados para inventario.",
+        "fecha":"2026-01-22 18:44"
+    },
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 1 ponchadora RJ45 para inventario.",
+        "fecha":"2026-01-22 18:44"
+    },
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de pantalla",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 5 limpiadores de pantalla para inventario.",
+        "fecha":"2026-01-22 18:44"
+    },
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de equipos",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 5 limpiadores de equipos para inventario.",
+        "fecha":"2026-01-22 18:44"
+    },
+    {
+        "destino":"Almac\u00e9n",
+        "tipo":"Recibido",
+        "cantidad":10,
+        "equipo":"Cable HDMI",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Por asignar",
+        "reporte":"Recepci\u00f3n de 10 cables HDMI para inventario.",
+        "fecha":"2026-01-22 18:44"
+    }
 ]
