@@ -162,38 +162,35 @@ with t1:
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
-                    prompt = f"""
-                    Actúa como un Auditor de Inventario y Experto Logístico.
-                    TEXTO DE ENTRADA: "{texto_input}"
-                    
-                    SIGUE ESTAS 5 REGLAS DE ORO PARA GENERAR EL JSON:
+          prompt = f"""
+          Actúa como un Auditor de Inventario y Experto Logístico.
+          TEXTO DE ENTRADA: "{texto_input}"
+           
+          SIGUE ESTAS REGLAS PARA GENERAR EL JSON:
 
-                    1. **TIPO DE MOVIMIENTO (ESTRICTO - BINARIO)**:
-                       - Este campo SOLO admite: "Recibido" o "Enviado".
-                       - Si implica entrada (Llegó, Recibí, Inventariar, A stock) -> TIPO: "Recibido".
-                       - Si implica salida (Envié, Se fue, Para [Ciudad], Salida) -> TIPO: "Enviado".
-                       - 🚫 PROHIBIDO poner nombres de equipos en este campo.
+          1. **TIPO DE MOVIMIENTO**: "Recibido" o "Enviado". 
+             - Entrada a bodega -> Recibido. 
+             - Salida a agencia/cliente -> Enviado.
 
-                    2. **DIAGNÓSTICO DE ESTADO**:
-                       - "Dañado": Fallas funcionales.
-                       - "Usado": Defectos estéticos.
-                       - "Nuevo": Solo si se especifica.
+          2. **DESGLOSE OBLIGATORIO (CRÍTICO)**: 
+             - Si el texto menciona varios equipos o accesorios (ej: "CPU con monitor, mouse y teclado"), DEBES generar un objeto JSON INDEPENDIENTE para cada uno. 
+             - No los agrupes en el campo 'reporte'. El inventario necesita restar cada unidad por separado.
+             - Si se envía un combo, todos los elementos heredan el mismo 'destino' y 'tipo'.
 
-                    3. **INFORME TÉCNICO (IT)**:
-                       - Si pide revisar/diagnosticar: AGREGA "[REQUIERE IT]" al inicio del campo 'reporte'.
+          3. **DIAGNÓSTICO**: "Dañado", "Usado" o "Nuevo".
 
-                    4. **CORRECCIÓN Y LIMPIEZA**:
-                       - Corrige ortografía ("cragador"->"Cargador").
-                       - Estandariza Marcas.
+          4. **INFORME TÉCNICO (IT)**: Si pide revisión, pon "[REQUIERE IT]" en reporte.
 
-                    5. **LÓGICA DE STOCK Y ACCESORIOS**:
-                       - "A Stock" -> Destino: "Stock".
-                       - "Laptop con cargador" -> Cargador en reporte.
-                       - "50 mouses" -> Cantidad: 50.
+          5. **ESTANDARIZACIÓN**:
+             - "cragador" -> "Cargador".
+             - Si no hay marca, pon "No especificada".
+             - Si no hay serie, pon "No especificada".
 
-                    FORMATO SALIDA (JSON):
-                    [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
-                    """
+          FORMATO SALIDA (JSON):
+          [
+            {{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}
+          ]
+          """
                     
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
                     json_limpio = extraer_json(resp.text)
