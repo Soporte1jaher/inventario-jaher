@@ -54,5 +54,19 @@
         "reporte":"Pendiente de informe tecnico",
         "destino":"Movimientos",
         "observaciones":null
+    },
+    {
+        "fecha":"2026-01-21 22:15",
+        "tipo":"Recibido",
+        "cantidad":1.0,
+        "estado":"Da\u00f1ado",
+        "serie":"zxcvbfg",
+        "marca":"Xtech",
+        "equipo":"CPU",
+        "accion":null,
+        "ubicacion":"Desconocido",
+        "reporte":"Pendiente de informe tecnico",
+        "destino":"Movimientos",
+        "observaciones":null
     }
 ]
