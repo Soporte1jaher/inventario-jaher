@@ -232,6 +232,7 @@ with t3:
                     st.error("LAIA no pudo identificar qué registro borrar.")
 
 # --- TAB 4: BI & HISTORIAL (DASHBOARD INTELIGENTE V2.0) ---
+# --- TAB 4: BI & HISTORIAL (DASHBOARD V3.0 - MÉTRICAS DE FLUJO) ---
 with t4:
     # 1. Cabecera y Botón de Recarga
     c_head1, c_head2 = st.columns([3, 1])
@@ -244,111 +245,107 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # --- PRE-PROCESAMIENTO INTELIGENTE ---
-        # Aseguramos columnas clave
-        for col in ['destino', 'estado', 'marca', 'equipo', 'tipo']:
+        # --- PRE-PROCESAMIENTO ---
+        # Aseguramos columnas y limpieza básica
+        for col in ['destino', 'estado', 'marca', 'equipo', 'tipo', 'serie']:
             if col not in df.columns: df[col] = "N/A"
-            
-        # Filtros Automáticos
-        df_stock = df[df['destino'].str.lower() == 'stock'].copy()
-        df_mov = df[df['destino'].str.lower() != 'stock'].copy()
-        df_bad = df[df['estado'].str.lower() == 'dañado'].copy()
         
-        # --- METRICAS KPI (Key Performance Indicators) ---
+        # Convertimos a string para evitar errores
+        df['tipo'] = df['tipo'].astype(str)
+        df['destino'] = df['destino'].astype(str)
+        
+        # Filtros Clave
+        df_stock = df[df['destino'].str.lower() == 'stock'].copy()
+        df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
+        
+        # Conteo para KPIs
+        # Usamos str.contains para atrapar "Enviado", "Envío", etc.
+        cant_env = len(df[df['tipo'].str.lower().str.contains('enviado') | df['tipo'].str.lower().str.contains('salida')])
+        cant_rec = len(df[df['tipo'].str.lower().str.contains('recibido') | df['tipo'].str.lower().str.contains('entrada')])
+        
+        # --- NUEVAS MÉTRICAS KPI (SOLICITADAS) ---
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("📦 Total Activos", len(df), delta="Inventario Global")
-        kpi2.metric("✅ En Stock", len(df_stock), delta="Disponibles", delta_color="normal")
-        kpi3.metric("🚚 Movimientos", len(df_mov), delta="Enviados/Recibidos", delta_color="off")
-        kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención Requerida", delta_color="inverse")
+        kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
+        kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
+        kpi3.metric("📦 En Stock Actual", len(df_stock), delta="Disponibles")
+        kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención", delta_color="inverse")
         
         st.divider()
 
-        # --- SUB-PESTAÑAS DE CLASIFICACIÓN ---
-        st_t1, st_t2, st_t3, st_t4 = st.tabs(["📂 Maestro General", "📦 Bodega (Stock)", "🚚 Tráfico (Enviados/Recibidos)", "⚠️ HOSPITAL (Dañados)"])
+        # --- SUB-PESTAÑAS ---
+        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
         
-        # 1. MAESTRO GENERAL + GRÁFICOS
+        # 1. MAESTRO GENERAL
         with st_t1:
-            st.markdown("### 📈 Tendencias de Inventario")
+            st.markdown("### 📈 Resumen Global")
             col_g1, col_g2 = st.columns(2)
-            
-            # Gráfico 1: Top Marcas
             if 'marca' in df.columns:
-                conteo_marca = df['marca'].value_counts().head(5)
-                col_g1.bar_chart(conteo_marca, color="#2e7d32")
-                col_g1.caption("Top 5 Marcas en Inventario")
-            
-            # Gráfico 2: Distribución por Estado
-            if 'estado' in df.columns:
-                conteo_estado = df['estado'].value_counts()
-                col_g2.bar_chart(conteo_estado, color="#1F4E78")
-                col_g2.caption("Estado de Salud de los Equipos")
-
+                col_g1.bar_chart(df['marca'].value_counts().head(5), color="#2e7d32")
+                col_g1.caption("Marcas más frecuentes")
+            if 'equipo' in df.columns:
+                col_g2.bar_chart(df['equipo'].value_counts().head(5), color="#1F4E78")
+                col_g2.caption("Tipos de equipo")
             st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # 2. VISTA DE STOCK (Agrupado)
+        # 2. VISTA STOCK
         with st_t2:
-            st.info("Vista filtrada: Solo equipos disponibles en Bodega/Stock.")
+            st.info("Vista filtrada: Artículos actualmente en Bodega.")
             if not df_stock.empty:
-                # Mostramos tabla normal
-                st.dataframe(
-                    df_stock, 
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "cantidad": st.column_config.NumberColumn("Cant", format="%d"),
-                        "estado": st.column_config.TextColumn("Condición")
-                    }
-                )
-                # Resumen rápido por tipo
-                st.caption("Resumen Rápido de Stock:")
+                st.dataframe(df_stock, use_container_width=True, hide_index=True)
+                st.caption("Conteo rápido:")
                 st.json(df_stock['equipo'].value_counts().to_dict())
             else:
-                st.warning("Bodega vacía. No hay stock registrado.")
+                st.warning("Bodega vacía.")
 
-        # 3. VISTA DE MOVIMIENTOS
+        # 3. VISTA TRÁFICO
         with st_t3:
-            st.markdown("### 🚦 Historial de Envíos y Recepciones")
-            # Filtros interactivos
-            filtro_tipo = st.radio("Filtrar por:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
-            
-            df_show = df_mov
-            if filtro_tipo == "Enviados":
-                df_show = df_mov[df_mov['tipo'].astype(str).str.lower().str.contains('enviado')]
-            elif filtro_tipo == "Recibidos":
-                df_show = df_mov[df_mov['tipo'].astype(str).str.lower().str.contains('recibido')]
-            
-            st.dataframe(df_show, use_container_width=True, hide_index=True)
-
-        # 4. VISTA DE DAÑADOS (La IA detecta esto)
-        with st_t4:
-            st.error("🚨 ZONA ROJA: Equipos que requieren reparación o baja.")
-            if not df_bad.empty:
-                # Reordenar columnas para ver el reporte primero
-                cols = list(df_bad.columns)
-                if 'reporte' in cols:
-                    cols.insert(0, cols.pop(cols.index('reporte')))
-                
-                st.data_editor(
-                    df_bad[cols], 
-                    use_container_width=True, 
-                    hide_index=True, 
-                    disabled=True
-                )
+            st.markdown("### 🚦 Filtro de Movimientos")
+            filtro = st.radio("Ver:", ["Enviados", "Recibidos"], horizontal=True)
+            if filtro == "Enviados":
+                st.dataframe(df[df['tipo'].str.lower().str.contains('env')], use_container_width=True)
             else:
-                st.success("¡Excelente! No hay equipos reportados como dañados.")
+                st.dataframe(df[df['tipo'].str.lower().str.contains('rec')], use_container_width=True)
 
-        # --- BOTÓN DE DESCARGA GLOBAL ---
-        st.divider()
-        col_d1, col_d2 = st.columns([3,1])
-        with col_d2:
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Descargar Excel Completo (.csv)",
-                data=csv,
-                file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                type="primary"
-            )
+        # 4. VISTA DAÑADOS
+        with st_t4:
+            st.error("🚨 Equipos reportados con daños")
+            if not df_bad.empty:
+                cols = list(df_bad.columns)
+                if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
+                st.dataframe(df_bad[cols], use_container_width=True)
+            else:
+                st.success("Sin novedades de daños.")
+
+        # 5. AUDITORÍA (RESPUESTA A TU PREGUNTA DE SERIES DUPLICADAS)
+        with st_t5:
+            st.warning("🕵️ Detector de Inconsistencias Lógicas")
+            st.markdown("Aquí aparecerán series que tienen **'Enviado' seguido de 'Enviado'** (posible error de doble salida sin retorno).")
             
+            # Lógica para detectar series enviadas 2 veces seguidas sin recibir
+            series_problem = []
+            if 'serie' in df.columns and 'tipo' in df.columns:
+                # Filtramos solo activos con serie real
+                df_ser = df[df['serie'].str.len() > 3].copy() 
+                # Agrupamos por serie
+                for ser, group in df_ser.groupby('serie'):
+                    if len(group) > 1:
+                        # Asumimos orden cronológico del excel
+                        tipos = group['tipo'].str.lower().tolist()
+                        for i in range(len(tipos) - 1):
+                            # Si hay dos "enviado" seguidos...
+                            if 'env' in tipos[i] and 'env' in tipos[i+1]:
+                                series_problem.append({"Serie": ser, "Equipo": group.iloc[0].get('equipo'), "Error": "Doble Salida Detectada"})
+                                break
+            
+            if series_problem:
+                st.table(pd.DataFrame(series_problem))
+            else:
+                st.success("✅ La lógica del inventario parece consistente (No hay doble envío de series).")
+
+        # --- DESCARGA ---
+        st.divider()
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Descargar CSV", csv, "inventario.csv", "text/csv")
+
     else:
-        st.warning("⚠️ No se pudo conectar con el Histórico. Verifica tu internet o el Token.")
+        st.warning("⚠️ Sin conexión a base de datos.")
