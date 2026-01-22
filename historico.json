@@ -142,5 +142,17 @@
         "ubicacion":"Bodega",
         "reporte":"Incluido con el CPU Xtech serie 838474",
         "fecha":"2026-01-22 17:40"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Trizada, No enciende",
+        "ubicacion":"Agencia Portete",
+        "reporte":"Sin cargador",
+        "fecha":"2026-01-22 17:42"
     }
 ]
