@@ -295,6 +295,7 @@ with t3:
                     st.error("LAIA no pudo identificar qué registro borrar.")
 
 # --- TAB 4: BI & HISTORIAL (MEJORADO CON STOCK REAL Y KPIs) ---
+# --- TAB 4: BI & HISTORIAL (DASHBOARD FINAL V16) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -310,7 +311,6 @@ with t4:
         for col in ['destino', 'estado', 'marca', 'equipo', 'tipo', 'serie']:
             if col not in df.columns: df[col] = "N/A"
         
-        # Convertimos tipos a string seguro
         df['tipo'] = df['tipo'].astype(str)
         df['destino'] = df['destino'].astype(str)
         
@@ -326,7 +326,8 @@ with t4:
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
         kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
-        # Aquí usamos el stock calculado
+        
+        # KPI STOCK REAL
         total_unidades = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
         kpi3.metric("📦 En Stock Real", total_unidades, delta="Disponibles")
         kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención", delta_color="inverse")
@@ -334,15 +335,10 @@ with t4:
         st.divider()
 
         # --- SUB-PESTAÑAS ---
-        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real (Calculado)", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
+        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📦 Bodega Real (Saldos)", "📂 Maestro Histórico", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
         
-        # 1. MAESTRO GENERAL
+        # 1. VISTA STOCK REAL (USANDO EL CÁLCULO MATEMÁTICO)
         with st_t1:
-            st.markdown("### 📈 Resumen Global")
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-        # 2. VISTA STOCK REAL (USANDO EL CÁLCULO MATEMÁTICO)
-        with st_t2:
             st.info("Vista filtrada: Saldos Disponibles (Entradas - Salidas).")
             if not df_stock_real.empty:
                 # Renombramos para que se vea igual que tu Excel "Stock (Saldos)"
@@ -355,6 +351,11 @@ with t4:
                 st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
             else:
                 st.warning("Bodega calculada vacía o sin items positivos.")
+
+        # 2. MAESTRO GENERAL
+        with st_t2:
+            st.markdown("### 📈 Resumen Global")
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
         # 3. VISTA TRÁFICO
         with st_t3:
