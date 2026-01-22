@@ -152,86 +152,72 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
-  st.subheader("📝 Gestión de Movimientos")
-  st.info("💡 IA V9.5: Lógica Unificada. Corrige ortografía, detecta daños, crea reportes IT y fuerza el tipo a 'Enviado' o 'Recibido'.")
-  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU a Manta. O me llegó una Laptop de Pedernales con pantalla rota para informe...")
-   
-  if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
-    if texto_input.strip():
-      with st.spinner("LAIA procesando: Estandarizando Tipo, Estado y Reportes..."):
-        try:
-          client = genai.Client(api_key=API_KEY)
-           
-          prompt = f"""
-          Actúa como un Auditor de Inventario y Experto Logístico.
-          TEXTO DE ENTRADA: "{texto_input}"
-           
-          SIGUE ESTAS 5 REGLAS DE ORO PARA GENERAR EL JSON:
+  st.subheader("📝 Gestión de Movimientos")
+  st.info("💡 IA V10: Lógica de Desglose y FIX de Sincronización para Laptop.")
+  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse y teclado a Portete...")
 
-1. TIPO DE MOVIMIENTO (ESTRICTO - BINARIO):
-            - Este campo SOLO admite: "Recibido" o "Enviado".
-            - Si implica entrada (Llegó, Recibí, Inventariar, A stock) -> TIPO: "Recibido".
-            - Si implica salida (Envié, Se fue, Para [Ciudad], Salida) -> TIPO: "Enviado".
-            - 🚫 PROHIBIDO poner nombres de equipos en este campo.
+  if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
+    if texto_input.strip():
+      with st.spinner("LAIA procesando..."):
+        try:
+          client = genai.Client(api_key=API_KEY)
+          
+          # Prompt mejorado para que tu script local reste el stock
+          prompt = f"""
+          Actúa como Auditor de Inventario. TEXTO: "{texto_input}"
+          REGLAS OBLIGATORIAS:
+          1. TIPO: "Recibido" o "Enviado".
+          2. DESGLOSE: Si mencionas accesorios (mouse, teclado, etc), genera un objeto JSON INDEPENDIENTE para cada uno.
+          3. ESTADO: "Dañado", "Usado" o "Nuevo".
+          4. MARCA/SERIE: Si no hay, pon "No especificada".
+          FORMATO: [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+          """
 
-2. DIAGNÓSTICO DE ESTADO:
-            - "Dañado": Fallas funcionales.
-            - "Usado": Defectos estéticos.
-            - "Nuevo": Solo si se especifica.
+          resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+          json_limpio = extraer_json(resp.text)
 
-3. INFORME TÉCNICO (IT):
-            - Si pide revisar/diagnosticar: AGREGA "[REQUIERE IT]" al inicio del campo 'reporte'.
+          if json_limpio:
+            datos = json.loads(json_limpio)
+            fecha = obtener_fecha_ecuador()
 
-4. CORRECCIÓN Y LIMPIEZA:
-            - Corrige ortografía ("cragador"->"Cargador").
-            - Estandariza Marcas.
+            for d in datos:
+              d["fecha"] = fecha
+              
+              # Asegurar cantidad numérica (importante para la resta)
+              try:
+                d["cantidad"] = int(d.get("cantidad", 1))
+              except:
+                d["cantidad"] = 1
 
-5. LÓGICA DE STOCK Y ACCESORIOS:
-            - "A Stock" -> Destino: "Stock".
-            - "Laptop con cargador" -> Cargador en reporte.
-            - "50 mouses" -> Cantidad: 50.
+              # Normalizar Tipo
+              t_raw = str(d.get("tipo", "")).lower()
+              d["tipo"] = "Enviado" if ("env" in t_raw or "sal" in t_raw) else "Recibido"
 
-FORMATO SALIDA (JSON):
-          [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
-          """
-           
-          resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-          json_limpio = extraer_json(resp.text)
-           
-          if json_limpio:
-            datos = json.loads(json_limpio)
-            fecha = obtener_fecha_ecuador()
-             
-            # --- CAPA DE SEGURIDAD PYTHON ---
-            for d in datos: 
-              d["fecha"] = fecha
-               
-              # 1. Corrección forzada de TIPO
-              tipo_raw = str(d.get("tipo", "")).lower()
-              if "env" in tipo_raw or "sal" in tipo_raw:
-                d["tipo"] = "Enviado"
-              elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
-                d["tipo"] = "Recibido"
-              else:
-                d["tipo"] = "Recibido" # Default
+              # --- FIX PARA TU LAPTOP ---
+              # Cambiamos "No especificada" por "N/A" para que tu laptop NO crea que es una serie real y reste el stock.
+              ser_raw = str(d.get("serie", "")).lower().strip()
+              if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
+                d["serie"] = "N/A"
+              else:
+                d["serie"] = d["serie"].upper()
 
-# 2. Corrección forzada de ESTADO
-              estado_raw = str(d.get("estado", "")).lower()
-              if "dañ" in estado_raw or "rot" in estado_raw or "mal" in estado_raw:
-                d["estado"] = "Dañado"
+              # Normalizar Marca para agrupar bien
+              m_raw = str(d.get("marca", "")).lower().strip()
+              if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
+                d["marca"] = "Genérica"
+              else:
+                d["marca"] = d["marca"].title()
 
-if enviar_buzon(datos):
-              st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
-              if any(d.get('estado') == 'Dañado' for d in datos):
-                st.warning("⚠️ Se detectaron equipos DAÑADOS. Se enviarán a la hoja de reportes.")
-              st.table(pd.DataFrame(datos))
-            else:
-              st.error("Error de conexión con GitHub.")
-          else:
-            st.warning("La IA no pudo interpretar la orden. Intenta ser más claro.")
-               
-        except Exception as e:
-          st.error(f"Error crítico en IA: {e}")
+            # Guardar en GitHub
+            if enviar_buzon(datos):
+              st.success(f"✅ LAIA procesó {len(datos)} registros. Sincronización Excel lista.")
+              st.table(pd.DataFrame(datos))
+            else:
+              st.error("Error al conectar con GitHub.")
+          else:
+            st.warning("La IA no pudo generar los datos.")
+        except Exception as e:
+          st.error(f"Error crítico: {e}")
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
     c1, c2 = st.columns([4, 1])
