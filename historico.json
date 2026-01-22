@@ -154,5 +154,17 @@
         "ubicacion":"N\/A",
         "reporte":"N\/A",
         "fecha":"2026-01-22 15:28"
+    },
+    {
+        "destino":"chordeleg",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"LG",
+        "serie":"ndhjfhdjh",
+        "estado":"Nuevo",
+        "ubicacion":"chordeleg",
+        "reporte":"Incluye Mouse, Teclado y cable HDMI.",
+        "fecha":"2026-01-22 15:39"
     }
 ]
