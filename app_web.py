@@ -11,7 +11,7 @@ import re
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA NEURAL SYSTEM", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA ", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
