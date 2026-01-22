@@ -152,102 +152,70 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
-    st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA V9.5: Lógica Unificada. Corrige ortografía, detecta daños, crea reportes IT y fuerza el tipo a 'Enviado' o 'Recibido'.")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU a Manta. O me llegó una Laptop de Pedernales con pantalla rota para informe...")
-    
-    if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
-        if texto_input.strip():
-            with st.spinner("LAIA procesando: Estandarizando Tipo, Estado y Reportes..."):
-                try:
-                    client = genai.Client(api_key=API_KEY)
-                    
+  st.subheader("📝 Gestión de Movimientos")
+  st.info("💡 IA V10: Desglose total de accesorios y unificación de marcas.")
+  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse y teclado a Portete...")
+   
+  if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
+    if texto_input.strip():
+      with st.spinner("LAIA procesando: Desglosando equipos y normalizando datos..."):
+        try:
+          client = genai.Client(api_key=API_KEY)
+           
           prompt = f"""
           Actúa como un Auditor de Inventario y Experto Logístico.
           TEXTO DE ENTRADA: "{texto_input}"
            
           SIGUE ESTAS REGLAS PARA GENERAR EL JSON:
-
-          1. **TIPO DE MOVIMIENTO**: "Recibido" o "Enviado". 
-             - Entrada a bodega -> Recibido. 
-             - Salida a agencia/cliente -> Enviado.
-
-          2. **DESGLOSE OBLIGATORIO (CRÍTICO)**: 
-             - Si el texto menciona varios equipos o accesorios (ej: "CPU con monitor, mouse y teclado"), DEBES generar un objeto JSON INDEPENDIENTE para cada uno. 
-             - No los agrupes en el campo 'reporte'. El inventario necesita restar cada unidad por separado.
-             - Si se envía un combo, todos los elementos heredan el mismo 'destino' y 'tipo'.
-
-          3. **DIAGNÓSTICO**: "Dañado", "Usado" o "Nuevo".
-
-          4. **INFORME TÉCNICO (IT)**: Si pide revisión, pon "[REQUIERE IT]" en reporte.
-
-          5. **ESTANDARIZACIÓN**:
-             - "cragador" -> "Cargador".
-             - Si no hay marca, pon "No especificada".
-             - Si no hay serie, pon "No especificada".
+          1. **TIPO DE MOVIMIENTO**: "Recibido" o "Enviado". Entrada a bodega -> Recibido. Salida a agencia -> Enviado.
+          2. **DESGLOSE OBLIGATORIO (CRÍTICO)**: Si mencionas varios equipos (ej: CPU con monitor, mouse y teclado), genera UN objeto JSON para cada artículo. Nunca los agrupes en reporte.
+          3. **ESTANDARIZACIÓN**: Marca o serie vacía -> "No especificada".
+          4. **ESTADO**: "Dañado", "Usado" o "Nuevo".
 
           FORMATO SALIDA (JSON):
-          [
-            {{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}
-          ]
+          [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
           """
-                    
-                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-                    json_limpio = extraer_json(resp.text)
-                    
-                    if json_limpio:
-                        datos = json.loads(json_limpio)
-                        fecha = obtener_fecha_ecuador()
-                        
-                        # --- CAPA DE SEGURIDAD PYTHON ---
-                      for d in datos: 
+           
+          resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+          json_limpio = extraer_json(resp.text)
+           
+          if json_limpio:
+            datos = json.loads(json_limpio)
+            fecha = obtener_fecha_ecuador()
+             
+            # --- CAPA DE SEGURIDAD PYTHON ---
+            for d in datos: 
               d["fecha"] = fecha
-               
-              # 1. Corrección forzada de TIPO (Enviado / Recibido)
-              tipo_raw = str(d.get("tipo", "")).lower()
-              if "env" in tipo_raw or "sal" in tipo_raw:
-                d["tipo"] = "Enviado"
-              elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
-                d["tipo"] = "Recibido"
-              else:
-                d["tipo"] = "Recibido" # Valor por defecto
-
-              # 2. Unificación de MARCA (Para que el stock reste correctamente)
-              # Si la marca viene vacía o dice "no especificada", la forzamos a "Genérica"
-              m_raw = str(d.get("marca", "")).lower().strip()
-              palabras_nulas = ["", "none", "null", "n/a", "no especificada", "no especificado", "generico"]
               
-              if any(x == m_raw for x in palabras_nulas) or "especifica" in m_raw:
+              # 1. Corregir Tipo
+              tipo_raw = str(d.get("tipo", "")).lower()
+              if "env" in tipo_raw or "sal" in tipo_raw: 
+                d["tipo"] = "Enviado"
+              else: 
+                d["tipo"] = "Recibido"
+
+              # 2. Corregir Marca para que el Stock reste bien en Tab 4
+              m_raw = str(d.get("marca", "")).lower().strip()
+              nulos = ["", "none", "null", "n/a", "no especificada", "no especificado", "generico"]
+              if any(x == m_raw for x in nulos) or "especifica" in m_raw:
                 d["marca"] = "Genérica"
               else:
-                d["marca"] = d["marca"].title() # Pone la primera en Mayúscula (Ej: Dell)
+                d["marca"] = d["marca"].title()
 
-              # 3. Limpieza de Equipo
-              d["equipo"] = str(d.get("equipo", "")).strip()
-
-              # 4. Corrección forzada de ESTADO
-              estado_raw = str(d.get("estado", "")).lower()
-              if "dañ" in estado_raw or "rot" in estado_raw or "mal" in estado_raw:
+              # 3. Corregir Estado Dañado
+              est_raw = str(d.get("estado", "")).lower()
+              if "dañ" in est_raw or "mal" in est_raw or "rot" in est_raw:
                 d["estado"] = "Dañado"
 
-                            # 2. Corrección forzada de ESTADO
-                            estado_raw = str(d.get("estado", "")).lower()
-                            if "dañ" in estado_raw or "rot" in estado_raw or "mal" in estado_raw:
-                                d["estado"] = "Dañado"
-
-                        if enviar_buzon(datos):
-                            st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
-                            if any(d.get('estado') == 'Dañado' for d in datos):
-                                st.warning("⚠️ Se detectaron equipos DAÑADOS. Se enviarán a la hoja de reportes.")
-                            st.table(pd.DataFrame(datos))
-                        else:
-                            st.error("Error de conexión con GitHub.")
-                    else:
-                        st.warning("La IA no pudo interpretar la orden. Intenta ser más claro.")
-                            
-                except Exception as e:
-                    st.error(f"Error crítico en IA: {e}")
-
+            if enviar_buzon(datos):
+              st.success(f"✅ LAIA procesó {len(datos)} registros independientes.")
+              st.table(pd.DataFrame(datos))
+            else:
+              st.error("Error al guardar en GitHub.")
+          else:
+            st.warning("La IA no pudo crear el formato. Sé más específico.")
+        except Exception as e:
+          st.error(f"Error crítico: {e}")
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
     c1, c2 = st.columns([4, 1])
