@@ -153,77 +153,63 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
   st.subheader("📝 Gestión de Movimientos")
-  st.info("💡 IA V10: Desglose total de accesorios y unificación de marcas.")
-  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse y teclado a Portete...")
+  st.info("💡 IA V10: Desglose de accesorios y FIX de serie N/A para sincronización.")
+  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse y teclado...")
    
   if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
     if texto_input.strip():
-      with st.spinner("LAIA procesando: Desglosando equipos y normalizando datos..."):
+      with st.spinner("LAIA procesando..."):
         try:
           client = genai.Client(api_key=API_KEY)
            
           prompt = f"""
-          Actúa como un Auditor de Inventario y Experto Logístico.
-          TEXTO DE ENTRADA: "{texto_input}"
-           
-          SIGUE ESTAS REGLAS PARA GENERAR EL JSON:
-          1. **TIPO DE MOVIMIENTO**: "Recibido" o "Enviado". Entrada a bodega -> Recibido. Salida a agencia -> Enviado.
-          2. **DESGLOSE OBLIGATORIO (CRÍTICO)**: Si mencionas varios equipos (ej: CPU con monitor, mouse y teclado), genera UN objeto JSON para cada artículo. Nunca los agrupes en reporte.
-          3. **ESTANDARIZACIÓN**: Marca o serie vacía -> "No especificada".
-          4. **ESTADO**: "Dañado", "Usado" o "Nuevo".
-
-          FORMATO SALIDA (JSON):
-          [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+          Actúa como un Auditor de Inventario. TEXTO: "{texto_input}"
+          REGLAS:
+          1. TIPO: "Recibido" o "Enviado".
+          2. DESGLOSE: Genera un objeto JSON para cada artículo (CPU, Mouse, Teclado, etc).
+          3. SERIE/MARCA: Si no hay, pon "No especificada".
+          FORMATO: [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
           """
            
           resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
           json_limpio = extraer_json(resp.text)
            
-        if json_limpio:
+          if json_limpio:
             datos = json.loads(json_limpio)
             fecha = obtener_fecha_ecuador()
              
-            # --- CAPA DE SEGURIDAD PYTHON (WEB) ---
             for d in datos: 
               d["fecha"] = fecha
-              
-              # 1. Cantidad forzada a 1
-              try:
-                d["cantidad"] = int(d.get("cantidad", 1))
-              except:
-                d["cantidad"] = 1
-
-              # 2. Normalizar TIPO
+              # Asegurar cantidad
+              try: d["cantidad"] = int(d.get("cantidad", 1))
+              except: d["cantidad"] = 1
+              # Corregir Tipo
               tipo_raw = str(d.get("tipo", "")).lower()
-              if "env" in tipo_raw or "sal" in tipo_raw: 
-                d["tipo"] = "Enviado"
-              else: 
-                d["tipo"] = "Recibido"
-
-              # 3. FIX PARA TU LAPTOP: Serie debe ser "N/A" para que reste
+              d["tipo"] = "Enviado" if ("env" in tipo_raw or "sal" in tipo_raw) else "Recibido"
+              
+              # FIX PARA TU LAPTOP: Serie debe ser "N/A" para que el Excel reste el stock
               ser_raw = str(d.get("serie", "")).lower().strip()
               if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
                 d["serie"] = "N/A"
               else:
                 d["serie"] = d["serie"].upper()
 
-              # 4. Normalizar MARCA a "Genérica"
+              # Normalizar Marca
               m_raw = str(d.get("marca", "")).lower().strip()
               if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
                 d["marca"] = "Genérica"
               else:
                 d["marca"] = d["marca"].title()
 
-            # --- ENVÍO AL BUZÓN ---
             if enviar_buzon(datos):
-              st.success(f"✅ LAIA procesó {len(datos)} registros.")
+              st.success(f"✅ LAIA procesó {len(datos)} registros independientes.")
               st.table(pd.DataFrame(datos))
             else:
               st.error("Error al guardar en GitHub.")
           else:
-            st.warning("La IA no pudo crear el formato.")
+            st.warning("La IA no pudo generar el formato.")
         except Exception as e:
-          st.error(f"Error crítico: {e}")
+          st.error(f"Error crítico en proceso: {e}")
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
     c1, c2 = st.columns([4, 1])
