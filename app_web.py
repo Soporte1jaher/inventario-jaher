@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 import pandas as pd
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="LAIA Intelligence PRO", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="LAIA", page_icon="🤖", layout="wide")
 
 # --- CREDENCIALES ---
 try:
@@ -72,8 +72,8 @@ def extraer_json(texto):
         return ""
 
 # --- INTERFAZ ---
-st.title("🤖 LAIA: Inteligencia Logística Pro V5.2")
-t1, t2, t3, t4 = st.tabs(["📝 Registro & Estrategia", "💬 Chat IA", "🗑️ Limpieza Inteligente", "📊 Historial"])
+st.title("🤖 LAIA")
+t1, t2, t3, t4 = st.tabs(["📝 Registro", "💬 Chat IA", "🗑️ Limpieza", "📊 Historial"])
 
 # --- TAB 1: REGISTRO & ESTRATEGIA ---
 with t1:
@@ -111,7 +111,6 @@ with t1:
                         for d in datos: d["fecha"] = fecha
                         
                         if enviar_buzon(datos):
-                            st.balloons()
                             st.success(f"✅ LAIA procesó exitosamente {len(datos)} registros.")
                             st.table(pd.DataFrame(datos))
                         else:
@@ -123,7 +122,7 @@ with t1:
 
 # --- TAB 2: CHAT IA ---
 with t2:
-    st.subheader("💬 Consulta Semántica")
+    st.subheader("💬 Consulta Inventario")
     if "messages" not in st.session_state: st.session_state.messages = []
     
     for m in st.session_state.messages:
@@ -144,7 +143,7 @@ with t2:
 
 # --- TAB 3: LIMPIEZA INTELIGENTE ---
 with t3:
-    st.subheader("🗑️ Motor de Limpieza Universal")
+    st.subheader("🗑️ Motor de Limpieza")
     st.warning("⚠️ Esta acción procesa filtros de borrado en todas las columnas.")
     txt_borrar = st.text_area("Criterio de limpieza:", placeholder="Ej: borra las series vacías, borra los recibidos, borra lo que diga 'sin detalle'...")
     
