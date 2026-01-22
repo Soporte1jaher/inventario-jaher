@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 20 mouses nuevos a stock.",
+        "fecha": "2026-01-22 18:46"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 20 teclados nuevos a stock.",
+        "fecha": "2026-01-22 18:46"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 1 ponchadora RJ45 nueva a stock.",
+        "fecha": "2026-01-22 18:46"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de pantalla",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 5 limpiadores de pantalla nuevos a stock.",
+        "fecha": "2026-01-22 18:46"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de equipos",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 5 limpiadores de equipos nuevos a stock.",
+        "fecha": "2026-01-22 18:46"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Por asignar",
+        "reporte": "Ingreso de 10 cables HDMI nuevos a stock.",
+        "fecha": "2026-01-22 18:46"
+    }
+]
