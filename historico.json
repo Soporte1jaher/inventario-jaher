@@ -75,18 +75,6 @@
         "destino":"Latacunga",
         "tipo":"Enviado",
         "cantidad":1,
-        "equipo":"CPU",
-        "marca":"Xtrech",
-        "serie":"12345",
-        "estado":"Nuevo",
-        "ubicacion":"Origen",
-        "reporte":"Incluye monitor serie 09876, teclado y mouse.",
-        "fecha":"2026-01-22 15:45"
-    },
-    {
-        "destino":"Latacunga",
-        "tipo":"Enviado",
-        "cantidad":1,
         "equipo":"Monitor",
         "marca":"Desconocida",
         "serie":"09876",
