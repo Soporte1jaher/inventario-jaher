@@ -70,5 +70,41 @@
         "ubicacion":null,
         "reporte":null,
         "fecha":"2026-01-22 12:56"
+    },
+    {
+        "destino":"portete3",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"123456",
+        "estado":"Nuevo",
+        "ubicacion":"portete3",
+        "reporte":"Se env\u00eda con cargador configurada.",
+        "fecha":"2026-01-22 12:57"
+    },
+    {
+        "destino":"portete3",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Mouse",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"Desde Stock.",
+        "fecha":"2026-01-22 12:57"
+    },
+    {
+        "destino":"portete3",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Generico",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Stock",
+        "reporte":"Desde Stock.",
+        "fecha":"2026-01-22 12:57"
     }
 ]
