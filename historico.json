@@ -1,3 +1,14 @@
 [
-
+    {
+        "destino":"Tena",
+        "tipo":"Env\u00edo",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"HP",
+        "serie":"736453",
+        "estado":"Usado",
+        "ubicacion":"No especificada",
+        "reporte":"Incluye cargador HP.",
+        "fecha":"2026-01-22 11:15"
+    }
 ]
