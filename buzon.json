@@ -1,1 +1,20 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "N/A",
+        "equipo": "Ponchadora RJ45",
+        "motivo": "Solicitud del usuario de borrar ponchadora"
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": null,
+        "equipo": "Teclado",
+        "motivo": "Solicitud del usuario de borrar teclado"
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": null,
+        "equipo": "Mouse",
+        "motivo": "Solicitud del usuario de borrar mouse"
+    }
+]
