@@ -89,12 +89,19 @@ with t2:
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
 with t3:
-    st.subheader("Eliminar por Serie")
-    ser_b = st.text_input("Escribe la serie exacta a eliminar:")
-    if st.button("🗑️ Eliminar Equipo"):
-        if ser_b:
-            if enviar_buzon([{"serie": ser_b, "accion": "borrar"}]):
-                st.warning(f"Orden de borrado para {ser_b} enviada.")
+    st.subheader("Eliminar Equipo")
+    # Usamos unselectbox para no equivocarnos con la serie o un text_input
+    ser_b = st.text_input("Escribe la SERIE a eliminar:")
+    confirmar = st.checkbox("Confirmo que deseo eliminar este equipo")
+    
+    if st.button("🗑️ EJECUTAR BORRADO"):
+        if ser_b and confirmar:
+            # Enviamos la orden clara al buzón
+            exito = enviar_buzon([{"serie": str(ser_b).strip(), "accion": "borrar"}])
+            if exito:
+                st.warning(f"✅ Orden de borrado enviada para la serie {ser_b}. En 15 segundos desaparecerá de la tabla.")
+        elif not confirmar:
+            st.error("Por favor, marca la casilla de confirmación.")
 
 with t4:
     if st.button("🔄 Cargar Datos"):
