@@ -2,7 +2,7 @@
     {
         "fecha": "2026-01-21 19:43",
         "tipo": "",
-        "serie": "12345",
+        "serie": 12345,
         "marca": "",
         "equipo": "monitor AOC",
         "accion": "registro",
@@ -12,7 +12,7 @@
     {
         "fecha": "2026-01-21 19:54",
         "tipo": "Recibido",
-        "serie": "654356",
+        "serie": 654356,
         "marca": "Dell",
         "equipo": "Laptop",
         "accion": "A\u00f1ade",
@@ -22,7 +22,7 @@
     {
         "fecha": "2026-01-21 19:54",
         "tipo": "Enviado",
-        "serie": "874636",
+        "serie": 874636,
         "marca": "Xtratech",
         "equipo": "CPU",
         "accion": "Env\u00edo",
