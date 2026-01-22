@@ -1,1 +1,32 @@
-[]
+[
+    {
+        "tipo": "Enviado",
+        "serie": "hdfjjhsfkjsfkjfdk",
+        "marca": "Samsung",
+        "equipo": "Monitor",
+        "accion": "envio",
+        "ubicacion": "Babahoyo",
+        "reporte": "Env\u00edo de monitor Samsung con serie hdfjjhsfkjsfkjfdk a Babahoyo.",
+        "fecha": "2026-01-21 19:59"
+    },
+    {
+        "tipo": "Enviado",
+        "serie": "jdkjskjsk",
+        "marca": "Dell",
+        "equipo": "Laptop",
+        "accion": "envio",
+        "ubicacion": "Paute",
+        "reporte": "Env\u00edo de laptop Dell con serie jdkjskjsk a Paute.",
+        "fecha": "2026-01-21 19:59"
+    },
+    {
+        "tipo": "Recibido",
+        "serie": "764893",
+        "marca": "Xtratech",
+        "equipo": "CPU",
+        "accion": "recepcion",
+        "ubicacion": "Latacunga",
+        "reporte": "Recepci\u00f3n de equipo CPU Xtratech con serie 764893 proveniente de Latacunga.",
+        "fecha": "2026-01-21 19:59"
+    }
+]
