@@ -82,48 +82,47 @@ def extraer_json(texto):
 st.title("🤖 LAIA NEURAL ENGINE v9.0")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
-# --- TAB 1: REGISTRO & ESTRATEGIA (CON MÁS NEURONAS) ---
+# --- TAB 1: REGISTRO & ESTRATEGIA (IA MEJORADA V9.3) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA V9.2: Corrección ortográfica activada. Distingue entre 'Laptop con cargador' (todo junto) y '50 Mouses a Stock' (masivo).")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Recibí 50 teclados y 50 mouses para stock. O llegó 1 Laptop HP con su cargador...")
+    st.info("💡 IA V9.3: Detecta Daños Críticos vs Estéticos. Si pides 'Informe Técnico', lo etiqueta automáticamente.")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Recibí Laptop HP con pantalla rota, hacer informe técnico. O llegaron 50 mouses a stock...")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA analizando sintaxis y lógica de inventario..."):
+            with st.spinner("LAIA diagnosticando estado y procesando inventario..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
-                    # --- PROMPT MAESTRO ACTUALIZADO ---
+                    # --- PROMPT MAESTRO DE DIAGNÓSTICO ---
                     prompt = f"""
-                    Actúa como un Auditor de Inventario Experto y Corrector Ortográfico.
+                    Actúa como un Auditor de Inventario y Técnico de Soporte Nivel 2.
                     TEXTO ORIGINAL: "{texto_input}"
                     
-                    TU MISIÓN (SIGUE ESTOS PASOS EN ORDEN):
+                    TU MISIÓN (SIGUE ESTOS PASOS ESTRICTAMENTE):
 
                     1. **CORRECCIÓN ORTOGRÁFICA**: 
-                       - Antes de procesar, corrige errores (ej: "cragador"->"Cargador", "mause"->"Mouse", "laptp"->"Laptop", "ponchadra"->"Ponchadora").
+                       - Corrige errores (ej: "cragador"->"Cargador", "mause"->"Mouse", "laptp"->"Laptop").
 
-                    2. **LÓGICA DE DESTINO ("Stock" vs "Movimiento")**:
-                       - Si el texto dice "a stock", "a bodega", "guardar", "inventariar" O son consumibles sueltos (cables, mouses, teclados sin serie), el campo 'destino' DEBE SER EXACTAMENTE "Stock".
-                       - Si es un envío a una sucursal (Quito, Manta), el 'destino' es el nombre de la ciudad.
+                    2. **DIAGNÓSTICO DE ESTADO (CRÍTICO)**:
+                       - **DAÑADO**: Si menciona fallas funcionales (ej: "Pantalla rota", "No prende", "No da video", "Teclado no sirve", "Golpeado fuerte").
+                         -> El campo 'estado' DEBE SER "Dañado".
+                       - **USADO**: Si solo son defectos cosméticos (ej: "Rayones", "Despintado", "Sucio", "Gomas gastadas").
+                         -> El campo 'estado' DEBE SER "Usado".
 
-                    3. **LÓGICA DE CANTIDADES (IMPORTANTE)**:
-                       - **Si es STOCK/CONSUMIBLES (Ej: 50 Mouses)**: Crea UNA SOLA fila. Cantidad = 50.
-                       - **Si son ACTIVOS CON SERIE (Ej: 2 Laptops)**: Crea UNA FILA POR CADA EQUIPO. Cantidad = 1 (para poder poner la serie a cada uno).
+                    3. **SOLICITUD DE INFORME TÉCNICO (IT)**:
+                       - Si el usuario pide "Hacer informe", "Revisar", "Diagnosticar" o "IT":
+                         -> AGREGA la etiqueta "[REQUIERE IT]" al principio del campo 'reporte'.
 
-                    4. **LÓGICA DE ACCESORIOS (El problema del Cargador)**:
-                       - Si el accesorio viene **CON** un equipo (Ej: "Laptop con cargador"): NO crees fila para el cargador. Escríbelo en el campo 'reporte' de la Laptop.
-                       - Si el accesorio viene **SUELTO** (Ej: "50 cargadores para stock"): SÍ crea su propia fila.
+                    4. **LÓGICA DE STOCK Y ACCESORIOS**:
+                       - Si dice "a stock", "bodega" o son consumibles masivos (50 mouses) -> Destino: "Stock", Cantidad: Total.
+                       - Equipos con serie (Laptop, CPU) -> Cantidad: 1 (una fila por equipo).
+                       - **Accesorio Adjunto** ("Laptop con cargador") -> NO crees fila extra. Ponlo en 'reporte' de la Laptop.
+                       - **Accesorio Suelto** ("50 cargadores a stock") -> SÍ crea fila.
 
-                    FORMATO DE SALIDA (SOLO JSON):
-                    Responde únicamente con un Array JSON válido.
-                    
-                    Ejemplo Masivo a Stock:
-                    [{{ "destino": "Stock", "tipo": "Recibido", "cantidad": 50, "equipo": "Teclado", "marca": "Genius", "serie": "S/N", "estado": "Nuevo", "ubicacion": "Bodega", "reporte": "Ingreso masivo" }}]
-
-                    Ejemplo Activo Unitario:
-                    [{{ "destino": "Quito", "tipo": "Enviado", "cantidad": 1, "equipo": "Laptop", "marca": "HP", "serie": "XYZ123", "estado": "Usado", "ubicacion": "Quito", "reporte": "Incluye cargador y mouse" }}]
+                    FORMATO DE SALIDA (JSON ARRAY):
+                    Ejemplo Dañado:
+                    [{{ "destino": "Taller", "tipo": "Recibido", "cantidad": 1, "equipo": "Laptop", "marca": "Dell", "serie": "ABC", "estado": "Dañado", "ubicacion": "Mesa 1", "reporte": "[REQUIERE IT] Pantalla trizada y bisagra rota. Incluye cargador." }}]
                     """
                     
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -135,12 +134,14 @@ with t1:
                         for d in datos: d["fecha"] = fecha
                         
                         if enviar_buzon(datos):
-                            st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
+                            st.success(f"✅ LAIA procesó {len(datos)} registros.")
+                            if any(d.get('estado') == 'Dañado' for d in datos):
+                                st.warning("⚠️ Se detectaron equipos DAÑADOS. Se moverán a la hoja de reportes.")
                             st.table(pd.DataFrame(datos))
                         else:
                             st.error("Error de conexión con GitHub.")
                     else:
-                        st.warning("La IA no generó datos válidos. Intenta ser más claro.")
+                        st.warning("La IA no pudo interpretar la orden. Intenta ser más específico.")
                             
                 except Exception as e:
                     st.error(f"Error crítico en IA: {e}")
