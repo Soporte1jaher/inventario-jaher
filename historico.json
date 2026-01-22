@@ -6,5 +6,61 @@
         "accion": "llegada",
         "ubicacion": "loja",
         "reporte": "llegada de equipo de loja laptop dell serie qwert"
+    },
+    {
+        "fecha": "2026-01-21 19:36",
+        "serie": "ytrewq",
+        "equipo": "laptop Dell",
+        "accion": "llegada",
+        "ubicacion": "Quito",
+        "reporte": "llegada de equipo de Quito laptop Dell serie ytrewq"
+    },
+    {
+        "fecha": "2026-01-21 19:36",
+        "serie": "zxcvbnm",
+        "equipo": "laptop Lenovo",
+        "accion": "env\u00edo",
+        "ubicacion": "Puyo",
+        "reporte": "env\u00edo de laptop Lenovo a Puyo serie zxcvbnm"
+    },
+    {
+        "fecha": "2026-01-21 19:37",
+        "serie": "",
+        "equipo": "",
+        "accion": "listar",
+        "ubicacion": "",
+        "reporte": ""
+    },
+    {
+        "fecha": "2026-01-21 19:38",
+        "serie": "1234567890",
+        "equipo": "laptop Dell",
+        "accion": "env\u00edo",
+        "ubicacion": "",
+        "reporte": "con cargador"
+    },
+    {
+        "fecha": "2026-01-21 19:38",
+        "serie": "zxcvbnm",
+        "equipo": "laptop HP",
+        "accion": "env\u00edo",
+        "ubicacion": "",
+        "reporte": "sin cargador"
+    },
+    {
+        "fecha": "2026-01-21 19:39",
+        "serie": "1234567890",
+        "equipo": "laptop Dell",
+        "accion": "env\u00edo",
+        "ubicacion": "",
+        "reporte": "con cargador"
+    },
+    {
+        "fecha": "2026-01-21 19:39",
+        "serie": "zxcvbnm",
+        "equipo": "laptop HP",
+        "accion": "env\u00edo",
+        "ubicacion": "",
+        "reporte": "sin cargador"
     }
 ]
