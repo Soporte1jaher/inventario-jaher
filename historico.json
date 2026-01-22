@@ -10,5 +10,65 @@
         "ubicacion":"No especificada",
         "reporte":"Incluye cargador HP.",
         "fecha":"2026-01-22 11:15"
+    },
+    {
+        "destino":"Taller",
+        "tipo":"CPU",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"645733",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"Desconocida",
+        "reporte":"No enciende. Se realizaron pruebas y no enciende.",
+        "fecha":"2026-01-22 11:17"
+    },
+    {
+        "destino":"Desconocido",
+        "tipo":"Laptop",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"uyetrte",
+        "estado":"Usado",
+        "ubicacion":"Desconocida",
+        "reporte":"En buen estado con cargador. Usado.",
+        "fecha":"2026-01-22 11:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"CPU",
+        "cantidad":20,
+        "equipo":"CPU",
+        "marca":"Desconocida",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"Data Center",
+        "reporte":"Para guardarse en Data Center.",
+        "fecha":"2026-01-22 11:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Mouse",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"Desconocida",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"Data Center",
+        "reporte":"Para guardarse en Data Center.",
+        "fecha":"2026-01-22 11:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Herramienta",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"Desconocida",
+        "serie":"Sin serie",
+        "estado":"Nuevo",
+        "ubicacion":"Data Center Nuevo",
+        "reporte":"Se va a guardar en Data Center Nuevo.",
+        "fecha":"2026-01-22 11:17"
     }
 ]
