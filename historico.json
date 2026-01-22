@@ -58,5 +58,17 @@
         "ubicacion":null,
         "reporte":null,
         "fecha":"2026-01-21 22:39"
+    },
+    {
+        "destino":"Movimientos",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Equipo",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-21 22:41"
     }
 ]
