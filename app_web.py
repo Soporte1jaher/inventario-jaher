@@ -8,7 +8,9 @@ from datetime import timedelta, timezone
 import pandas as pd
 import re
 
-# --- CONFIGURACIÓN DE PÁGINA (ESTÉTICA MAMADA) ---
+# ==========================================
+# 1. CONFIGURACIÓN Y ESTILOS
+# ==========================================
 st.set_page_config(page_title="LAIA NEURAL SYSTEM", page_icon="🧠", layout="wide")
 
 st.markdown("""
@@ -20,7 +22,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- CREDENCIALES ---
+# ==========================================
+# 2. CREDENCIALES Y CONEXIÓN
+# ==========================================
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
@@ -33,10 +37,11 @@ GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 
-# HEADER CORREGIDO
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"}
 
-# --- FUNCIONES DE APOYO (ESTRUCTURA ORIGINAL EXPANDIDA) ---
+# ==========================================
+# 3. FUNCIONES DE APOYO (GITHUB & FECHAS)
+# ==========================================
 def obtener_fecha_ecuador():
     return (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
@@ -77,76 +82,69 @@ def extraer_json(texto):
         return texto.strip()
     except: return ""
 
-# --- NUEVA FUNCIÓN: CÁLCULO MATEMÁTICO V14 (ESTA ES LA MAGIA QUE ARREGLA LOS CABLES) ---
+# ==========================================
+# 4. MOTOR MATEMÁTICO V14 (EL CEREBRO)
+# ==========================================
+# Esta función es CRÍTICA: Arregla "Cant", "None" y hace las restas.
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # --- PARCHE 1: ARREGLAR NOMBRES DE COLUMNAS (Cant -> cantidad) ---
-    # Convertimos encabezados a minúsculas y quitamos espacios
-    df_c.columns = df_c.columns.str.strip().str.lower()
-    
-    # Mapeamos los nombres de tu foto a lo que usa el cálculo
-    mapa = {
-        'cant': 'cantidad', 
-        'condición': 'estado', 
-        'condicion': 'estado',
-        'cond': 'estado'
-    }
-    df_c = df_c.rename(columns=mapa)
-    
-    # --- PARCHE 2: ARREGLAR "None" vs "Genérica" ---
-    # Aseguramos que existan las columnas y sean texto minúscula
-    for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
-        if col not in df_c.columns: df_c[col] = "n/a"
-        df_c[col] = df_c[col].astype(str).str.strip().str.lower()
+    # 1. Limpieza de nombres de columnas (Arregla "Cant" vs "cantidad")
+    df_c.columns = df_c.columns.str.lower().str.strip()
+    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
+    df_c = df_c.rename(columns=mapa_cols)
 
-    # Convertimos cualquier variante de "vacío" a una palabra estándar
-    # Así "Cable HDMI None" (Salida) restará a "Cable HDMI Genérica" (Entrada)
-    nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
+    # 2. Rellenar vacíos y limpiar textos
+    for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
+        if col not in df_c.columns: df_c[col] = "N/A"
+        df_c[col] = df_c[col].astype(str).str.strip()
     
-    df_c['marca'] = df_c['marca'].replace(nulos, 'genérica')
-    df_c['estado'] = df_c['estado'].replace(nulos, 'nuevo')
+    # 3. Unificar "None", "N/A" -> "Genérica" (Para que sumen y resten bien)
+    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
+    df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
+    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
     
-    # Asegurar números (Si falla, pone 1)
+    # 4. Asegurar números
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # --- PARCHE 3: MATEMÁTICA (+/-) ---
+    # 5. Lógica de Flujo (+/-)
     def flujo(row):
-        tipo = row['tipo']
-        dest = row['destino']
-        ser = row['serie']
+        tipo = str(row['tipo']).lower()
+        dest = str(row['destino']).lower()
+        ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si tiene serie larga (>3 letras) y no es nula, es Activo Único -> NO se suma al bulto
-        es_activo = len(ser) > 3 and not any(x in ser for x in nulos) and ser != "sin serie"
+        # Si es activo único (serie larga), no suma al bulto de saldos
+        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin'])
         if es_activo: return 0
         
-        # Entradas a stock suman
+        # Si el destino es Stock = Suma (Entrada)
         if dest == 'stock': return cant
         
-        # Salidas restan
-        if 'env' in tipo or 'sal' in tipo: return -cant
-        
+        # Si es salida = Resta
+        if 'enviado' in tipo or 'salida' in tipo: return -cant
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # --- AGRUPAR RESULTADOS ---
+    # 6. Agrupar (Equipo, Marca)
     df_c['equipo'] = df_c['equipo'].str.capitalize()
+    df_c['marca'] = df_c['marca'].str.capitalize()
+    
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
+    stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
     
-    # Devolver tabla bonita con columnas correctas
-    stock.columns = ['Equipo', 'Marca', 'Cantidad']
-    
-    return stock[stock['Cantidad'] > 0]
+    # Solo devolvemos lo que tiene saldo positivo
+    return stock[stock['Stock_Disponible'] > 0]
 
-# --- INTERFAZ ---
-st.title("🤖 LAIA NEURAL ENGINE v14.0")
+# ==========================================
+# 5. INTERFAZ PRINCIPAL
+# ==========================================
+st.title("🤖 LAIA NEURAL ENGINE v18.0")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
-# --- TAB 1: REGISTRO & ESTRATEGIA ---
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
@@ -199,7 +197,7 @@ with t1:
                             # REGLA 1: Si es salida explícita, se respeta como ENVIADO (Resta)
                             if any(x in tipo_ia for x in ["env", "sal", "desp"]):
                                 d["tipo"] = "Enviado"
-                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos a "Salida General"
+                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos
                                 if "stock" in dest_ia: d["destino"] = "Destino Externo"
                             
                             # REGLA 2: Si es entrada explícita o destino stock, es RECIBIDO (Suma)
@@ -219,13 +217,12 @@ with t1:
                         else: st.error("Error GitHub")
                 except Exception as e: st.error(f"Error IA: {e}")
 
-# --- TAB 2: CHAT IA (CON BOTÓN DE LIMPIAR) ---
+# --- TAB 2: CHAT IA (MATEMÁTICO + RESET) ---
 with t2:
-    col_c1, col_c2 = st.columns([4, 1])
-    with col_c1:
-        st.subheader("💬 Consulta Inteligente")
-    with col_c2:
-        if st.button("🧹 Nueva Charla"):
+    c1, c2 = st.columns([4, 1])
+    with c1: st.subheader("💬 Consulta Inteligente")
+    with c2: 
+        if st.button("🧹 Limpiar"):
             st.session_state.messages = []
             st.rerun()
 
@@ -233,24 +230,20 @@ with t2:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if p_chat := st.chat_input("¿Qué equipos tenemos en Ambato?"):
+    if p_chat := st.chat_input("Consulta tu stock..."):
         st.session_state.messages.append({"role": "user", "content": p_chat})
         with st.chat_message("user"): st.markdown(p_chat)
         
-        # OBTENER DATOS Y CALCULAMOS STOCK REAL PARA LA IA
         hist, _ = obtener_github(FILE_HISTORICO)
-        df_hist = pd.DataFrame(hist)
-        df_real = calcular_stock_web(df_hist) # Usamos la función V14
+        # Calculamos Stock Real para dárselo a la IA
+        df_real = calcular_stock_web(pd.DataFrame(hist))
         
-        # Contexto enriquecido
         contexto = f"""
-        INVENTARIO REAL (Saldos Calculados Matemáticamente):
-        {df_real.to_string(index=False) if not df_real.empty else "Sin stock"}
+        INVENTARIO DISPONIBLE (Saldos):
+        {df_real.to_string(index=False) if not df_real.empty else "Bodega Vacía"}
         
-        HISTORIAL COMPLETO: {json.dumps(hist[-150:])}
-        
+        HISTORIAL COMPLETO: {json.dumps(hist[-50:])}
         USUARIO: {p_chat}
-        Responde basándote en la tabla de INVENTARIO REAL si preguntan cantidades.
         """
         
         client = genai.Client(api_key=API_KEY)
@@ -259,137 +252,92 @@ with t2:
         with st.chat_message("assistant"): st.markdown(resp.text)
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
-# --- TAB 3: LIMPIEZA QUIRÚRGICA ---
+# --- TAB 3: LIMPIEZA ---
 with t3:
     st.subheader("🗑️ Eliminación por Razonamiento")
-    st.warning("⚠️ Aquí puedes ser descriptivo: 'Borra el CPU de Ambato' o 'Borra los mouses dañados'")
-    txt_borrar = st.text_input("¿Qué quieres eliminar?")
-    
-    if st.button("🔥 EJECUTAR BORRADO DE PRECISIÓN"):
+    txt_borrar = st.text_input("Describe qué borrar:")
+    if st.button("🔥 EJECUTAR BORRADO"):
         if txt_borrar:
-            with st.spinner("LAIA localizando el registro en el historial..."):
-                hist, _ = obtener_github(FILE_HISTORICO)
-                contexto_borrado = json.dumps(hist[-100:]) if hist else "[]"
-                
-                client = genai.Client(api_key=API_KEY)
-                prompt_b = f"""
-                DADOS ESTOS REGISTROS: {contexto_borrado}
-                ORDEN DEL USUARIO: "{txt_borrar}"
-                TAREA: Identifica qué registro exacto quiere borrar. 
-                Responde UNICAMENTE un JSON con este formato:
-                [{{"accion": "borrar_quirurgico", "serie": "SERIE_A_BORRAR", "equipo": "NOMBRE", "motivo": "RAZON"}}]
-                Si el usuario dice "borra todo", la accion es "borrar_todo".
-                """
-                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-                orden_json = extraer_json(resp.text)
-                
-                if orden_json:
-                    try:
-                        data_borrado = json.loads(orden_json)
-                        if enviar_buzon(data_borrado):
-                            st.success("🎯 LAIA identificó el registro y envió la orden de eliminación.")
-                            st.json(orden_json)
-                    except Exception as e:
-                        st.error(f"Error procesando respuesta de borrado: {e}")
-                else:
-                    st.error("LAIA no pudo identificar qué registro borrar.")
+            hist, _ = obtener_github(FILE_HISTORICO)
+            client = genai.Client(api_key=API_KEY)
+            prompt_b = f"DATA: {json.dumps(hist[-100:])}. DELETE: '{txt_borrar}'. JSON: [{{'accion':'borrar_quirurgico', 'serie':'...', 'equipo':'...'}}]"
+            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+            orden = extraer_json(resp.text)
+            if orden and enviar_buzon(json.loads(orden)):
+                st.success("Orden enviada.")
+                st.json(orden)
 
-# --- TAB 4: BI & HISTORIAL (MEJORADO CON STOCK REAL Y KPIs) ---
+# --- TAB 4: DASHBOARD (REORGANIZADO COMO PEDISTE) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
-    if c_head2.button("🔄 Actualizar Datos en Tiempo Real"):
-        st.rerun()
+    if c_head2.button("🔄 Actualizar Datos"): st.rerun()
 
     datos, _ = obtener_github(FILE_HISTORICO)
-    
     if datos:
         df = pd.DataFrame(datos)
         
-        # --- PRE-PROCESAMIENTO ---
-        for col in ['destino', 'estado', 'marca', 'equipo', 'tipo', 'serie']:
-            if col not in df.columns: df[col] = "N/A"
-        
-        df['tipo'] = df['tipo'].astype(str)
-        df['destino'] = df['destino'].astype(str)
-        
-        # --- CÁLCULO DE STOCK REAL ---
+        # 1. Calculamos el Stock igual que en el Excel
         df_stock_real = calcular_stock_web(df)
         df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
-        # KPIs
-        cant_env = len(df[df['tipo'].str.lower().str.contains('enviado') | df['tipo'].str.lower().str.contains('salida')])
-        cant_rec = len(df[df['tipo'].str.lower().str.contains('recibido') | df['tipo'].str.lower().str.contains('entrada')])
-        total_unidades = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
-        
-        # Métricas visuales
+        # 2. KPIs
+        total_items = int(df_stock_real['Stock_Disponible'].sum()) if not df_stock_real.empty else 0
+        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')]) if 'tipo' in df.columns else 0
+        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
+            
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad Alta", delta_color="inverse")
-        kpi2.metric("📦 Stock Disp.", total_unidades, delta="Unidades")
+        kpi2.metric("📦 Stock Disp.", total_items)
         kpi3.metric("📤 Enviados", cant_env, delta_color="off")
         kpi4.metric("📥 Recibidos", cant_rec)
         
         st.divider()
 
-        # --- PESTAÑAS EN EL ORDEN SOLICITADO ---
+        # 3. PESTAÑAS (ORDEN SOLICITADO: Dañados -> Stock -> Movimientos -> Gráficas)
         t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
         
-        # 1. EQUIPOS DAÑADOS
+        # PESTAÑA 1: DAÑADOS
         with t_bad:
-            st.error("🚨 Lista de equipos que requieren reparación o baja:")
+            st.error("🚨 Reporte de Daños")
             if not df_bad.empty:
-                # Ponemos el reporte primero para leer rápido el daño
                 cols = list(df_bad.columns)
                 if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
                 st.dataframe(df_bad[cols], use_container_width=True)
             else:
-                st.success("¡Todo limpio! No hay equipos dañados.")
+                st.success("Sin equipos dañados.")
 
-        # 2. STOCK (SALDOS)
+        # PESTAÑA 2: STOCK (RESUMEN)
         with t_stock:
-            st.info("Inventario Real Disponible (Calculado: Entradas - Salidas).")
+            st.info("Inventario Real Disponible (Calculado).")
             if not df_stock_real.empty:
-                # Formato idéntico al Excel
-                df_mostrar = df_stock_real.rename(columns={
-                    'Cantidad': 'Stock_Disponible',
-                    'Equipo': 'Equipo',
-                    'Marca': 'Marca'
-                })
-                st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
+                st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
             else:
                 st.warning("Bodega vacía.")
 
-        # 3. ENVIADOS Y RECIBIDOS (SELECTOR)
+        # PESTAÑA 3: HISTORIAL (SELECTOR)
         with t_mov:
-            st.markdown("### 🚦 Historial de Movimientos")
-            filtro = st.radio("Selecciona tipo de movimiento:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
-            
+            st.markdown("### 🚦 Historial")
+            filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
             if filtro == "Enviados":
-                st.dataframe(df[df['tipo'].str.lower().str.contains('env')], use_container_width=True)
+                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
             elif filtro == "Recibidos":
-                st.dataframe(df[df['tipo'].str.lower().str.contains('rec')], use_container_width=True)
+                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('recibido')], use_container_width=True)
             else:
                 st.dataframe(df, use_container_width=True)
 
-        # 4. GRÁFICAS
+        # PESTAÑA 4: GRÁFICAS
         with t_graf:
-            st.markdown("### 📈 Estadísticas Visuales")
-            col_g1, col_g2 = st.columns(2)
-            
-            with col_g1:
-                st.markdown("**Top Marcas en Movimiento**")
-                if 'marca' in df.columns:
-                    st.bar_chart(df['marca'].value_counts().head(10), color="#2e7d32")
-            
-            with col_g2:
-                st.markdown("**Distribución por Tipo de Equipo**")
-                if 'equipo' in df.columns:
-                    st.bar_chart(df['equipo'].value_counts().head(10), color="#1F4E78")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Top Marcas**")
+                if 'marca' in df.columns: st.bar_chart(df['marca'].value_counts().head(5), color="#2e7d32")
+            with c2:
+                st.markdown("**Top Equipos**")
+                if 'equipo' in df.columns: st.bar_chart(df['equipo'].value_counts().head(5), color="#1F4E78")
 
-        # Botón de Descarga Global
         st.divider()
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Descargar Base Completa (CSV)", csv, "inventario_jaher.csv", "text/csv")
-
+        st.download_button("📥 Descargar Base (CSV)", csv, "inventario.csv", "text/csv")
     else:
-        st.warning("⚠️ Sin conexión a base de datos.")
+        st.warning("Sin datos.")
