@@ -7,6 +7,7 @@ import datetime
 from datetime import timedelta, timezone
 import pandas as pd
 import re
+import time
 
 # ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA
