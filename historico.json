@@ -22,5 +22,17 @@
         "ubicacion":"bodega 1",
         "reporte":null,
         "fecha":"2026-01-21 22:29"
+    },
+    {
+        "destino":"Movimientos",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"laptop",
+        "marca":"hp",
+        "serie":"hdhdhdhdhd",
+        "estado":"Nuevo",
+        "ubicacion":"Ambato",
+        "reporte":"Ingreso de laptop HP desde Ambato",
+        "fecha":"2026-01-21 22:33"
     }
 ]
