@@ -1,3 +1,74 @@
 [
-
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n General",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n General",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n Herramientas",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de Pantalla",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n Insumos",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de Equipos",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n Insumos",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":10,
+        "equipo":"Cable HDMI",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"Almac\u00e9n Cables",
+        "reporte":"Ingreso por nueva recepci\u00f3n. Verificaci\u00f3n pendiente.",
+        "fecha":"2026-01-22 16:43"
+    }
 ]
