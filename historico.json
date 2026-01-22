@@ -118,5 +118,65 @@
         "ubicacion":"Origen",
         "reporte":"Forma parte del env\u00edo del CPU.",
         "fecha":"2026-01-22 15:45"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"zxcvb",
+        "estado":"Desconocido",
+        "ubicacion":"Desconocido",
+        "reporte":"Incluye monitor serie asdfg",
+        "fecha":"2026-01-22 15:47"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Desconocido",
+        "serie":"Desconocido",
+        "estado":"Desconocido",
+        "ubicacion":"Desconocido",
+        "reporte":"",
+        "fecha":"2026-01-22 15:47"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"Mouse",
+        "marca":"Desconocido",
+        "serie":"Desconocido",
+        "estado":"Desconocido",
+        "ubicacion":"Desconocido",
+        "reporte":"",
+        "fecha":"2026-01-22 15:47"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":"Desconocido",
+        "serie":"Desconocido",
+        "estado":"Desconocido",
+        "ubicacion":"Desconocido",
+        "reporte":"",
+        "fecha":"2026-01-22 15:47"
+    },
+    {
+        "destino":"Imbabura",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Limpiador de pantalla",
+        "marca":"Desconocido",
+        "serie":"Desconocido",
+        "estado":"Desconocido",
+        "ubicacion":"Desconocido",
+        "reporte":"",
+        "fecha":"2026-01-22 15:47"
     }
 ]
