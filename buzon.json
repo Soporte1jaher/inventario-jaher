@@ -1,12 +1,1 @@
-[
-    {
-        "accion": "borrar_filtro",
-        "columna": "descripcion",
-        "valor": "cargador de columna marca dell"
-    },
-    {
-        "accion": "borrar_filtro",
-        "columna": "stock",
-        "valor": "stock"
-    }
-]
+[]
