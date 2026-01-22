@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "accion": "borrar_vacios",
+        "serie": null,
+        "equipo": null,
+        "motivo": null
+    }
+]
