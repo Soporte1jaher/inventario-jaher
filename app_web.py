@@ -89,7 +89,7 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Normalizar nombres de columnas (Arregla "Cant" vs "cantidad")
+    # 1. Normalizar nombres de columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
     mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
     df_c = df_c.rename(columns=mapa_cols)
@@ -99,39 +99,48 @@ def calcular_stock_web(df):
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # 3. UNIFICAR "None" -> "Genérica" (ESTO ARREGLA LA RESTA)
-    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica', 'desconocida']
-    df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
-    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo') # O 'bueno'
+    # 3. UNIFICAR MARCAS (Corregido: añadimos 'generico' con 'o')
+    # Usamos una técnica más fuerte para limpiar marcas
+    def limpiar_marca(m):
+        m = m.lower()
+        nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica', 'generico', 'genérico']
+        if m in nulos: return "Genérica"
+        return m.title() # "Samsung", "Dell", etc.
+
+    df_c['marca'] = df_c['marca'].apply(limpiar_marca)
     
-    # 4. Asegurar números
-    if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
+    # 4. Limpiar nombres de equipos (Mantenemos Mayúsculas como HDMI o RJ45)
+    df_c['equipo'] = df_c['equipo'].str.strip()
+    
+    # 5. Asegurar números
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 5. Lógica (+/-)
+    # 6. Lógica de Flujo (+/-)
     def flujo(row):
         tipo = str(row['tipo']).lower()
         dest = str(row['destino']).lower()
         ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si es activo único (serie larga), no suma al bulto
-        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin', 'genérica'])
-        if es_activo: return 0
+        # Si tiene serie real (ej: Laptop), no lo sumamos al bulto (stock general)
+        es_activo_unico = len(ser) > 4 and not any(x in ser for x in ['n/a', 'none', 'null', 'generi'])
+        if es_activo_unico: return 0
         
-        if dest == 'stock': return cant # Entrada
-        if 'enviado' in tipo or 'salida' in tipo: return -cant # Salida
+        # SI VA AL STOCK ES POSITIVO, SI SALE DEL STOCK (ENVIADO) ES NEGATIVO
+        if dest == 'stock': 
+            return cant
+        if 'env' in tipo or 'sal' in tipo: 
+            return -cant
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 6. Agrupar
-    df_c['equipo'] = df_c['equipo'].str.capitalize()
-    df_c['marca'] = df_c['marca'].str.capitalize()
+    # 7. Agrupar (Aquí ocurre la magia de la resta)
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
     stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
     
-    return stock[stock['Stock_Disponible'] > 0]
+    # Solo mostrar lo que realmente hay en bodega
+    return stock[stock['Stock_Disponible'] > 0].sort_values('Equipo')
 
 # ==========================================
 # 5. INTERFAZ
@@ -304,7 +313,7 @@ with t4:
     c_head1.subheader("📊 Dashboard de Control de Activos")
     if c_head2.button("🔄 Actualizar Datos"): st.rerun()
 
-    datos, _ = obtener_github(FILE_HISTORICO)
+    datos, _ = obtener_github(f"{FILE_HISTORICO}?nocache={time.time()}")
     if datos:
         df = pd.DataFrame(datos)
         
