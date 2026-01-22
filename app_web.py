@@ -142,37 +142,46 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA V16.5: Detecta si 'de stock' es origen (Resta) o destino (Suma).")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta) / Recibí mouse a Stock... (Suma)")
+    st.info("💡 IA V9.5: Lógica Unificada. Corrige ortografía, detecta daños, crea reportes IT y fuerza el tipo a 'Enviado' o 'Recibido'.")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU a Manta. O me llegó una Laptop de Pedernales con pantalla rota para informe...")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA analizando flujo de inventario..."):
+            with st.spinner("LAIA procesando: Estandarizando Tipo, Estado y Reportes..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
-                    # PROMPT DE LÓGICA LOGÍSTICA
                     prompt = f"""
-                    Actúa como un Gerente de Logística Experto. TEXTO: "{texto_input}"
+                    Actúa como un Auditor de Inventario y Experto Logístico.
+                    TEXTO DE ENTRADA: "{texto_input}"
                     
-                    TU MISIÓN: Determinar si el inventario SUMA o RESTA.
+                    SIGUE ESTAS 5 REGLAS DE ORO PARA GENERAR EL JSON:
 
-                    REGLAS DE ORO:
-                    1. SALIDAS (RESTA):
-                       - Palabras clave: "Envié", "Salida", "Despacho", "Mandar a", "Salió".
-                       - Si dice "de stock", significa que SALE de la bodega.
-                       - ACCIÓN: TIPO="Enviado". DESTINO="[Ciudad/Lugar]". (NUNCA pongas 'Stock' en destino si es salida).
+                    1. **TIPO DE MOVIMIENTO (ESTRICTO - BINARIO)**:
+                       - Este campo SOLO admite: "Recibido" o "Enviado".
+                       - Si implica entrada (Llegó, Recibí, Inventariar, A stock) -> TIPO: "Recibido".
+                       - Si implica salida (Envié, Se fue, Para [Ciudad], Salida) -> TIPO: "Enviado".
+                       - 🚫 PROHIBIDO poner nombres de equipos en este campo.
 
-                    2. ENTRADAS (SUMA):
-                       - Palabras clave: "Recibí", "Llegó", "Ingreso", "A stock", "Devolución".
-                       - ACCIÓN: TIPO="Recibido". DESTINO="Stock".
+                    2. **DIAGNÓSTICO DE ESTADO**:
+                       - "Dañado": Fallas funcionales.
+                       - "Usado": Defectos estéticos.
+                       - "Nuevo": Solo si se especifica.
 
-                    3. PROCESAMIENTO:
-                       - "20 mouses" -> cantidad: 20.
-                       - "Laptop con cargador" -> Cargador va en 'reporte', NO fila nueva.
-                       - "cragador" -> "Cargador".
+                    3. **INFORME TÉCNICO (IT)**:
+                       - Si pide revisar/diagnosticar: AGREGA "[REQUIERE IT]" al inicio del campo 'reporte'.
 
-                    JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+                    4. **CORRECCIÓN Y LIMPIEZA**:
+                       - Corrige ortografía ("cragador"->"Cargador").
+                       - Estandariza Marcas.
+
+                    5. **LÓGICA DE STOCK Y ACCESORIOS**:
+                       - "A Stock" -> Destino: "Stock".
+                       - "Laptop con cargador" -> Cargador en reporte.
+                       - "50 mouses" -> Cantidad: 50.
+
+                    FORMATO SALIDA (JSON):
+                    [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
                     """
                     
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -182,35 +191,36 @@ with t1:
                         datos = json.loads(json_limpio)
                         fecha = obtener_fecha_ecuador()
                         
+                        # --- CAPA DE SEGURIDAD PYTHON ---
                         for d in datos: 
                             d["fecha"] = fecha
                             
-                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA) ---
-                            tipo_ia = str(d.get("tipo", "")).lower()
-                            dest_ia = str(d.get("destino", "")).lower()
-                            
-                            # REGLA 1: Si es salida explícita, se respeta como ENVIADO (Resta)
-                            if any(x in tipo_ia for x in ["env", "sal", "desp"]):
+                            # 1. Corrección forzada de TIPO
+                            tipo_raw = str(d.get("tipo", "")).lower()
+                            if "env" in tipo_raw or "sal" in tipo_raw:
                                 d["tipo"] = "Enviado"
-                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos
-                                if "stock" in dest_ia: d["destino"] = "Destino Externo"
-                            
-                            # REGLA 2: Si es entrada explícita o destino stock, es RECIBIDO (Suma)
-                            elif any(x in tipo_ia for x in ["rec", "lleg", "ing"]) or "stock" in dest_ia:
+                            elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
                                 d["tipo"] = "Recibido"
-                                d["destino"] = "Stock"
-                            
-                            # REGLA 3: Corrección de Estado
-                            est = str(d.get("estado", "")).lower()
-                            if "dañ" in est or "rot" in est: d["estado"] = "Dañado"
+                            else:
+                                d["tipo"] = "Recibido" # Default
+
+                            # 2. Corrección forzada de ESTADO
+                            estado_raw = str(d.get("estado", "")).lower()
+                            if "dañ" in estado_raw or "rot" in estado_raw or "mal" in estado_raw:
+                                d["estado"] = "Dañado"
 
                         if enviar_buzon(datos):
-                            st.success(f"✅ Procesado: {len(datos)} registros.")
+                            st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
                             if any(d.get('estado') == 'Dañado' for d in datos):
-                                st.warning("⚠️ Se detectaron equipos DAÑADOS.")
+                                st.warning("⚠️ Se detectaron equipos DAÑADOS. Se enviarán a la hoja de reportes.")
                             st.table(pd.DataFrame(datos))
-                        else: st.error("Error GitHub")
-                except Exception as e: st.error(f"Error IA: {e}")
+                        else:
+                            st.error("Error de conexión con GitHub.")
+                    else:
+                        st.warning("La IA no pudo interpretar la orden. Intenta ser más claro.")
+                            
+                except Exception as e:
+                    st.error(f"Error crítico en IA: {e}")
 
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
