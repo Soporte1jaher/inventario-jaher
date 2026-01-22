@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "Dell",
+        "serie": "AAAAAS",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Con cargador",
+        "fecha": "2026-01-22 17:40"
+    },
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "838474",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Con monitor, mouse, teclado y cable HDMI",
+        "fecha": "2026-01-22 17:40"
+    },
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "serie": "HGBCBCBBC",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Incluido con el CPU Xtech serie 838474",
+        "fecha": "2026-01-22 17:40"
+    },
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Mouse",
+        "marca": "Generico",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Incluido con el CPU Xtech serie 838474",
+        "fecha": "2026-01-22 17:40"
+    },
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Teclado",
+        "marca": "Generico",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Incluido con el CPU Xtech serie 838474",
+        "fecha": "2026-01-22 17:40"
+    },
+    {
+        "destino": "Portete",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Cable HDMI",
+        "marca": "Generico",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Bodega",
+        "reporte": "Incluido con el CPU Xtech serie 838474",
+        "fecha": "2026-01-22 17:40"
+    }
+]
