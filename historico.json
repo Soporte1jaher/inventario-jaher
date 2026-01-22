@@ -34,5 +34,17 @@
         "ubicacion":"latacunga",
         "reporte":"CPU Xtech enviado a Latacunga con las configuraciones necesarias.",
         "fecha":"2026-01-22 10:17"
+    },
+    {
+        "destino":"datacenter",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"datacenter",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 10:47"
     }
 ]
