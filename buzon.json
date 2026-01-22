@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "destino": "...",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Monitor",
+        "marca": "LG",
+        "serie": "nhfhfhf",
+        "estado": "...",
+        "ubicacion": "...",
+        "reporte": "Incluye 2 cables HDMI.",
+        "fecha": "2026-01-22 12:59"
+    }
+]
