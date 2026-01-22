@@ -7,14 +7,15 @@ import datetime
 from datetime import timedelta, timezone
 import pandas as pd
 
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Inventario Inteligente Jaher", page_icon="🤖", layout="wide")
 
+# --- CREDENCIALES ---
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("Configura los Secrets en Streamlit.")
+    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY) en Streamlit.")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
@@ -23,22 +24,30 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"}
 
+# --- FUNCIONES DE APOYO ---
 def obtener_fecha_ecuador():
     return (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
 def obtener_github(archivo):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
-    resp = requests.get(url, headers=HEADERS)
-    if resp.status_code == 200:
-        d = resp.json()
-        return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
+    try:
+        resp = requests.get(url, headers=HEADERS)
+        if resp.status_code == 200:
+            d = resp.json()
+            return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
+    except:
+        pass
     return [], None
 
 def enviar_buzon(datos):
     if not isinstance(datos, list): datos = [datos]
     actuales, sha = obtener_github(FILE_BUZON)
     actuales.extend(datos)
-    payload = {"message":"Web Update","content":base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),"sha":sha}
+    payload = {
+        "message": "Web Update",
+        "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
+        "sha": sha
+    }
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
@@ -49,98 +58,121 @@ def extraer_json(texto):
         f = texto.rfind("]") + 1
         if f <= 0: f = texto.rfind("}") + 1
         return texto[i:f]
-    except: return ""
+    except:
+        return ""
 
 # --- INTERFAZ ---
-st.title(" Asistente Jaher ")
+st.title("🤖 Asistente de Inventario Jaher")
 t1, t2, t3, t4 = st.tabs(["📝 Registrar", "💬 Chat IA", "🗑️ Borrar", "📊 Historial"])
 
-# --- REEMPLAZA EL TAB 1 EN TU STREAMLIT ---
+# --- TAB 1: REGISTRAR ---
 with t1:
-    st.subheader("Registro Detallado con IA")
-    txt = st.text_area("Describe el movimiento (Ej: Se guarda en bodega monitor AOC serie 12345 que llega de Paute):")
+    st.subheader("📝 Registro de Movimientos Inteligente")
+    st.info("La IA clasificará automáticamente: Tipo (Recibido/Enviado), Marca, Equipo y Ubicación.")
     
-    if st.button("✨ Procesar e Ingresar"):
-        if txt:
-            client = genai.Client(api_key=API_KEY)
-            # PROMPT AVANZADO
-            prompt = f"""
-            Analiza el siguiente texto de inventario: "{txt}"
-            
-            REGLAS DE CLASIFICACIÓN:
-            1. tipo: Determina si el equipo está entrando ("Recibido") o saliendo ("Enviado").
-            2. marca: Extrae solo la marca (ej: AOC, Dell, HP). Si no hay, usa "S/M".
-            3. equipo: El tipo de dispositivo (ej: Monitor, Laptop, Impresora).
-            4. accion: Una frase corta del estado (ej: "Guardado en bodega", "Ingreso por reparación").
-            5. reporte: Detalla accesorios o estado físico mencionado.
-            
-            Corrige ortografía. Devuelve una LISTA JSON con este formato:
-            [{{
-                "tipo": "Recibido/Enviado",
-                "serie": "...",
-                "marca": "...",
-                "equipo": "...",
-                "accion": "...",
-                "ubicacion": "...",
-                "reporte": "..."
-            }}]
-            """
-            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-            datos_ia = json.loads(extraer_json(resp.text))
-            
-            fecha = obtener_fecha_ecuador()
-            if isinstance(datos_ia, dict): datos_ia = [datos_ia]
-            for d in datos_ia: d["fecha"] = fecha
-            
-            if enviar_buzon(datos_ia):
-                st.success("✅ Registro detallado enviado al buzón.")
-                st.json(datos_ia)
+    texto_input = st.text_area(
+        "Describe el movimiento:", 
+        placeholder="Ej: llega de manta un monitor sansum serie 12345 con su base y cable de poder se guarda en bodega",
+        height=150
+    )
+    
+    if st.button("🚀 Procesar e Ingresar al Inventario", type="primary"):
+        if texto_input.strip():
+            with st.spinner("La IA está analizando y corrigiendo el registro..."):
+                try:
+                    client = genai.Client(api_key=API_KEY)
+                    prompt = f"""
+                    Actúa como experto en logística. Analiza: "{texto_input}"
+                    TAREAS:
+                    1. CLASIFICACIÓN: 'Recibido' si entra/llega, 'Enviado' si sale/se va.
+                    2. CORRECCIÓN: Corrige marcas y nombres (ej: 'sansum' -> 'Samsung').
+                    3. EXTRACCIÓN: Separa Marca de Equipo.
+                    Devuelve LISTA JSON:
+                    [{{
+                        "tipo": "Recibido o Enviado",
+                        "serie": "...",
+                        "marca": "...",
+                        "equipo": "...",
+                        "accion": "...",
+                        "ubicacion": "...",
+                        "reporte": "..."
+                    }}]
+                    """
+                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+                    json_limpio = extraer_json(resp.text)
+                    
+                    if json_limpio:
+                        datos_ia = json.loads(json_limpio)
+                        if isinstance(datos_ia, dict): datos_ia = [datos_ia]
+                        
+                        fecha_actual = obtener_fecha_ecuador()
+                        for item in datos_ia:
+                            item["fecha"] = fecha_actual
+                        
+                        if enviar_buzon(datos_ia):
+                            st.balloons()
+                            st.success(f"✅ Registro exitoso ({fecha_actual})")
+                            st.table(pd.DataFrame(datos_ia))
+                        else:
+                            st.error("❌ Error al conectar con GitHub.")
+                    else:
+                        st.error("❌ La IA no entendió el mensaje. Intenta ser más claro.")
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+        else:
+            st.warning("⚠️ Escribe algo primero.")
 
+# --- TAB 2: CHAT IA ---
 with t2:
-    st.subheader("Chat sobre el Inventario")
-    if "messages" not in st.session_state: st.session_state.messages = []
+    st.subheader("💬 Consulta Inteligente")
+    if "messages" not in st.session_state: 
+        st.session_state.messages = []
+
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt_chat := st.chat_input("¿Qué deseas saber?"):
-        st.session_state.messages.append({"role": "user", "content": prompt_chat})
-        with st.chat_message("user"): st.markdown(prompt_chat)
+    if p_chat := st.chat_input("¿Qué deseas saber del inventario?"):
+        st.session_state.messages.append({"role": "user", "content": p_chat})
+        with st.chat_message("user"): st.markdown(p_chat)
         
         historial, _ = obtener_github(FILE_HISTORICO)
-        full_p = f"Datos inventario: {json.dumps(historial)}. Pregunta: {prompt_chat}"
+        full_p = f"Datos actuales: {json.dumps(historial)}. Pregunta: {p_chat}. Responde profesionalmente."
+        
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=full_p)
         
         with st.chat_message("assistant"): st.markdown(resp.text)
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
+# --- TAB 3: BORRAR ---
 with t3:
-    st.subheader("Eliminación Inteligente")
-    txt_borrar = st.text_area("Dime qué quieres borrar (puedes poner varias series o frases):", 
-                              placeholder="Ej: borra la serie 9876, 674763 y la hdfhhdhd")
+    st.subheader("🗑️ Eliminación Inteligente")
+    txt_borrar = st.text_area("Dime qué quieres borrar:", placeholder="Ej: borra la serie 12345 y la serie 67890")
     
-    if st.button("🗑️ EJECUTAR BORRADO INTELIGENTE"):
+    if st.button("🗑️ EJECUTAR BORRADO"):
         if txt_borrar:
-            with st.spinner("La IA está identificando las series..."):
+            with st.spinner("Procesando órdenes de borrado..."):
                 client = genai.Client(api_key=API_KEY)
-                # Le pedimos a la IA que extraiga CADA serie por separado
-                prompt_b = f"""
-                Del siguiente texto, extrae TODAS las series mencionadas: "{txt_borrar}"
-                Devuelve estrictamente una LISTA JSON de objetos:
-                [ {{"serie": "SERIE1", "accion": "borrar"}}, {{"serie": "SERIE2", "accion": "borrar"}} ]
-                Si no hay series claras, devuelve []
-                """
+                prompt_b = f"Extrae las series de este texto: '{txt_borrar}'. Devuelve LISTA JSON: [{{'serie': '...', 'accion': 'borrar'}}]"
                 resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-                lista_para_borrar = json.loads(extraer_json(resp.text))
                 
-                if lista_para_borrar:
-                    if enviar_buzon(lista_para_borrar):
-                        st.warning(f"✅ Se enviaron {len(lista_para_borrar)} órdenes de borrado. El PC las procesará una por una.")
-                        st.json(lista_para_borrar)
+                lista_borrar = json.loads(extraer_json(resp.text))
+                if lista_borrar:
+                    if enviar_buzon(lista_borrar):
+                        st.warning("✅ Órdenes de borrado enviadas.")
+                        st.json(lista_borrar)
                 else:
-                    st.error("La IA no detectó ninguna serie en tu texto.")
+                    st.error("No se detectaron series.")
 
+# --- TAB 4: HISTORIAL ---
 with t4:
-    if st.button("🔄 Cargar Datos"):
+    if st.button("🔄 Cargar Datos Actuales"):
         datos, _ = obtener_github(FILE_HISTORICO)
-        if datos: st.dataframe(pd.DataFrame(datos), use_container_width=True)
+        if datos:
+            df = pd.DataFrame(datos)
+            # Ordenar columnas para que se vea pro
+            cols = ["fecha", "tipo", "serie", "marca", "equipo", "accion", "ubicacion", "reporte"]
+            df = df.reindex(columns=[c for c in cols if c in df.columns])
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("El inventario está vacío.")
