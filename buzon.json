@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "destino": "Azogues",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtratech",
+        "serie": "zxcvb",
+        "estado": "Nuevo",
+        "ubicacion": "Azogues",
+        "reporte": "",
+        "fecha": "2026-01-22 12:31"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 2,
+        "equipo": "Mouse",
+        "marca": "DOU",
+        "serie": "N/A",
+        "estado": "Usado",
+        "ubicacion": "Azogues",
+        "reporte": "",
+        "fecha": "2026-01-22 12:31"
+    }
+]
