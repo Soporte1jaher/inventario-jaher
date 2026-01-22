@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "fecha": "2026-01-21 19:02",
+        "serie": "12345",
+        "equipo": "laptop",
+        "accion": "envio",
+        "ubicacion": "pedernales",
+        "reporte": "envio de equipo a pedernales dell laptop serie 12345"
+    },
+    {
+        "fecha": "2026-01-21 19:02",
+        "serie": "09876",
+        "equipo": "cpu xtratech",
+        "accion": "envio",
+        "ubicacion": "pascuales",
+        "reporte": "envio de cpu xtratech a pascuales serie 09876"
+    }
+]
