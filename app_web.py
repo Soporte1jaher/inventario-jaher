@@ -153,8 +153,8 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
   st.subheader("📝 Gestión de Movimientos")
-  st.info("💡 IA V10: Lógica de Desglose y FIX de Sincronización para Laptop.")
-  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse y teclado a Portete...")
+  st.info("💡 IA V11: Forzado de palabra 'Stock' y desgloses automáticos.")
+  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Me llegaron 20 mouses...")
 
   if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
     if texto_input.strip():
@@ -162,15 +162,14 @@ with t1:
         try:
           client = genai.Client(api_key=API_KEY)
           
-          # Prompt mejorado para que tu script local reste el stock
           prompt = f"""
-          Actúa como Auditor de Inventario. TEXTO: "{texto_input}"
-          REGLAS OBLIGATORIAS:
-          1. TIPO: "Recibido" o "Enviado".
-          2. DESGLOSE: Si mencionas accesorios (mouse, teclado, etc), genera un objeto JSON INDEPENDIENTE para cada uno.
-          3. ESTADO: "Dañado", "Usado" o "Nuevo".
-          4. MARCA/SERIE: Si no hay, pon "No especificada".
-          FORMATO: [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+          Actúa como Auditor. TEXTO: "{texto_input}"
+          REGLAS:
+          1. TIPO: "Recibido" (entrada) o "Enviado" (salida).
+          2. DESTINO: Si es entrada a bodega, usa SIEMPRE la palabra "Stock". 
+          3. DESGLOSE: Separa cada artículo en un objeto JSON diferente.
+          4. SERIE: Si no hay, pon "N/A".
+          FORMATO: [{{ "destino": "Stock/Agencia", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "N/A", "estado": "Nuevo", "ubicacion": "Stock", "reporte": "..." }}]
           """
 
           resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -183,34 +182,38 @@ with t1:
             for d in datos:
               d["fecha"] = fecha
               
-              # Asegurar cantidad numérica (importante para la resta)
-              try:
-                d["cantidad"] = int(d.get("cantidad", 1))
-              except:
-                d["cantidad"] = 1
+              # 1. Cantidad (Asegurar número)
+              try: d["cantidad"] = int(d.get("cantidad", 1))
+              except: d["cantidad"] = 1
 
-              # Normalizar Tipo
+              # 2. Normalizar Tipo
               t_raw = str(d.get("tipo", "")).lower()
               d["tipo"] = "Enviado" if ("env" in t_raw or "sal" in t_raw) else "Recibido"
 
-              # --- FIX PARA TU LAPTOP ---
-              # Cambiamos "No especificada" por "N/A" para que tu laptop NO crea que es una serie real y reste el stock.
+              # 3. FORZADO DE DESTINO "Stock" (FIX CRÍTICO)
+              # Si es recibido y dice "Almacén", "Bodega" o algo parecido, lo cambiamos a "Stock"
+              dest_raw = str(d.get("destino", "")).lower().strip()
+              if d["tipo"] == "Recibido":
+                bodega_keywords = ["almacen", "almacén", "bodega", "oficina", "inventario", "especifica", "pendiente"]
+                if any(k in dest_raw for k in bodega_keywords) or dest_raw == "":
+                  d["destino"] = "Stock"
+
+              # 4. FIX DE SERIE PARA TU LAPTOP (Debe ser N/A)
               ser_raw = str(d.get("serie", "")).lower().strip()
-              if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
+              if "especifica" in ser_raw or ser_raw in ["", "none", "null", "no especificada"]:
                 d["serie"] = "N/A"
               else:
                 d["serie"] = d["serie"].upper()
 
-              # Normalizar Marca para agrupar bien
+              # 5. Normalizar Marca
               m_raw = str(d.get("marca", "")).lower().strip()
               if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
                 d["marca"] = "Genérica"
               else:
                 d["marca"] = d["marca"].title()
 
-            # Guardar en GitHub
             if enviar_buzon(datos):
-              st.success(f"✅ LAIA procesó {len(datos)} registros. Sincronización Excel lista.")
+              st.success(f"✅ LAIA procesó {len(datos)} registros. Destino forzado a 'Stock'.")
               st.table(pd.DataFrame(datos))
             else:
               st.error("Error al conectar con GitHub.")
