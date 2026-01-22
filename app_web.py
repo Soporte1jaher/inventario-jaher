@@ -85,30 +85,45 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO & ESTRATEGIA (CON MÁS NEURONAS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA Entrena: Si dices 'Laptop con cargador', el cargador se guardará dentro del reporte de la laptop, no separado.")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Recibí 1 Laptop HP serie 123 con su cargador y mouse...")
+    st.info("💡 IA V9.2: Corrección ortográfica activada. Distingue entre 'Laptop con cargador' (todo junto) y '50 Mouses a Stock' (masivo).")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Recibí 50 teclados y 50 mouses para stock. O llegó 1 Laptop HP con su cargador...")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA clasificando Activos vs Accesorios..."):
+            with st.spinner("LAIA analizando sintaxis y lógica de inventario..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
-                    # --- AQUÍ ESTÁ LA CORRECCIÓN DE INTELIGENCIA ---
+                    # --- PROMPT MAESTRO ACTUALIZADO ---
                     prompt = f"""
-                    Actúa como un Gerente de Inventario Experto.
-                    TEXTO DE ENTRADA: "{texto_input}"
+                    Actúa como un Auditor de Inventario Experto y Corrector Ortográfico.
+                    TEXTO ORIGINAL: "{texto_input}"
                     
-                    REGLAS OBLIGATORIAS:
-                    1. **ACTIVOS PRINCIPALES**: Crea filas SOLO para equipos reales (Laptop, CPU, Monitor, Impresora, Celular, Scanner).
-                    2. **ACCESORIOS (IMPORTANTE)**: Si el texto menciona "cargador", "cable", "mouse", "funda" o "teclado" JUNTO a un activo principal, **NO** crees una fila nueva para ellos.
-                       - **ACCIÓN**: Agrégalos en el campo 'reporte' del activo principal.
-                       - Ejemplo: Si dice "Laptop con cargador", crea 1 fila para Laptop y en reporte pon: "Incluye cargador".
-                    3. **STOCK SUELTO**: Solo crea fila para accesorio si es stock masivo (ej: "Llegaron 50 cargadores sueltos").
-                    4. Extrae: Marca, Serie, Estado y Ubicación.
+                    TU MISIÓN (SIGUE ESTOS PASOS EN ORDEN):
+
+                    1. **CORRECCIÓN ORTOGRÁFICA**: 
+                       - Antes de procesar, corrige errores (ej: "cragador"->"Cargador", "mause"->"Mouse", "laptp"->"Laptop", "ponchadra"->"Ponchadora").
+
+                    2. **LÓGICA DE DESTINO ("Stock" vs "Movimiento")**:
+                       - Si el texto dice "a stock", "a bodega", "guardar", "inventariar" O son consumibles sueltos (cables, mouses, teclados sin serie), el campo 'destino' DEBE SER EXACTAMENTE "Stock".
+                       - Si es un envío a una sucursal (Quito, Manta), el 'destino' es el nombre de la ciudad.
+
+                    3. **LÓGICA DE CANTIDADES (IMPORTANTE)**:
+                       - **Si es STOCK/CONSUMIBLES (Ej: 50 Mouses)**: Crea UNA SOLA fila. Cantidad = 50.
+                       - **Si son ACTIVOS CON SERIE (Ej: 2 Laptops)**: Crea UNA FILA POR CADA EQUIPO. Cantidad = 1 (para poder poner la serie a cada uno).
+
+                    4. **LÓGICA DE ACCESORIOS (El problema del Cargador)**:
+                       - Si el accesorio viene **CON** un equipo (Ej: "Laptop con cargador"): NO crees fila para el cargador. Escríbelo en el campo 'reporte' de la Laptop.
+                       - Si el accesorio viene **SUELTO** (Ej: "50 cargadores para stock"): SÍ crea su propia fila.
+
+                    FORMATO DE SALIDA (SOLO JSON):
+                    Responde únicamente con un Array JSON válido.
                     
-                    RESPONDE SOLO EL JSON:
-                    [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "Laptop", "marca": "HP", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "Incluye cargador original y mouse" }}]
+                    Ejemplo Masivo a Stock:
+                    [{{ "destino": "Stock", "tipo": "Recibido", "cantidad": 50, "equipo": "Teclado", "marca": "Genius", "serie": "S/N", "estado": "Nuevo", "ubicacion": "Bodega", "reporte": "Ingreso masivo" }}]
+
+                    Ejemplo Activo Unitario:
+                    [{{ "destino": "Quito", "tipo": "Enviado", "cantidad": 1, "equipo": "Laptop", "marca": "HP", "serie": "XYZ123", "estado": "Usado", "ubicacion": "Quito", "reporte": "Incluye cargador y mouse" }}]
                     """
                     
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -122,9 +137,13 @@ with t1:
                         if enviar_buzon(datos):
                             st.success(f"✅ LAIA procesó correctamente {len(datos)} registros.")
                             st.table(pd.DataFrame(datos))
+                        else:
+                            st.error("Error de conexión con GitHub.")
+                    else:
+                        st.warning("La IA no generó datos válidos. Intenta ser más claro.")
                             
                 except Exception as e:
-                    st.error(f"Error en IA: {e}")
+                    st.error(f"Error crítico en IA: {e}")
 
 # --- TAB 2: CHAT IA (CON CONTEXTO DE INVENTARIO) ---
 with t2:
