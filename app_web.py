@@ -200,17 +200,35 @@ with t1:
                         fecha = obtener_fecha_ecuador()
                         
                         # --- CAPA DE SEGURIDAD PYTHON ---
-                        for d in datos: 
-                            d["fecha"] = fecha
-                            
-                            # 1. Corrección forzada de TIPO
-                            tipo_raw = str(d.get("tipo", "")).lower()
-                            if "env" in tipo_raw or "sal" in tipo_raw:
-                                d["tipo"] = "Enviado"
-                            elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
-                                d["tipo"] = "Recibido"
-                            else:
-                                d["tipo"] = "Recibido" # Default
+                      for d in datos: 
+              d["fecha"] = fecha
+               
+              # 1. Corrección forzada de TIPO (Enviado / Recibido)
+              tipo_raw = str(d.get("tipo", "")).lower()
+              if "env" in tipo_raw or "sal" in tipo_raw:
+                d["tipo"] = "Enviado"
+              elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
+                d["tipo"] = "Recibido"
+              else:
+                d["tipo"] = "Recibido" # Valor por defecto
+
+              # 2. Unificación de MARCA (Para que el stock reste correctamente)
+              # Si la marca viene vacía o dice "no especificada", la forzamos a "Genérica"
+              m_raw = str(d.get("marca", "")).lower().strip()
+              palabras_nulas = ["", "none", "null", "n/a", "no especificada", "no especificado", "generico"]
+              
+              if any(x == m_raw for x in palabras_nulas) or "especifica" in m_raw:
+                d["marca"] = "Genérica"
+              else:
+                d["marca"] = d["marca"].title() # Pone la primera en Mayúscula (Ej: Dell)
+
+              # 3. Limpieza de Equipo
+              d["equipo"] = str(d.get("equipo", "")).strip()
+
+              # 4. Corrección forzada de ESTADO
+              estado_raw = str(d.get("estado", "")).lower()
+              if "dañ" in estado_raw or "rot" in estado_raw or "mal" in estado_raw:
+                d["estado"] = "Dañado"
 
                             # 2. Corrección forzada de ESTADO
                             estado_raw = str(d.get("estado", "")).lower()
