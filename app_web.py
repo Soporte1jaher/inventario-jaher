@@ -101,16 +101,30 @@ with t2:
         st.markdown(resp.text)
 
 with t3:
-    st.subheader("🗑️ Control de Eliminación")
-    txt_borrar = st.text_area("¿Qué quieres eliminar?", placeholder="Ej: 'Elimina todas las series de Manta' o 'Borra la serie 12345'")
-    if st.button("🗑️ EJECUTAR BORRADO"):
-        client = genai.Client(api_key=API_KEY)
-        # LAIA decide si es un borrado selectivo o total
-        prompt_b = f"Analiza: '{txt_borrar}'. Si pide borrar TODO, devuelve [{{'accion': 'borrar_todo'}}]. Si son series, extráelas: [{{'serie': '...', 'accion': 'borrar'}}]"
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-        lista_borrar = json.loads(extraer_json(resp.text))
-        if enviar_buzon(lista_borrar):
-            st.warning("✅ Orden de borrado enviada al sincronizador.")
+    st.subheader("🗑️ Eliminación ")
+    txt_borrar = st.text_area("Dime qué limpiar:", placeholder="Ej: 'borra las series vacías', 'limpia los mouses', 'borra lo que no tiene reporte'...")
+    
+    if st.button("🗑️ EJECUTAR LIMPIEZA CRÍTICA"):
+        if txt_borrar:
+            with st.spinner("LAIA analizando criterios de limpieza..."):
+                client = genai.Client(api_key=API_KEY)
+                prompt_b = f"""
+                Analiza esta orden de eliminación: "{txt_borrar}"
+                Debes clasificar la orden en uno de estos tipos de acción:
+                1. 'borrar_vacios': Si pide borrar series vacías o celdas en blanco.
+                2. 'borrar_sin_detalle': Si pide borrar registros sin reporte o sin descripción.
+                3. 'borrar_equipo': Si menciona un nombre de equipo (ej. Mouse, Teclado) para limpiar su historial.
+                4. 'borrar_serie': Si da números de serie específicos.
+                5. 'borrar_todo': Si pide vaciar todo el inventario.
+
+                Devuelve una LISTA JSON:
+                [{{"accion": "tipo_de_accion", "serie": "...", "equipo": "...", "motivo": "..."}}]
+                """
+                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+                lista_borrar = json.loads(extraer_json(resp.text))
+                if enviar_buzon(lista_borrar):
+                    st.warning(f"✅ LAIA ha enviado {len(lista_borrar)} instrucciones de limpieza.")
+                    st.json(lista_borrar)
 
 with t4:
     if st.button("🔄 Cargar Historial"):
