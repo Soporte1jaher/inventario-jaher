@@ -79,40 +79,57 @@ def extraer_json(texto):
     except: return ""
 
 # --- NUEVA FUNCIÓN: CÁLCULO MATEMÁTICO PARA WEB (La clave para el stock real) ---
+# --- REEMPLAZA SOLO ESTA FUNCIÓN EN app_web.py ---
+
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Normalización
+    # 1. LIMPIEZA AGRESIVA (El secreto para que reste bien)
+    # Convertimos todo a texto limpio primero
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # Unificación para que resten bien
-    df_c['marca'] = df_c['marca'].replace(['N/A', 'n/a', 'None', '', 'nan'], 'Genérica')
-    df_c['estado'] = df_c['estado'].replace(['N/A', 'n/a', 'None', '', 'nan'], 'Nuevo')
+    # Definimos qué es "Vacío" para el sistema
+    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
+    
+    # FORZAMOS que todo lo vacío sea "genérica" y "nuevo" para que coincidan
+    df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
+    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
+    
+    # Aseguramos números
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 2. Lógica Matemática (+/-)
+    # 2. Lógica de Resta
     def flujo(row):
         tipo = row['tipo'].lower()
         dest = row['destino'].lower()
         ser = row['serie'].lower()
         cant = row['cantidad']
         
-        # Si es activo único con serie larga, no se suma al bulto
+        # Si tiene serie larga (es un activo único), lo ignoramos del stock de bulto
         es_activo = len(ser) > 3 and "n/a" not in ser and "sin serie" not in ser
         if es_activo: return 0
         
-        if dest == 'stock': return cant # Entra
-        if 'enviado' in tipo or 'salida' in tipo: return -cant # Sale
+        # SUMAR entradas
+        if dest == 'stock': return cant
+        
+        # RESTAR salidas
+        if 'enviado' in tipo or 'salida' in tipo: return -cant
+        
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 3. Agrupar
+    # 3. Agrupar y dejar bonito
+    df_c['equipo'] = df_c['equipo'].str.capitalize() # Ej: "mouse" -> "Mouse"
+    
+    # Aquí ocurre la magia: agrupa por nombre y marca unificada
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
-    return stock[stock['val'] > 0] # Solo stock positivo
+    
+    # Solo devolvemos lo que tiene saldo positivo
+    return stock[stock['val'] > 0]
 
 # --- INTERFAZ ---
 st.title("🤖 LAIA NEURAL ENGINE v12.5")
