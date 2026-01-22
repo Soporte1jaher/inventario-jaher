@@ -1,1 +1,74 @@
-[]
+[
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "Dell",
+        "serie": "12345",
+        "estado": "Nuevo",
+        "ubicacion": "Portete",
+        "reporte": "Laptop Dell serie 12345 enviado a Portete con cargador.",
+        "fecha": "2026-01-22 18:55"
+    },
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "838474",
+        "estado": "Nuevo",
+        "ubicacion": "Latacunga",
+        "reporte": "CPU Xtech serie 838474 enviada a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:55"
+    },
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "serie": "HGBCBCBBC",
+        "estado": "Nuevo",
+        "ubicacion": "Latacunga",
+        "reporte": "Monitor Samsung serie hgbcbcbbc enviada a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:55"
+    },
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Latacunga",
+        "reporte": "Mouse enviado a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:55"
+    },
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Latacunga",
+        "reporte": "Teclado enviado a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:55"
+    },
+    {
+        "destino": "Agencia",
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Nuevo",
+        "ubicacion": "Latacunga",
+        "reporte": "Cable HDMI enviado a la agencia Latacunga.",
+        "fecha": "2026-01-22 18:55"
+    }
+]
