@@ -3,48 +3,12 @@
         "destino":"Movimientos",
         "tipo":"Recibido",
         "cantidad":1,
-        "equipo":"cpu",
-        "marca":"xtratech",
-        "serie":"7478474",
-        "estado":"Da\u00f1ado",
-        "ubicacion":"paute",
-        "reporte":"carcasa rayada",
-        "fecha":"2026-01-21 22:22"
-    },
-    {
-        "destino":"Movimientos",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"laptop",
-        "marca":"lenovo",
-        "serie":"djdjdjjdjd",
-        "estado":"Usado",
-        "ubicacion":"shushufindi",
-        "reporte":"Equipo configurado y con cargador",
-        "fecha":"2026-01-21 22:24"
-    },
-    {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
         "equipo":"laptop",
         "marca":"dell",
         "serie":"N\/A",
         "estado":"Usado",
         "ubicacion":"rioamba",
         "reporte":"Sin cargador",
-        "fecha":"2026-01-21 22:24"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"cargador",
-        "marca":"lenovo",
-        "serie":"N\/A",
-        "estado":"Nuevo",
-        "ubicacion":"shushufindi",
-        "reporte":"Cargador enviado con laptop lenovo serie djdjdjjdjd",
         "fecha":"2026-01-21 22:24"
     },
     {
