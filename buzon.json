@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "Sin Serie",
+        "equipo": "Teclado",
+        "motivo": "Eliminaci\u00f3n solicitada por el usuario: 'elimina teclados y mouses'"
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "Sin Serie",
+        "equipo": "Mouse",
+        "motivo": "Eliminaci\u00f3n solicitada por el usuario: 'elimina teclados y mouses'"
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "",
+        "equipo": "Teclado",
+        "motivo": "Eliminaci\u00f3n solicitada por el usuario: 'elimina teclados y mouses'"
+    },
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "",
+        "equipo": "Mouse",
+        "motivo": "Eliminaci\u00f3n solicitada por el usuario: 'elimina teclados y mouses'"
+    }
+]
