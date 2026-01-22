@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "zxcvb",
+        "equipo": "CPU",
+        "motivo": "Eliminar registro de CPU Xtratech con serie zxcvb enviado a Manta"
+    }
+]
