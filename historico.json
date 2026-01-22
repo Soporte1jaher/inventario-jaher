@@ -142,5 +142,17 @@
         "ubicacion":"...",
         "reporte":"Incluye 2 cables HDMI.",
         "fecha":"2026-01-22 12:59"
+    },
+    {
+        "destino":"Pedernales",
+        "tipo":"Enviado",
+        "cantidad":3,
+        "equipo":"Cable HDMI",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"",
+        "fecha":"2026-01-22 13:06"
     }
 ]
