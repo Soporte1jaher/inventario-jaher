@@ -343,11 +343,18 @@ with t4:
 
         # 2. VISTA STOCK REAL (USANDO EL CÁLCULO MATEMÁTICO)
         with st_t2:
-            st.info("Vista filtrada: Stock real disponible (Entradas - Salidas).")
+            st.info("Vista filtrada: Saldos Disponibles (Entradas - Salidas).")
             if not df_stock_real.empty:
-                st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
+                # Renombramos para que se vea igual que tu Excel "Stock (Saldos)"
+                df_mostrar = df_stock_real.rename(columns={
+                    'Cantidad': 'Stock_Disponible',
+                    'Equipo': 'Equipo',
+                    'Marca': 'Marca'
+                })
+                # Mostramos la tabla limpia y sin índice
+                st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
             else:
-                st.warning("Bodega vacía o sin stock calculado.")
+                st.warning("Bodega calculada vacía o sin items positivos.")
 
         # 3. VISTA TRÁFICO
         with st_t3:
