@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "destino": "Agencia Portete",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "Lenovo",
+        "serie": "90909090",
+        "estado": "Da\u00f1ado",
+        "ubicacion": "No especificada",
+        "reporte": "Pantalla trizada y no enciende. No incluye cargador.",
+        "fecha": "2026-01-22 18:42"
+    }
+]
