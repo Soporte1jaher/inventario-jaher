@@ -9,7 +9,7 @@ import pandas as pd
 import re
 
 # ==========================================
-# 1. CONFIGURACIÓN Y ESTILOS
+# 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(page_title="LAIA NEURAL SYSTEM", page_icon="🧠", layout="wide")
 
@@ -23,7 +23,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES Y CONEXIÓN
+# 2. CREDENCIALES
 # ==========================================
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -40,7 +40,7 @@ FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"}
 
 # ==========================================
-# 3. FUNCIONES DE APOYO (GITHUB & FECHAS)
+# 3. FUNCIONES DE APOYO
 # ==========================================
 def obtener_fecha_ecuador():
     return (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
@@ -83,53 +83,59 @@ def extraer_json(texto):
     except: return ""
 
 # ==========================================
-# 4. MOTOR MATEMÁTICO V14 (EL CEREBRO)
+# 4. MOTOR MATEMÁTICO (CORREGIDO PARA CABLES Y STOCK)
 # ==========================================
-# Esta función es CRÍTICA: Arregla "Cant", "None" y hace las restas.
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Limpieza de nombres de columnas (Arregla "Cant" vs "cantidad")
+    # 1. ARREGLAR NOMBRES DE COLUMNAS (Cant -> cantidad)
+    # Esto es vital para que lea tu Excel actual
     df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
+    mapa_cols = {
+        'cant': 'cantidad', 
+        'condición': 'estado', 
+        'condicion': 'estado', 
+        'equipos': 'equipo'
+    }
     df_c = df_c.rename(columns=mapa_cols)
 
-    # 2. Rellenar vacíos y limpiar textos
+    # 2. RELLENAR VACÍOS Y NORMALIZAR TEXTO
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # 3. Unificar "None", "N/A" -> "Genérica" (Para que sumen y resten bien)
+    # 3. UNIFICAR "None" PARA QUE RESTEN
+    # Convertimos cualquier variante de "vacío" a una palabra estándar
     valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
     df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
     df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
     
-    # 4. Asegurar números
+    # 4. ASEGURAR NÚMEROS
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 5. Lógica de Flujo (+/-)
+    # 5. LÓGICA DE FLUJO (+/-)
     def flujo(row):
         tipo = str(row['tipo']).lower()
         dest = str(row['destino']).lower()
         ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si es activo único (serie larga), no suma al bulto de saldos
+        # Si es activo único (serie larga), no suma al bulto
         es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin'])
         if es_activo: return 0
         
-        # Si el destino es Stock = Suma (Entrada)
+        # Entrada a Stock
         if dest == 'stock': return cant
         
-        # Si es salida = Resta
+        # Salida de Stock (Resta)
         if 'enviado' in tipo or 'salida' in tipo: return -cant
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 6. Agrupar (Equipo, Marca)
+    # 6. AGRUPAR COMO EN EL EXCEL
     df_c['equipo'] = df_c['equipo'].str.capitalize()
     df_c['marca'] = df_c['marca'].str.capitalize()
     
@@ -140,9 +146,9 @@ def calcular_stock_web(df):
     return stock[stock['Stock_Disponible'] > 0]
 
 # ==========================================
-# 5. INTERFAZ PRINCIPAL
+# 5. INTERFAZ Y PESTAÑAS
 # ==========================================
-st.title("🤖 LAIA NEURAL ENGINE v18.0")
+st.title("🤖 LAIA NEURAL ENGINE v19.0 (FINAL)")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
@@ -190,7 +196,7 @@ with t1:
                         for d in datos: 
                             d["fecha"] = fecha
                             
-                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA V16.5) ---
+                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA) ---
                             tipo_ia = str(d.get("tipo", "")).lower()
                             dest_ia = str(d.get("destino", "")).lower()
                             
@@ -222,7 +228,7 @@ with t2:
     c1, c2 = st.columns([4, 1])
     with c1: st.subheader("💬 Consulta Inteligente")
     with c2: 
-        if st.button("🧹 Limpiar"):
+        if st.button("🧹 Limpiar Chat"):
             st.session_state.messages = []
             st.rerun()
 
@@ -267,7 +273,7 @@ with t3:
                 st.success("Orden enviada.")
                 st.json(orden)
 
-# --- TAB 4: DASHBOARD (REORGANIZADO COMO PEDISTE) ---
+# --- TAB 4: DASHBOARD (REORGANIZADO: DAÑADOS -> STOCK -> MOVIMIENTOS) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -279,12 +285,19 @@ with t4:
         
         # 1. Calculamos el Stock igual que en el Excel
         df_stock_real = calcular_stock_web(df)
-        df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
+        
+        # Filtros
+        df_bad = pd.DataFrame()
+        if 'estado' in df.columns:
+            df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
         # 2. KPIs
         total_items = int(df_stock_real['Stock_Disponible'].sum()) if not df_stock_real.empty else 0
-        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')]) if 'tipo' in df.columns else 0
-        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
+        if 'tipo' in df.columns:
+            cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')])
+            cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')])
+        else:
+            cant_env, cant_rec = 0, 0
             
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad Alta", delta_color="inverse")
@@ -294,7 +307,7 @@ with t4:
         
         st.divider()
 
-        # 3. PESTAÑAS (ORDEN SOLICITADO: Dañados -> Stock -> Movimientos -> Gráficas)
+        # 3. PESTAÑAS EN EL ORDEN QUE PEDISTE
         t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
         
         # PESTAÑA 1: DAÑADOS
@@ -307,9 +320,9 @@ with t4:
             else:
                 st.success("Sin equipos dañados.")
 
-        # PESTAÑA 2: STOCK (RESUMEN)
+        # PESTAÑA 2: STOCK (LA TABLA RESUMIDA)
         with t_stock:
-            st.info("Inventario Real Disponible (Calculado).")
+            st.info("Inventario Real Disponible (Calculado: Entradas - Salidas).")
             if not df_stock_real.empty:
                 st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
             else:
@@ -318,13 +331,14 @@ with t4:
         # PESTAÑA 3: HISTORIAL (SELECTOR)
         with t_mov:
             st.markdown("### 🚦 Historial")
-            filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
-            if filtro == "Enviados":
-                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
-            elif filtro == "Recibidos":
-                st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('recibido')], use_container_width=True)
-            else:
-                st.dataframe(df, use_container_width=True)
+            if 'tipo' in df.columns:
+                filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
+                if filtro == "Enviados":
+                    st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
+                elif filtro == "Recibidos":
+                    st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('recibido')], use_container_width=True)
+                else:
+                    st.dataframe(df, use_container_width=True)
 
         # PESTAÑA 4: GRÁFICAS
         with t_graf:
