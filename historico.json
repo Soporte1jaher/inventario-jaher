@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "fecha": "2026-01-21 19:32",
+        "serie": "12345",
+        "equipo": "laptop dell",
+        "accion": "llegada",
+        "ubicacion": "paute",
+        "reporte": "llegada de equipo de paute laptop dell serie 12345"
+    },
+    {
+        "fecha": "2026-01-21 19:32",
+        "serie": "09876",
+        "equipo": "laptop dell",
+        "accion": "llegada",
+        "ubicacion": "aogues",
+        "reporte": "llegada de equipo de aogues laptop dell serie 09876"
+    },
+    {
+        "fecha": "2026-01-21 19:32",
+        "serie": "qwert",
+        "equipo": "laptop dell",
+        "accion": "llegada",
+        "ubicacion": "loja",
+        "reporte": "llegada de equipo de loja laptop dell serie qwert"
+    }
+]
