@@ -70,5 +70,77 @@
         "ubicacion":null,
         "reporte":null,
         "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"Portete",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Dell",
+        "serie":"aaaaas",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Se env\u00eda con cargador.",
+        "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"No especificado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"838474",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Se env\u00eda con monitor Samsung serie hgbcbcbbc, mouse, teclado y cable HDMI.",
+        "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"No especificado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"Samsung",
+        "serie":"hgbcbcbbc",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Accesorio del CPU Xtech serie 838474.",
+        "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"No especificado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"No especificada",
+        "serie":"No especificada",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Accesorio del CPU Xtech serie 838474.",
+        "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"No especificado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"No especificada",
+        "serie":"No especificada",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Accesorio del CPU Xtech serie 838474.",
+        "fecha":"2026-01-22 18:09"
+    },
+    {
+        "destino":"No especificado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":"No especificada",
+        "serie":"No especificada",
+        "estado":"Nuevo",
+        "ubicacion":"No especificada",
+        "reporte":"Accesorio del CPU Xtech serie 838474.",
+        "fecha":"2026-01-22 18:09"
     }
 ]
