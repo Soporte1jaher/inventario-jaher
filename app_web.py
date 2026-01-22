@@ -90,44 +90,45 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Normalizar nombres de columnas
+    # 1. Normalizar columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
     mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
     df_c = df_c.rename(columns=mapa_cols)
 
-    # 2. Rellenar vacíos y forzar texto
-    for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
-        if col not in df_c.columns: df_c[col] = "N/A"
-        df_c[col] = df_c[col].astype(str).str.strip()
-    
-    # 3. UNIFICAR MARCAS (Corregido: añadimos 'generico' con 'o')
-    # Usamos una técnica más fuerte para limpiar marcas
-    def limpiar_marca(m):
-        m = m.lower()
-        nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica', 'generico', 'genérico']
-        if m in nulos: return "Genérica"
-        return m.title() # "Samsung", "Dell", etc.
+    # 2. Lista extendida de valores que significan "VACÍO" o "GENÉRICO"
+    palabras_vacias = [
+        'n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 
+        'generica', 'generico', 'genérico', 'no especificada', 
+        'no especificado', 'no aplica', 'desconocido'
+    ]
 
-    df_c['marca'] = df_c['marca'].apply(limpiar_marca)
-    
-    # 4. Limpiar nombres de equipos (Mantenemos Mayúsculas como HDMI o RJ45)
-    df_c['equipo'] = df_c['equipo'].str.strip()
-    
-    # 5. Asegurar números
+    # 3. Normalizar Marcas
+    def normalizar_marca(m):
+        m_limpia = str(m).lower().strip()
+        if any(v == m_limpia for v in palabras_vacias) or 'especifica' in m_limpia:
+            return "Genérica"
+        return m.capitalize()
+
+    df_c['marca'] = df_c['marca'].apply(normalizar_marca)
+    df_c['equipo'] = df_c['equipo'].astype(str).str.strip()
+
+    # 4. Lógica de Flujo Matemático
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
-    
-    # 6. Lógica de Flujo (+/-)
+
     def flujo(row):
-        tipo = str(row['tipo']).lower()
-        dest = str(row['destino']).lower()
-        ser = str(row['serie']).lower()
+        tipo = str(row.get('tipo', '')).lower()
+        dest = str(row.get('destino', '')).lower()
+        ser = str(row.get('serie', '')).lower().strip()
         cant = row['cantidad']
         
-        # Si tiene serie real (ej: Laptop), no lo sumamos al bulto (stock general)
-        es_activo_unico = len(ser) > 4 and not any(x in ser for x in ['n/a', 'none', 'null', 'generi'])
-        if es_activo_unico: return 0
+        # CORRECCIÓN DE SERIE: Si la serie es "No especificada", NO es un activo único
+        es_serie_vacia = any(x in ser for x in ['n/a', 'none', 'especifica', 'generi', 'null'])
+        es_activo_unico = len(ser) > 5 and not es_serie_vacia
         
-        # SI VA AL STOCK ES POSITIVO, SI SALE DEL STOCK (ENVIADO) ES NEGATIVO
+        if es_activo_unico: 
+            return 0 # Es una Laptop o CPU con serie real, se maneja aparte
+        
+        # Movimientos de bodega
         if dest == 'stock': 
             return cant
         if 'env' in tipo or 'sal' in tipo: 
@@ -136,11 +137,11 @@ def calcular_stock_web(df):
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 7. Agrupar (Aquí ocurre la magia de la resta)
+    # 5. Agrupación final
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
     stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
     
-    # Solo mostrar lo que realmente hay en bodega
+    # Solo mostrar lo que tiene saldo positivo
     return stock[stock['Stock_Disponible'] > 0].sort_values('Equipo')
 
 # ==========================================
