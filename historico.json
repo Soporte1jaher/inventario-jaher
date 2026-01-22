@@ -34,29 +34,5 @@
         "ubicacion":null,
         "reporte":null,
         "fecha":"2026-01-21 22:39"
-    },
-    {
-        "destino":"Stock",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"bocina",
-        "marca":null,
-        "serie":null,
-        "estado":"Nuevo",
-        "ubicacion":null,
-        "reporte":null,
-        "fecha":"2026-01-21 22:39"
-    },
-    {
-        "destino":"Movimientos",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"Equipo",
-        "marca":"N\/A",
-        "serie":"N\/A",
-        "estado":"Nuevo",
-        "ubicacion":"N\/A",
-        "reporte":"N\/A",
-        "fecha":"2026-01-21 22:41"
     }
 ]
