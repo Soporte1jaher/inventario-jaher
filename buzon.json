@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "serie": "1234567890",
+        "accion": "borrar"
+    },
+    {
+        "serie": "zxcvbnm",
+        "accion": "borrar"
+    },
+    {
+        "serie": "zxcvbnm",
+        "accion": "borrar"
+    }
+]
