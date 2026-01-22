@@ -12,18 +12,6 @@
         "fecha":"2026-01-22 10:17"
     },
     {
-        "destino":"paute",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"cargador",
-        "marca":"hp",
-        "serie":"Desconocido",
-        "estado":"Nuevo",
-        "ubicacion":"paute",
-        "reporte":"Cargador HP recibido junto a la laptop en Paute.",
-        "fecha":"2026-01-22 10:17"
-    },
-    {
         "destino":"ambato",
         "tipo":"Recibido",
         "cantidad":1,
@@ -33,18 +21,6 @@
         "estado":"Nuevo",
         "ubicacion":"ambato",
         "reporte":"Laptop HP con cargador (desconocido) recibida en Ambato.",
-        "fecha":"2026-01-22 10:17"
-    },
-    {
-        "destino":"ambato",
-        "tipo":"Recibido",
-        "cantidad":1,
-        "equipo":"cargador",
-        "marca":"Desconocido",
-        "serie":"Desconocido",
-        "estado":"Nuevo",
-        "ubicacion":"ambato",
-        "reporte":"Cargador (marca desconocida) recibido junto a la laptop en Ambato.",
         "fecha":"2026-01-22 10:17"
     },
     {
