@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_quirurgico",
+        "serie": "zxcvb",
+        "equipo": "Laptop"
+    }
+]
