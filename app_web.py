@@ -11,13 +11,13 @@ import pandas as pd
 st.set_page_config(page_title="LAIA NEURAL SYSTEM", page_icon="🧠", layout="wide")
 
 st.markdown("""
-    <style>
+<style>
     .stApp { background-color: #0e1117; color: #e0e0e0; }
     .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
     .stTextArea>div>div>textarea { background-color: #1a1c23; color: #00ff00; font-family: 'Courier New', monospace; }
     .stMetric { background-color: #161b22; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
-    </style>
-    """, unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
 
 # --- CREDENCIALES ---
 try:
@@ -31,15 +31,17 @@ GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
-# CORREGIDO: Inyección de Token
-HEADERS = {"Authorization": f"token {}", "Cache-Control": "no-cache"}
+
+# CORREGIDO: Se agregó la variable {GITHUB_TOKEN} dentro de las llaves
+HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"}
 
 # --- FUNCIONES DE APOYO (ESTRUCTURA ORIGINAL EXPANDIDA) ---
 def obtener_fecha_ecuador():
     return (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
 def obtener_github(archivo):
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    # CORREGIDO: Se agregaron las variables a la URL
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
@@ -58,7 +60,8 @@ def enviar_buzon(datos):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    # CORREGIDO: Se agregaron las variables a la URL
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 def extraer_json(texto):
@@ -90,9 +93,10 @@ with t1:
             with st.spinner("LAIA procesando lógica de distribución..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
+                    # CORREGIDO: Se insertó {texto_input} en el prompt
                     prompt = f"""
                     Actúa como un Ingeniero de Datos Logísticos.
-                    TEXTO: "{}"
+                    TEXTO: "{texto_input}"
                     TAREAS:
                     1. Clasifica: 'Stock' (periféricos) o 'Movimientos' (equipos con serie).
                     2. Si el texto pide repartir, calcula las cantidades exactas y crea registros individuales.
@@ -109,7 +113,8 @@ with t1:
                             st.success(f"✅ LAIA generó {len(datos)} registros.")
                             st.table(pd.DataFrame(datos))
                 except Exception as e:
-                    st.error(f"Error en IA: {}")
+                    # CORREGIDO: Se insertó {e} para ver el error
+                    st.error(f"Error en IA: {e}")
 
 # --- TAB 2: CHAT IA (CON CONTEXTO DE INVENTARIO) ---
 with t2:
@@ -124,7 +129,9 @@ with t2:
         
         # Inyectamos el historial completo para que la IA responda con la verdad
         hist, _ = obtener_github(FILE_HISTORICO)
-        contexto = f"INVENTARIO ACTUAL: {json.dumps(hist[-150:])}. Responde basado solo en estos datos."
+        # Convertir a string seguro para el prompt
+        hist_str = json.dumps(hist[-150:]) if hist else "[]"
+        contexto = f"INVENTARIO ACTUAL: {hist_str}. Responde basado solo en estos datos."
         
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + p_chat)
@@ -143,12 +150,13 @@ with t3:
             with st.spinner("LAIA localizando el registro en el historial..."):
                 # PASO 1: Obtener historial para que la IA identifique el registro
                 hist, _ = obtener_github(FILE_HISTORICO)
-                contexto_borrado = json.dumps(hist[-100:]) # Pasamos los últimos 100
+                contexto_borrado = json.dumps(hist[-100:]) if hist else "[]"
                 
                 client = genai.Client(api_key=API_KEY)
+                # CORREGIDO: Se insertó {txt_borrar} en el prompt
                 prompt_b = f"""
                 DADOS ESTOS REGISTROS: {contexto_borrado}
-                ORDEN DEL USUARIO: "{}"
+                ORDEN DEL USUARIO: "{txt_borrar}"
                 TAREA: Identifica qué registro exacto quiere borrar. 
                 Responde UNICAMENTE un JSON con este formato:
                 [{{"accion": "borrar_quirurgico", "serie": "SERIE_A_BORRAR", "equipo": "NOMBRE", "motivo": "RAZON"}}]
@@ -158,9 +166,13 @@ with t3:
                 orden_json = extraer_json(resp.text)
                 
                 if orden_json:
-                    if enviar_buzon(json.loads(orden_json)):
-                        st.success("🎯 LAIA identificó el registro y envió la orden de eliminación.")
-                        st.json(orden_json)
+                    try:
+                        data_borrado = json.loads(orden_json)
+                        if enviar_buzon(data_borrado):
+                            st.success("🎯 LAIA identificó el registro y envió la orden de eliminación.")
+                            st.json(orden_json)
+                    except Exception as e:
+                        st.error(f"Error procesando respuesta de borrado: {e}")
                 else:
                     st.error("LAIA no pudo identificar qué registro borrar.")
 
@@ -172,8 +184,10 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         col1.metric("Total Registros", len(df))
-        col2.metric("En Stock", len(df[df['destino']=='Stock']))
-        col3.metric("Movimientos", len(df[df['destino']=='Movimientos']))
+        # Validar si existen las columnas antes de filtrar para evitar errores
+        if 'destino' in df.columns:
+            col2.metric("En Stock", len(df[df['destino']=='Stock']))
+            col3.metric("Movimientos", len(df[df['destino']=='Movimientos']))
         
         st.subheader("📋 Base de Datos Maestra")
         st.dataframe(df, use_container_width=True)
