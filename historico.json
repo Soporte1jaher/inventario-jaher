@@ -40,5 +40,19 @@
         "reporte":"C\u00e1lculo autom\u00e1tico LAIA",
         "destino":"Movimientos",
         "observaciones":"Enviada con cargador y configuraciones."
+    },
+    {
+        "fecha":"2026-01-21 22:14",
+        "tipo":"Recibido",
+        "cantidad":1.0,
+        "estado":"Da\u00f1ado",
+        "serie":"zxcvbnm",
+        "marca":"AOC",
+        "equipo":"Monitor",
+        "accion":null,
+        "ubicacion":null,
+        "reporte":"Pendiente de informe tecnico",
+        "destino":"Movimientos",
+        "observaciones":null
     }
 ]
