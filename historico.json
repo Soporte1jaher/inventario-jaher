@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "fecha": "2026-01-21 19:41",
+        "serie": "1234567890",
+        "equipo": "Laptop Dell",
+        "accion": "Env\u00edo",
+        "ubicacion": "Quito",
+        "reporte": "Con cargador"
+    },
+    {
+        "fecha": "2026-01-21 19:41",
+        "serie": "zxcvbnm",
+        "equipo": "Laptop HP",
+        "accion": "Env\u00edo",
+        "ubicacion": "Guayaquil",
+        "reporte": "Sin cargador"
+    },
+    {
+        "fecha": "2026-01-21 19:41",
+        "serie": "zxcvbnm",
+        "equipo": "Laptop Lenovo",
+        "accion": "Env\u00edo",
+        "ubicacion": "Ambato",
+        "reporte": "Sin cargador"
+    }
+]
