@@ -147,37 +147,39 @@ st.title("🤖 LAIA NEURAL ENGINE v14.0")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
 # --- TAB 1: REGISTRO & ESTRATEGIA ---
-# --- TAB 1: REGISTRO (LÓGICA V15: CORRECCIÓN DE SALIDAS) ---
+# --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA V15: Entiende 'Salida de Stock' (Resta) vs 'Ingreso a Stock' (Suma).")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié Laptop HP a Paute con un mouse de stock...")
+    st.info("💡 IA V16.5: Detecta si 'de stock' es origen (Resta) o destino (Suma).")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta) / Recibí mouse a Stock... (Suma)")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA procesando lógica de inventario..."):
+            with st.spinner("LAIA analizando flujo de inventario..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
                     prompt = f"""
-                    Actúa como un Auditor Logístico. TEXTO: "{texto_input}"
+                    Actúa como un Gerente de Logística Experto. TEXTO: "{texto_input}"
                     
-                    REGLAS MAESTRAS DE DIRECCIÓN:
-                    1. SALIDAS (Resta Stock): 
-                       - Verbos: "Envié", "Salida", "Despacho", "Salió", "Mandar a".
-                       - Acción: TIPO = "Enviado".
-                       - Destino: El lugar a donde va (ej: "Paute", "Loja"). NO pongas "Stock" en destino si está saliendo.
+                    TU MISIÓN: Determinar si el inventario SUMA o RESTA.
 
-                    2. ENTRADAS (Suma Stock):
-                       - Verbos: "Recibí", "Llegó", "Ingreso", "Devolución", "A stock".
-                       - Acción: TIPO = "Recibido".
-                       - Destino: "Stock".
+                    REGLAS DE ORO:
+                    1. SALIDAS (RESTA):
+                       - Palabras clave: "Envié", "Salida", "Despacho", "Mandar a", "Salió".
+                       - Si dice "de stock", significa que SALE de la bodega.
+                       - ACCIÓN: TIPO="Enviado". DESTINO="[Ciudad/Lugar]". (NUNCA pongas 'Stock' en destino si es salida).
 
-                    3. MATEMÁTICA: "20 mouses" -> cantidad: 20. "Laptop con cargador" -> Cargador en reporte.
-                    4. ESTADO: "Dañado", "Usado", "Nuevo".
-                    5. CORRECCIÓN: "cragador"->"Cargador".
+                    2. ENTRADAS (SUMA):
+                       - Palabras clave: "Recibí", "Llegó", "Ingreso", "A stock", "Devolución".
+                       - ACCIÓN: TIPO="Recibido". DESTINO="Stock".
 
-                    FORMATO JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
+                    3. PROCESAMIENTO:
+                       - "20 mouses" -> cantidad: 20.
+                       - "Laptop con cargador" -> Cargador va en 'reporte', NO fila nueva.
+                       - "cragador" -> "Cargador".
+
+                    JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
                     """
                     
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -190,19 +192,22 @@ with t1:
                         for d in datos: 
                             d["fecha"] = fecha
                             
-                            # --- CORRECCIÓN DE SEGURIDAD INTELIGENTE ---
+                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA V16.5) ---
                             tipo_ia = str(d.get("tipo", "")).lower()
                             dest_ia = str(d.get("destino", "")).lower()
                             
-                            # 1. Si la IA detectó "Enviado" o el texto dice "a [Lugar]", respetamos la SALIDA
-                            if "env" in tipo_ia or "sal" in tipo_ia:
+                            # REGLA 1: Si es salida explícita, se respeta como ENVIADO (Resta)
+                            if any(x in tipo_ia for x in ["env", "sal", "desp"]):
                                 d["tipo"] = "Enviado"
+                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos a "Salida General"
+                                if "stock" in dest_ia: d["destino"] = "Destino Externo"
                             
-                            # 2. Solo forzamos "Recibido" si es explícitamente una entrada a bodega y NO dice salida
-                            elif "rec" in tipo_ia or "lleg" in tipo_ia or (dest_ia == "stock" and "env" not in tipo_ia):
+                            # REGLA 2: Si es entrada explícita o destino stock, es RECIBIDO (Suma)
+                            elif any(x in tipo_ia for x in ["rec", "lleg", "ing"]) or "stock" in dest_ia:
                                 d["tipo"] = "Recibido"
+                                d["destino"] = "Stock"
                             
-                            # 3. Corrección de Estado
+                            # REGLA 3: Corrección de Estado
                             est = str(d.get("estado", "")).lower()
                             if "dañ" in est or "rot" in est: d["estado"] = "Dañado"
 
