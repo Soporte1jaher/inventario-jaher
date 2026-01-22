@@ -65,7 +65,6 @@ def enviar_buzon(datos):
 
 def extraer_json(texto):
     try:
-        # CORREGIDO: El split debe buscar las comillas triples del markdown
         if "```" in texto:
             texto = texto.split("```")[1]
             if texto.startswith("json"): texto = texto[4:]
@@ -78,68 +77,66 @@ def extraer_json(texto):
         return texto.strip()
     except: return ""
 
-# --- NUEVA FUNCIÓN: CÁLCULO MATEMÁTICO PARA WEB (La clave para el stock real) ---
-# --- REEMPLAZA SOLO ESTA FUNCIÓN EN app_web.py ---
-
+# --- NUEVA FUNCIÓN: CÁLCULO MATEMÁTICO V14 (ESTA ES LA MAGIA QUE ARREGLA LOS CABLES) ---
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. LIMPIEZA AGRESIVA (El secreto para que reste bien)
-    # Convertimos todo a texto limpio primero
+    # 1. Limpieza de nombres de columnas (Arregla "Cant" vs "cantidad")
+    df_c.columns = df_c.columns.str.lower().str.strip()
+    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado'}
+    df_c = df_c.rename(columns=mapa_cols)
+
+    # Asegurar columnas
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # Definimos qué es "Vacío" para el sistema
+    # 2. LIMPIEZA DE "NONE" PARA QUE RESTEN
+    # Aquí está la solución: Convertimos "None", "N/A", "nan" a "Genérica" a la fuerza
     valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
     
-    # FORZAMOS que todo lo vacío sea "genérica" y "nuevo" para que coincidan
     df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
     df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
     
-    # Aseguramos números
+    # Asegurar números
+    if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 2. Lógica de Resta
+    # 3. Lógica de Resta
     def flujo(row):
-        tipo = row['tipo'].lower()
-        dest = row['destino'].lower()
-        ser = row['serie'].lower()
+        tipo = str(row['tipo']).lower()
+        dest = str(row['destino']).lower()
+        ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si tiene serie larga (es un activo único), lo ignoramos del stock de bulto
-        es_activo = len(ser) > 3 and "n/a" not in ser and "sin serie" not in ser
+        # Si es activo único (serie larga), no suma al bulto
+        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin'])
         if es_activo: return 0
         
-        # SUMAR entradas
         if dest == 'stock': return cant
-        
-        # RESTAR salidas
         if 'enviado' in tipo or 'salida' in tipo: return -cant
-        
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
     
-    # 3. Agrupar y dejar bonito
-    df_c['equipo'] = df_c['equipo'].str.capitalize() # Ej: "mouse" -> "Mouse"
-    
-    # Aquí ocurre la magia: agrupa por nombre y marca unificada
+    # 4. Agrupar
+    df_c['equipo'] = df_c['equipo'].str.capitalize()
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
+    stock.columns = ['Equipo', 'Marca', 'Cantidad']
     
     # Solo devolvemos lo que tiene saldo positivo
-    return stock[stock['val'] > 0]
+    return stock[stock['Cantidad'] > 0]
 
 # --- INTERFAZ ---
-st.title("🤖 LAIA NEURAL ENGINE v12.5")
+st.title("🤖 LAIA NEURAL ENGINE v14.0")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
 # --- TAB 1: REGISTRO & ESTRATEGIA ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("💡 IA V9.5: Lógica Unificada. Corrige ortografía, detecta daños, crea reportes IT y fuerza el tipo a 'Enviado' o 'Recibido'.")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU a Manta. O me llegó una Laptop de Pedernales con pantalla rota para informe...")
+    st.info("💡 IA V14: Lógica Unificada. Corrige ortografía y detecta cables/accesorios correctamente.")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU a Manta. O me llegó una Laptop...")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
@@ -155,26 +152,26 @@ with t1:
 
                     1. **TIPO DE MOVIMIENTO (ESTRICTO - BINARIO)**:
                        - Este campo SOLO admite: "Recibido" o "Enviado".
-                       - Si implica entrada (Llegó, Recibí, Inventariar, A stock) -> TIPO: "Recibido".
-                       - Si implica salida (Envié, Se fue, Para [Ciudad], Salida) -> TIPO: "Enviado".
-                       - 🚫 PROHIBIDO poner nombres de equipos en este campo.
+                       - Si el texto implica entrada (Llegó, Recibí, Inventariar, A stock, Vino de) -> TIPO: "Recibido".
+                       - Si el texto implica salida (Envié, Se fue, Para [Ciudad], Salida) -> TIPO: "Enviado".
+                       - 🚫 PROHIBIDO poner nombres de equipos (CPU, Laptop) en este campo.
 
                     2. **DIAGNÓSTICO DE ESTADO**:
                        - "Dañado": Fallas funcionales.
                        - "Usado": Defectos estéticos.
-                       - "Nuevo": Solo si se especifica.
+                       - "Nuevo": Solo si se especifica explícitamente.
 
                     3. **INFORME TÉCNICO (IT)**:
-                       - Si pide revisar/diagnosticar: AGREGA "[REQUIERE IT]" al inicio del campo 'reporte'.
+                       - Si pide "Revisar", "Diagnosticar", "Informe" o "IT": AGREGA "[REQUIERE IT]" al inicio del campo 'reporte'.
 
                     4. **CORRECCIÓN Y LIMPIEZA**:
-                       - Corrige ortografía ("cragador"->"Cargador").
-                       - Estandariza Marcas.
+                       - Corrige ortografía (ej: "cragador"->"Cargador", "mause"->"Mouse").
+                       - Estandariza Marcas (hp -> HP).
 
                     5. **LÓGICA DE STOCK Y ACCESORIOS**:
-                       - "A Stock" -> Destino: "Stock".
-                       - "Laptop con cargador" -> Cargador en reporte.
-                       - "50 mouses" -> Cantidad: 50.
+                       - "A Stock" o Consumibles masivos -> Destino: "Stock".
+                       - Accesorios adjuntos ("Laptop con cargador") -> Van al 'reporte', NO fila nueva.
+                       - Accesorios sueltos ("50 mouses") -> Fila propia.
 
                     FORMATO SALIDA (JSON):
                     [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
@@ -187,18 +184,18 @@ with t1:
                         datos = json.loads(json_limpio)
                         fecha = obtener_fecha_ecuador()
                         
-                        # --- CAPA DE SEGURIDAD PYTHON ---
+                        # --- CAPA DE SEGURIDAD PYTHON (Anti-Alucinaciones) ---
                         for d in datos: 
                             d["fecha"] = fecha
                             
-                            # 1. Corrección forzada de TIPO
+                            # 1. Corrección forzada de TIPO (Arregla el error de "CPU" en tipo)
                             tipo_raw = str(d.get("tipo", "")).lower()
                             if "env" in tipo_raw or "sal" in tipo_raw:
                                 d["tipo"] = "Enviado"
                             elif "rec" in tipo_raw or "lleg" in tipo_raw or "ing" in tipo_raw:
                                 d["tipo"] = "Recibido"
                             else:
-                                d["tipo"] = "Recibido" # Default
+                                d["tipo"] = "Recibido"
 
                             # 2. Corrección forzada de ESTADO
                             estado_raw = str(d.get("estado", "")).lower()
@@ -218,14 +215,13 @@ with t1:
                 except Exception as e:
                     st.error(f"Error crítico en IA: {e}")
 
-# --- TAB 2: CHAT IA (CON BOTÓN DE RECARGA AÑADIDO) ---
+# --- TAB 2: CHAT IA (CON BOTÓN DE LIMPIAR) ---
 with t2:
-    # AQUI ESTA EL CAMBIO QUE PEDISTE: Columnas para el botón de limpiar
-    col_chat_head, col_chat_btn = st.columns([4, 1])
-    with col_chat_head:
+    col_c1, col_c2 = st.columns([4, 1])
+    with col_c1:
         st.subheader("💬 Consulta Inteligente")
-    with col_chat_btn:
-        if st.button("🧹 Limpiar Chat"):
+    with col_c2:
+        if st.button("🧹 Nueva Charla"):
             st.session_state.messages = []
             st.rerun()
 
@@ -237,22 +233,24 @@ with t2:
         st.session_state.messages.append({"role": "user", "content": p_chat})
         with st.chat_message("user"): st.markdown(p_chat)
         
-        # OBTENER DATOS Y CALCULAR STOCK PARA QUE LA IA NO SE EQUIVOQUE
+        # OBTENER DATOS Y CALCULAMOS STOCK REAL PARA LA IA
         hist, _ = obtener_github(FILE_HISTORICO)
         df_hist = pd.DataFrame(hist)
-        df_real = calcular_stock_web(df_hist) # Usamos la función matemática nueva
+        df_real = calcular_stock_web(df_hist) # Usamos la función V14
         
-        # Contexto enriquecido con cálculos reales
+        # Contexto enriquecido
         contexto = f"""
-        INVENTARIO REAL CALCULADO (Entradas - Salidas):
+        INVENTARIO REAL (Saldos Calculados Matemáticamente):
         {df_real.to_string(index=False) if not df_real.empty else "Sin stock"}
         
-        HISTORIAL COMPLETO: {json.dumps(hist[-150:])}. 
-        Responde basado en la tabla de INVENTARIO REAL si preguntan cantidades.
+        HISTORIAL COMPLETO: {json.dumps(hist[-150:])}
+        
+        USUARIO: {p_chat}
+        Responde basándote en la tabla de INVENTARIO REAL si preguntan cantidades.
         """
         
         client = genai.Client(api_key=API_KEY)
-        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto + p_chat)
+        resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
         
         with st.chat_message("assistant"): st.markdown(resp.text)
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
@@ -294,7 +292,6 @@ with t3:
 
 # --- TAB 4: BI & HISTORIAL (MEJORADO CON STOCK REAL Y KPIs) ---
 with t4:
-    # 1. Cabecera y Botón de Recarga
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
     if c_head2.button("🔄 Actualizar Datos en Tiempo Real"):
@@ -309,10 +306,11 @@ with t4:
         for col in ['destino', 'estado', 'marca', 'equipo', 'tipo', 'serie']:
             if col not in df.columns: df[col] = "N/A"
         
+        # Convertimos tipos a string seguro
         df['tipo'] = df['tipo'].astype(str)
         df['destino'] = df['destino'].astype(str)
         
-        # CÁLCULO DE STOCK REAL (Para mostrar 19 en vez de 20)
+        # --- CÁLCULO DE STOCK REAL (V14) ---
         df_stock_real = calcular_stock_web(df)
         df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
@@ -325,24 +323,18 @@ with t4:
         kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
         kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
         # Aquí usamos el stock calculado
-        kpi3.metric("📦 En Stock Real", int(df_stock_real['val'].sum()) if not df_stock_real.empty else 0, delta="Disponibles")
+        total_unidades = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
+        kpi3.metric("📦 En Stock Real", total_unidades, delta="Disponibles")
         kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención", delta_color="inverse")
         
         st.divider()
 
         # --- SUB-PESTAÑAS ---
-        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
+        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real (Calculado)", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
         
         # 1. MAESTRO GENERAL
         with st_t1:
             st.markdown("### 📈 Resumen Global")
-            col_g1, col_g2 = st.columns(2)
-            if 'marca' in df.columns:
-                col_g1.bar_chart(df['marca'].value_counts().head(5), color="#2e7d32")
-                col_g1.caption("Marcas más frecuentes")
-            if 'equipo' in df.columns:
-                col_g2.bar_chart(df['equipo'].value_counts().head(5), color="#1F4E78")
-                col_g2.caption("Tipos de equipo")
             st.dataframe(df, use_container_width=True, hide_index=True)
 
         # 2. VISTA STOCK REAL (USANDO EL CÁLCULO MATEMÁTICO)
@@ -379,9 +371,10 @@ with t4:
             
             series_problem = []
             if 'serie' in df.columns and 'tipo' in df.columns:
-                df_ser = df[df['serie'].str.len() > 3].copy() 
+                df_ser = df[df['serie'].astype(str).str.len() > 3].copy() 
                 for ser, group in df_ser.groupby('serie'):
                     if len(group) > 1:
+                        # Ordenamos por si acaso, aunque asumimos cronología del excel
                         tipos = group['tipo'].str.lower().tolist()
                         for i in range(len(tipos) - 1):
                             if 'env' in tipos[i] and 'env' in tipos[i+1]:
