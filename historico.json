@@ -2,7 +2,7 @@
     {
         "fecha": "2026-01-21 19:54",
         "tipo": "Enviado",
-        "serie": "874636",
+        "serie": 874636,
         "marca": "Xtratech",
         "equipo": "CPU",
         "accion": "Env\u00edo",
