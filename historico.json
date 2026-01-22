@@ -40,33 +40,5 @@
         "reporte":"C\u00e1lculo autom\u00e1tico LAIA",
         "destino":"Movimientos",
         "observaciones":"Enviada con cargador y configuraciones."
-    },
-    {
-        "fecha":"2026-01-21 22:01",
-        "tipo":"Recibido",
-        "cantidad":50.0,
-        "estado":null,
-        "serie":"Sin Serie",
-        "marca":"Desconocida",
-        "equipo":"Mouse",
-        "accion":null,
-        "ubicacion":"Bodega 2",
-        "reporte":"Procesado por LAIA",
-        "destino":"Stock",
-        "observaciones":null
-    },
-    {
-        "fecha":"2026-01-21 22:08",
-        "tipo":"Recibido",
-        "cantidad":50.0,
-        "estado":"Nuevo",
-        "serie":null,
-        "marca":null,
-        "equipo":"teclado",
-        "accion":null,
-        "ubicacion":"bodega 3",
-        "reporte":null,
-        "destino":"Stock",
-        "observaciones":null
     }
 ]
