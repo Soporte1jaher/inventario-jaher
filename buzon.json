@@ -1,14 +1,1 @@
-[
-    {
-        "destino": "Paute",
-        "tipo": "Enviado",
-        "cantidad": 1,
-        "equipo": "Laptop",
-        "marca": "Lenovo",
-        "serie": "1010101",
-        "estado": "Nuevo",
-        "ubicacion": "Desconocida",
-        "reporte": "Incluye cargador Lenovo, mouse y cable HDMI",
-        "fecha": "2026-01-22 17:00"
-    }
-]
+[]
