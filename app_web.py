@@ -89,50 +89,38 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. ARREGLAR NOMBRES DE COLUMNAS (Arregla "Cant" vs "cantidad")
-    # Esto es lo que fallaba en tu foto. Ahora lo normalizamos.
+    # 1. Normalizar nombres de columnas (Arregla "Cant" vs "cantidad")
     df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {
-        'cant': 'cantidad', 
-        'condición': 'estado', 
-        'condicion': 'estado', 
-        'equipos': 'equipo',
-        'marca ': 'marca'
-    }
+    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
     df_c = df_c.rename(columns=mapa_cols)
 
-    # 2. RELLENAR VACÍOS Y NORMALIZAR TEXTO
-    # Convertimos "None" texto a string para poder reemplazarlo
+    # 2. Rellenar vacíos y forzar texto
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # 3. UNIFICAR "None"/"N/A" para que se resten bien
-    # Si entra "Mouse Genérica" y sale "Mouse None", ahora SÍ se restan.
-    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
+    # 3. UNIFICAR "None" -> "Genérica" (ESTO ARREGLA LA RESTA)
+    valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica', 'desconocida']
     df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
-    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
+    df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo') # O 'bueno'
     
-    # 4. ASEGURAR NÚMEROS
+    # 4. Asegurar números
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 5. LÓGICA DE FLUJO (+/-)
+    # 5. Lógica (+/-)
     def flujo(row):
         tipo = str(row['tipo']).lower()
         dest = str(row['destino']).lower()
         ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si es activo único (tiene serie larga), no suma al bulto de saldos (ej: Laptops)
+        # Si es activo único (serie larga), no suma al bulto
         es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin', 'genérica'])
         if es_activo: return 0
         
-        # SI EL DESTINO ES STOCK -> SUMA
-        if dest == 'stock': return cant
-        
-        # SI ES ENVIADO O SALIDA -> RESTA (Aquí es donde arreglamos tu problema)
-        if 'enviado' in tipo or 'salida' in tipo: return -cant
+        if dest == 'stock': return cant # Entrada
+        if 'enviado' in tipo or 'salida' in tipo: return -cant # Salida
         return 0
 
     df_c['val'] = df_c.apply(flujo, axis=1)
@@ -143,7 +131,6 @@ def calcular_stock_web(df):
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
     stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
     
-    # Solo devolvemos lo que tiene saldo positivo
     return stock[stock['Stock_Disponible'] > 0]
 
 # ==========================================
@@ -311,18 +298,15 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # 1. Calculamos el Stock
+        # 1. Calculamos el Stock igual que en el Excel
         df_stock_real = calcular_stock_web(df)
-        
-        # Filtro de Dañados
         df_bad = pd.DataFrame()
         if 'estado' in df.columns:
             df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
-        # 2. KPIs (CORREGIDO: Aquí estaba el error, ahora busca la columna correcta)
+        # 2. KPIs (Aquí buscamos 'Stock_Disponible', así que ya no dará error)
         total_items = 0
         if not df_stock_real.empty:
-            # Usamos 'Stock_Disponible' porque así lo nombramos en la función matemática
             total_items = int(df_stock_real['Stock_Disponible'].sum())
             
         if 'tipo' in df.columns:
@@ -339,33 +323,33 @@ with t4:
         
         st.divider()
 
-        # 3. PESTAÑAS (ORDEN SOLICITADO)
+        # 3. PESTAÑAS (ORDEN SOLICITADO: Dañados -> Stock -> Movimientos -> Gráficas)
         t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
         
-        # 1. DAÑADOS (ELIMINADOS/ROTO)
+        # PESTAÑA 1: DAÑADOS
         with t_bad:
             if not df_bad.empty:
-                st.error(f"🚨 {len(df_bad)} equipos reportados con daños.")
-                # Ponemos el reporte primero para leer rápido
+                st.error(f"🚨 {len(df_bad)} equipos dañados.")
                 cols = list(df_bad.columns)
                 if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
                 st.dataframe(df_bad[cols], use_container_width=True)
             else:
-                st.success("✅ Todo limpio. No hay equipos dañados.")
+                st.success("Sin equipos dañados.")
 
-        # 2. STOCK (RESUMEN)
+        # PESTAÑA 2: STOCK (LA TABLA RESUMIDA)
         with t_stock:
             st.info("Inventario Real Disponible (Calculado).")
             if not df_stock_real.empty:
+                # Mostramos la tabla limpia
                 st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
             else:
                 st.warning("Bodega vacía.")
 
-        # 3. HISTORIAL (SELECTOR)
+        # PESTAÑA 3: HISTORIAL (SELECTOR)
         with t_mov:
             st.markdown("### 🚦 Historial")
             if 'tipo' in df.columns:
-                filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True, key="filt_movs")
+                filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
                 if filtro == "Enviados":
                     st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
                 elif filtro == "Recibidos":
@@ -373,7 +357,7 @@ with t4:
                 else:
                     st.dataframe(df, use_container_width=True)
 
-        # 4. GRÁFICAS
+        # PESTAÑA 4: GRÁFICAS
         with t_graf:
             c1, c2 = st.columns(2)
             with c1:
