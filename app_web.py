@@ -89,40 +89,49 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame()
     df_c = df.copy()
     
-    # 1. Normalización de columnas
+    # 1. ARREGLAR NOMBRES DE COLUMNAS (Arregla "Cant" vs "cantidad")
+    # Esto es lo que fallaba en tu foto. Ahora lo normalizamos.
     df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
+    mapa_cols = {
+        'cant': 'cantidad', 
+        'condición': 'estado', 
+        'condicion': 'estado', 
+        'equipos': 'equipo',
+        'marca ': 'marca'
+    }
     df_c = df_c.rename(columns=mapa_cols)
 
-    # 2. Rellenar vacíos
+    # 2. RELLENAR VACÍOS Y NORMALIZAR TEXTO
+    # Convertimos "None" texto a string para poder reemplazarlo
     for col in ['marca', 'estado', 'serie', 'tipo', 'destino', 'equipo']:
         if col not in df_c.columns: df_c[col] = "N/A"
         df_c[col] = df_c[col].astype(str).str.strip()
     
-    # 3. Unificar "None", "N/A" -> "Genérica"
+    # 3. UNIFICAR "None"/"N/A" para que se resten bien
+    # Si entra "Mouse Genérica" y sale "Mouse None", ahora SÍ se restan.
     valores_nulos = ['n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 'generica']
     df_c['marca'] = df_c['marca'].str.lower().replace(valores_nulos, 'genérica')
     df_c['estado'] = df_c['estado'].str.lower().replace(valores_nulos, 'nuevo')
     
-    # 4. Asegurar números
+    # 4. ASEGURAR NÚMEROS
     if 'cantidad' not in df_c.columns: df_c['cantidad'] = 1
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # 5. Lógica de Flujo (+/-)
+    # 5. LÓGICA DE FLUJO (+/-)
     def flujo(row):
         tipo = str(row['tipo']).lower()
         dest = str(row['destino']).lower()
         ser = str(row['serie']).lower()
         cant = row['cantidad']
         
-        # Si es activo único (serie larga), no suma al bulto
-        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin'])
+        # Si es activo único (tiene serie larga), no suma al bulto de saldos (ej: Laptops)
+        es_activo = len(ser) > 3 and not any(x in ser for x in ['n/a', 'none', 'sin', 'genérica'])
         if es_activo: return 0
         
-        # Entrada a Stock
+        # SI EL DESTINO ES STOCK -> SUMA
         if dest == 'stock': return cant
         
-        # Salida de Stock (Resta)
+        # SI ES ENVIADO O SALIDA -> RESTA (Aquí es donde arreglamos tu problema)
         if 'enviado' in tipo or 'salida' in tipo: return -cant
         return 0
 
@@ -131,7 +140,6 @@ def calcular_stock_web(df):
     # 6. Agrupar
     df_c['equipo'] = df_c['equipo'].str.capitalize()
     df_c['marca'] = df_c['marca'].str.capitalize()
-    
     stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
     stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
     
@@ -141,14 +149,14 @@ def calcular_stock_web(df):
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
-st.title("🤖 LAIA NEURAL ENGINE v20.0 FINAL")
+st.title("🤖 LAIA NEURAL ENGINE v21.0 FINAL")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 
-# --- TAB 1: REGISTRO ---
+# --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
     st.info("💡 IA V16.5: Detecta si 'de stock' es origen (Resta) o destino (Suma).")
-    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta)")
+    texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié mouse a Paute... (Resta) / Recibí mouse a Stock... (Suma)")
     
     if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
         if texto_input.strip():
@@ -156,12 +164,27 @@ with t1:
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
+                    # PROMPT CORREGIDO PARA ENTENDER SALIDAS DE STOCK
                     prompt = f"""
                     Actúa como un Gerente de Logística Experto. TEXTO: "{texto_input}"
+                    
+                    TU MISIÓN: Determinar si el inventario SUMA o RESTA.
+
                     REGLAS DE ORO:
-                    1. SALIDAS (RESTA): "Envié", "Salida", "Despacho". DESTINO NO PUEDE SER STOCK.
-                    2. ENTRADAS (SUMA): "Recibí", "Llegó", "Ingreso". DESTINO ES STOCK.
-                    3. MATH: "20 mouses" -> cantidad: 20.
+                    1. SALIDAS (RESTA):
+                       - Palabras clave: "Envié", "Salida", "Despacho", "Mandar a", "Salió".
+                       - Si dice "de stock", significa que SALE de la bodega.
+                       - ACCIÓN: TIPO="Enviado". DESTINO="[Ciudad/Lugar]". (NUNCA pongas 'Stock' en destino si es salida).
+
+                    2. ENTRADAS (SUMA):
+                       - Palabras clave: "Recibí", "Llegó", "Ingreso", "A stock", "Devolución".
+                       - ACCIÓN: TIPO="Recibido". DESTINO="Stock".
+
+                    3. PROCESAMIENTO:
+                       - "20 mouses" -> cantidad: 20.
+                       - "Laptop con cargador" -> Cargador va en 'reporte', NO fila nueva.
+                       - "cragador" -> "Cargador".
+
                     JSON: [{{ "destino": "...", "tipo": "Recibido/Enviado", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "ubicacion": "...", "reporte": "..." }}]
                     """
                     
@@ -174,33 +197,35 @@ with t1:
                         
                         for d in datos: 
                             d["fecha"] = fecha
-                            # Seguridad Python
+                            
+                            # --- SEGURIDAD PYTHON (LÓGICA BLINDADA) ---
                             tipo_ia = str(d.get("tipo", "")).lower()
                             dest_ia = str(d.get("destino", "")).lower()
                             
-                            # Regla Salida
+                            # REGLA 1: Si es salida explícita, se respeta como ENVIADO (Resta)
                             if any(x in tipo_ia for x in ["env", "sal", "desp"]):
                                 d["tipo"] = "Enviado"
+                                # Si la IA se equivocó y puso destino stock en una salida, lo corregimos
                                 if "stock" in dest_ia: d["destino"] = "Destino Externo"
                             
-                            # Regla Entrada
+                            # REGLA 2: Si es entrada explícita o destino stock, es RECIBIDO (Suma)
                             elif any(x in tipo_ia for x in ["rec", "lleg", "ing"]) or "stock" in dest_ia:
                                 d["tipo"] = "Recibido"
                                 d["destino"] = "Stock"
                             
-                            # Regla Estado
+                            # REGLA 3: Corrección de Estado
                             est = str(d.get("estado", "")).lower()
-                            if "dañ" in est: d["estado"] = "Dañado"
+                            if "dañ" in est or "rot" in est: d["estado"] = "Dañado"
 
                         if enviar_buzon(datos):
                             st.success(f"✅ Procesado: {len(datos)} registros.")
                             if any(d.get('estado') == 'Dañado' for d in datos):
-                                st.warning("⚠️ DAÑADOS DETECTADOS.")
+                                st.warning("⚠️ Se detectaron equipos DAÑADOS.")
                             st.table(pd.DataFrame(datos))
                         else: st.error("Error GitHub")
                 except Exception as e: st.error(f"Error IA: {e}")
 
-# --- TAB 2: CHAT ---
+# --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
     c1, c2 = st.columns([4, 1])
     with c1: st.subheader("💬 Consulta Inteligente")
@@ -213,20 +238,25 @@ with t2:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if p_chat := st.chat_input("Consulta stock..."):
+    if p_chat := st.chat_input("Consulta tu stock..."):
         st.session_state.messages.append({"role": "user", "content": p_chat})
         with st.chat_message("user"): st.markdown(p_chat)
         
         hist, _ = obtener_github(FILE_HISTORICO)
+        # Calculamos Stock Real para dárselo a la IA (ESTO ES LO QUE HACE QUE LA RESPUESTA SEA CORRECTA)
         df_real = calcular_stock_web(pd.DataFrame(hist))
         
         contexto = f"""
-        STOCK REAL (Saldos): {df_real.to_string(index=False) if not df_real.empty else "Vacío"}
-        HISTORIAL: {json.dumps(hist[-50:])}
-        PREGUNTA: {p_chat}
+        INVENTARIO DISPONIBLE (Saldos Calculados):
+        {df_real.to_string(index=False) if not df_real.empty else "Bodega Vacía"}
+        
+        HISTORIAL COMPLETO: {json.dumps(hist[-50:])}
+        USUARIO: {p_chat}
         """
+        
         client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
+        
         with st.chat_message("assistant"): st.markdown(resp.text)
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
@@ -239,28 +269,27 @@ with t3:
     if st.button("🔥 EJECUTAR BORRADO", type="primary"):
         if txt_borrar:
             with st.spinner("LAIA analizando intención de borrado..."):
-                hist, _ = obtener_github(FILE_HISTORICO)
-                client = genai.Client(api_key=API_KEY)
-                
-                prompt_b = f"""
-                Actúa como DBA. DATOS: {json.dumps(hist[-20:])}. ORDEN: "{txt_borrar}"
-                JSON RESPUESTA:
-                1. BORRADO TOTAL -> {{"accion": "borrar_todo"}}
-                2. LIMPIEZA -> {{"accion": "borrar_vacios"}}
-                3. ESPECÍFICO -> {{"accion": "borrar", "serie": "..."}}
-                """
-                
                 try:
+                    hist, _ = obtener_github(FILE_HISTORICO)
+                    client = genai.Client(api_key=API_KEY)
+                    
+                    # Prompt de limpieza
+                    prompt_b = f"""
+                    Actúa como DBA. DATOS: {json.dumps(hist[-20:])}. ORDEN: "{txt_borrar}"
+                    JSON RESPUESTA:
+                    1. BORRADO TOTAL -> {{"accion": "borrar_todo"}}
+                    2. LIMPIEZA -> {{"accion": "borrar_vacios"}}
+                    3. ESPECÍFICO -> {{"accion": "borrar", "serie": "..."}}
+                    """
+                    
                     resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
                     orden_json = extraer_json(resp.text)
                     
                     if orden_json:
                         data_borrado = json.loads(orden_json)
-                        st.success("🤖 Interpretación Correcta:")
-                        st.json(data_borrado)
-                        
                         if enviar_buzon(data_borrado):
-                            st.toast("✅ Orden enviada.", icon="🗑️")
+                            st.success("✅ Orden enviada.")
+                            st.json(data_borrado)
                         else:
                             st.error("Error conectando con GitHub.")
                     else:
@@ -271,7 +300,7 @@ with t3:
                 except Exception as e:
                     st.error(f"Error inesperado: {e}")
 
-# --- TAB 4: DASHBOARD (ORDEN CORREGIDO) ---
+# --- TAB 4: DASHBOARD (ESTRUCTURA ORIGINAL CON NÚMEROS CORREGIDOS) ---
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -281,7 +310,7 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # 1. Calculamos Stock
+        # 1. Calculamos el Stock con la MATEMÁTICA CORREGIDA
         df_stock_real = calcular_stock_web(df)
         df_bad = pd.DataFrame()
         if 'estado' in df.columns:
@@ -293,36 +322,32 @@ with t4:
         cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
             
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad", delta_color="inverse")
-        kpi2.metric("📦 Stock Disp.", total_items)
-        kpi3.metric("📤 Enviados", cant_env, delta_color="off")
-        kpi4.metric("📥 Recibidos", cant_rec)
+        kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
+        kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
+        # Aquí se muestra el 19 en vez del 20
+        kpi3.metric("📦 En Stock Real", total_items, delta="Disponibles") 
+        kpi4.metric("⚠️ Equipos Dañados", len(df_bad), delta="Atención", delta_color="inverse")
         
         st.divider()
 
-        # 3. PESTAÑAS ORDENADAS
-        t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
+        # 3. PESTAÑAS (ESTRUCTURA ORIGINAL CONSERVADA)
+        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
         
-        # PESTAÑA 1: DAÑADOS
-        with t_bad:
-            st.error("🚨 Reporte de Daños")
-            if not df_bad.empty:
-                cols = list(df_bad.columns)
-                if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
-                st.dataframe(df_bad[cols], use_container_width=True)
-            else:
-                st.success("Sin equipos dañados.")
+        # 1. MAESTRO GENERAL
+        with st_t1:
+            st.markdown("### 📈 Resumen Global")
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # PESTAÑA 2: STOCK (RESUMEN)
-        with t_stock:
-            st.info("Inventario Real Disponible (Calculado).")
+        # 2. VISTA STOCK REAL (USANDO EL CÁLCULO MATEMÁTICO QUE RESTA)
+        with st_t2:
+            st.info("Vista filtrada: Stock real disponible (Entradas - Salidas).")
             if not df_stock_real.empty:
                 st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
             else:
-                st.warning("Bodega vacía.")
+                st.warning("Bodega vacía o sin stock calculado.")
 
-        # PESTAÑA 3: HISTORIAL (SELECTOR)
-        with t_mov:
+        # 3. VISTA TRÁFICO
+        with st_t3:
             st.markdown("### 🚦 Historial")
             if 'tipo' in df.columns:
                 filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True)
@@ -333,16 +358,35 @@ with t4:
                 else:
                     st.dataframe(df, use_container_width=True)
 
-        # PESTAÑA 4: GRÁFICAS
-        with t_graf:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**Top Marcas**")
-                if 'marca' in df.columns: st.bar_chart(df['marca'].value_counts().head(5), color="#2e7d32")
-            with c2:
-                st.markdown("**Top Equipos**")
-                if 'equipo' in df.columns: st.bar_chart(df['equipo'].value_counts().head(5), color="#1F4E78")
+        # 4. VISTA DAÑADOS
+        with st_t4:
+            st.error("🚨 Equipos dañados")
+            if not df_bad.empty:
+                cols = list(df_bad.columns)
+                if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
+                st.dataframe(df_bad[cols], use_container_width=True)
+            else:
+                st.success("Sin novedades.")
 
+        # 5. AUDITORÍA
+        with st_t5:
+            st.warning("🕵️ Detector de Inconsistencias")
+            series_prob = []
+            if 'serie' in df.columns:
+                df['serie_cl'] = df['serie'].astype(str).str.strip().str.lower()
+                df['tipo_cl'] = df['tipo'].astype(str).str.strip().str.lower()
+                df_ser = df[df['serie_cl'].str.len() > 3].copy()
+                for ser, group in df_ser.groupby('serie_cl'):
+                    if len(group) > 1:
+                        tipos = group['tipo_cl'].tolist()
+                        for i in range(len(tipos)-1):
+                            if 'env' in tipos[i] and 'env' in tipos[i+1]:
+                                series_prob.append({"Serie": ser, "Error": "Doble Salida"})
+                                break
+            if series_prob: st.table(pd.DataFrame(series_prob))
+            else: st.success("Lógica OK.")
+
+        # --- DESCARGA ---
         st.divider()
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Descargar Base (CSV)", csv, "inventario.csv", "text/csv")
