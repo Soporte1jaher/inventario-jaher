@@ -151,7 +151,7 @@ with t1:
                 try:
                     client = genai.Client(api_key=API_KEY)
                     
-                    # PROMPT CORREGIDO PARA ENTENDER SALIDAS DE STOCK
+                    # PROMPT DE LÓGICA LOGÍSTICA
                     prompt = f"""
                     Actúa como un Gerente de Logística Experto. TEXTO: "{texto_input}"
                     
