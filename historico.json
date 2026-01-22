@@ -84,30 +84,6 @@
         "fecha":"2026-01-22 15:45"
     },
     {
-        "destino":"Latacunga",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"Teclado",
-        "marca":"Desconocida",
-        "serie":"Sin serie",
-        "estado":"Nuevo",
-        "ubicacion":"Origen",
-        "reporte":"Forma parte del env\u00edo del CPU.",
-        "fecha":"2026-01-22 15:45"
-    },
-    {
-        "destino":"Latacunga",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"Mouse",
-        "marca":"Desconocida",
-        "serie":"Sin serie",
-        "estado":"Nuevo",
-        "ubicacion":"Origen",
-        "reporte":"Forma parte del env\u00edo del CPU.",
-        "fecha":"2026-01-22 15:45"
-    },
-    {
         "destino":"Imbabura",
         "tipo":"Enviado",
         "cantidad":1,
