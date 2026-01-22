@@ -301,7 +301,7 @@ with t3:
                     st.error(f"Error inesperado: {e}")
 
 # --- TAB 4: DASHBOARD (ESTRUCTURA ORIGINAL CON NÚMEROS CORREGIDOS) ---
-# --- TAB 4: BI & HISTORIAL (MEJORADO CON STOCK REAL Y KPIs) ---
+
 with t4:
     c_head1, c_head2 = st.columns([3, 1])
     c_head1.subheader("📊 Dashboard de Control de Activos")
@@ -311,61 +311,80 @@ with t4:
     if datos:
         df = pd.DataFrame(datos)
         
-        # CÁLCULO DE STOCK REAL (CORREGIDO PARA CABLES)
+        # 1. Calculamos el Stock
         df_stock_real = calcular_stock_web(df)
+        
+        # Filtro de Dañados
         df_bad = pd.DataFrame()
         if 'estado' in df.columns:
             df_bad = df[df['estado'].astype(str).str.lower().str.contains('dañ')].copy()
         
-        # KPIs
-        total_stock = int(df_stock_real['Cantidad'].sum()) if not df_stock_real.empty else 0
-        cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')]) if 'tipo' in df.columns else 0
-        cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')]) if 'tipo' in df.columns else 0
-        
+        # 2. KPIs (CORREGIDO: Aquí estaba el error, ahora busca la columna correcta)
+        total_items = 0
+        if not df_stock_real.empty:
+            # Usamos 'Stock_Disponible' porque así lo nombramos en la función matemática
+            total_items = int(df_stock_real['Stock_Disponible'].sum())
+            
+        if 'tipo' in df.columns:
+            cant_env = len(df[df['tipo'].astype(str).str.lower().str.contains('enviado')])
+            cant_rec = len(df[df['tipo'].astype(str).str.lower().str.contains('recibido')])
+        else:
+            cant_env, cant_rec = 0, 0
+            
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("📤 Total Enviados", cant_env, delta="Salidas Históricas", delta_color="off")
-        kpi2.metric("📥 Total Recibidos", cant_rec, delta="Entradas Históricas", delta_color="normal")
-        kpi3.metric("📦 En Stock Real", total_stock, delta="Disponibles")
-        kpi4.metric("⚠️ Dañados", len(df_bad), delta="Atención", delta_color="inverse")
+        kpi1.metric("⚠️ Dañados", len(df_bad), delta="Prioridad", delta_color="inverse")
+        kpi2.metric("📦 Stock Disp.", total_items)
+        kpi3.metric("📤 Enviados", cant_env, delta_color="off")
+        kpi4.metric("📥 Recibidos", cant_rec)
         
         st.divider()
 
-        st_t1, st_t2, st_t3, st_t4, st_t5 = st.tabs(["📂 Maestro", "📦 Bodega Real", "🚚 Tráfico", "⚠️ HOSPITAL", "🕵️ Auditoría"])
+        # 3. PESTAÑAS (ORDEN SOLICITADO)
+        t_bad, t_stock, t_mov, t_graf = st.tabs(["⚠️ Equipos Dañados", "📦 Stock (Saldos)", "🚚 Enviados/Recibidos", "📊 Gráficas"])
         
-        with st_t1:
-            st.dataframe(df, use_container_width=True)
-
-        with st_t2: # STOCK REAL
-            if not df_stock_real.empty:
-                st.dataframe(df_stock_real, use_container_width=True)
+        # 1. DAÑADOS (ELIMINADOS/ROTO)
+        with t_bad:
+            if not df_bad.empty:
+                st.error(f"🚨 {len(df_bad)} equipos reportados con daños.")
+                # Ponemos el reporte primero para leer rápido
+                cols = list(df_bad.columns)
+                if 'reporte' in cols: cols.insert(0, cols.pop(cols.index('reporte')))
+                st.dataframe(df_bad[cols], use_container_width=True)
             else:
-                st.warning("Bodega calculada vacía.")
+                st.success("✅ Todo limpio. No hay equipos dañados.")
 
-        with st_t3: # TRÁFICO
+        # 2. STOCK (RESUMEN)
+        with t_stock:
+            st.info("Inventario Real Disponible (Calculado).")
+            if not df_stock_real.empty:
+                st.dataframe(df_stock_real, use_container_width=True, hide_index=True)
+            else:
+                st.warning("Bodega vacía.")
+
+        # 3. HISTORIAL (SELECTOR)
+        with t_mov:
+            st.markdown("### 🚦 Historial")
             if 'tipo' in df.columns:
-                filtro = st.radio("Ver:", ["Enviados", "Recibidos"], horizontal=True)
+                filtro = st.radio("Ver:", ["Todos", "Enviados", "Recibidos"], horizontal=True, key="filt_movs")
                 if filtro == "Enviados":
                     st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('enviado')], use_container_width=True)
-                else:
+                elif filtro == "Recibidos":
                     st.dataframe(df[df['tipo'].astype(str).str.lower().str.contains('recibido')], use_container_width=True)
+                else:
+                    st.dataframe(df, use_container_width=True)
 
-        with st_t4: # DAÑADOS
-            st.dataframe(df_bad, use_container_width=True)
+        # 4. GRÁFICAS
+        with t_graf:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Top Marcas**")
+                if 'marca' in df.columns: st.bar_chart(df['marca'].value_counts().head(5), color="#2e7d32")
+            with c2:
+                st.markdown("**Top Equipos**")
+                if 'equipo' in df.columns: st.bar_chart(df['equipo'].value_counts().head(5), color="#1F4E78")
 
-        with st_t5: # AUDITORÍA
-            series_prob = []
-            if 'serie' in df.columns:
-                df['serie_clean'] = df['serie'].astype(str).str.strip().str.lower()
-                df['tipo_clean'] = df['tipo'].astype(str).str.strip().str.lower()
-                df_ser = df[df['serie_clean'].str.len() > 3].copy()
-                for ser, group in df_ser.groupby('serie_clean'):
-                    if len(group) > 1:
-                        tipos = group['tipo_clean'].tolist()
-                        for i in range(len(tipos)-1):
-                            if 'env' in tipos[i] and 'env' in tipos[i+1]:
-                                series_prob.append({"Serie": ser, "Error": "Doble Salida"})
-                                break
-            if series_prob: st.table(pd.DataFrame(series_prob))
-            else: st.success("Lógica OK.")
+        st.divider()
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Descargar Base (CSV)", csv, "inventario.csv", "text/csv")
     else:
         st.warning("Sin datos.")
