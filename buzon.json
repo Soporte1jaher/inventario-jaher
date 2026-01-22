@@ -1,14 +1,1 @@
-[
-    {
-        "destino": "Stock",
-        "tipo": "Recibido",
-        "cantidad": 50,
-        "equipo": "teclado",
-        "marca": null,
-        "serie": null,
-        "estado": "Nuevo",
-        "ubicacion": "bodega 3",
-        "reporte": null,
-        "fecha": "2026-01-21 22:08"
-    }
-]
+[]
