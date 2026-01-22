@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "destino": "Movimientos",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Monitor",
+        "marca": "AOC",
+        "serie": "zxcvbnm",
+        "estado": "Da\u00f1ado",
+        "ubicacion": null,
+        "reporte": "Pendiente de informe tecnico",
+        "fecha": "2026-01-21 22:14"
+    }
+]
