@@ -259,19 +259,75 @@ with t2:
         st.session_state.messages.append({"role": "assistant", "content": resp.text})
 
 # --- TAB 3: LIMPIEZA ---
+Tienes toda la razón, disculpa. La IA intentó buscar un equipo que se llamara "todo" en lugar de entenderlo como un comando global. Fue demasiado literal.
+
+Para arreglar esto y darle "Super Inteligencia" al borrado (que entienda "borar", "todo", "vacíos", o borrados específicos por serie), debemos cambiar el Prompt de la Pestaña 3.
+
+Aquí tienes el código SOLO DE LA PESTAÑA 3. Borra donde dice with t3: y pega este bloque blindado:
+
+🛠️ CAMBIO EN TAB 3 (Inteligencia de Borrado V2.0):
+# --- TAB 3: LIMPIEZA QUIRÚRGICA (LÓGICA SUPERIOR) ---
 with t3:
-    st.subheader("🗑️ Eliminación por Razonamiento")
-    txt_borrar = st.text_input("Describe qué borrar:")
-    if st.button("🔥 EJECUTAR BORRADO"):
+    st.subheader("🗑️ Eliminación y Limpieza")
+    st.info("💡 IA V20: Entiende comandos globales ('Borrar todo'), limpieza ('Borrar vacíos') y específicos ('Borrar serie 123').")
+    txt_borrar = st.text_input("Orden de eliminación:", placeholder="Ej: 'Borrar todo', 'Limpiar vacíos', o 'Borrar laptop serie 123'")
+    
+    if st.button("🔥 EJECUTAR BORRADO", type="primary"):
         if txt_borrar:
-            hist, _ = obtener_github(FILE_HISTORICO)
-            client = genai.Client(api_key=API_KEY)
-            prompt_b = f"DATA: {json.dumps(hist[-100:])}. DELETE: '{txt_borrar}'. JSON: [{{'accion':'borrar_quirurgico', 'serie':'...', 'equipo':'...'}}]"
-            resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
-            orden = extraer_json(resp.text)
-            if orden and enviar_buzon(json.loads(orden)):
-                st.success("Orden enviada.")
-                st.json(orden)
+            with st.spinner("LAIA analizando intención de borrado..."):
+                hist, _ = obtener_github(FILE_HISTORICO)
+                client = genai.Client(api_key=API_KEY)
+                
+                # PROMPT ESPECÍFICO PARA INTERPRETAR COMANDOS DE BORRADO
+                prompt_b = f"""
+                Actúa como un Administrador de Base de Datos (DBA). 
+                DATOS ACTUALES (Muestra): {json.dumps(hist[-20:])}
+                ORDEN DEL USUARIO: "{txt_borrar}"
+                
+                TU TRABAJO ES CLASIFICAR LA ORDEN Y GENERAR EL JSON CORRECTO.
+                IGNORA ERRORES ORTOGRÁFICOS (Ej: "borar" = "borrar").
+
+                CASO 1: BORRADO TOTAL (PELIGROSO)
+                - Si el usuario dice: "borrar todo", "eliminar todo", "resetear", "limpiar base", "borar todo".
+                - JSON: [{{"accion": "borrar_todo"}}]
+
+                CASO 2: LIMPIEZA DE BASURA
+                - Si el usuario dice: "borrar vacíos", "limpiar nulos", "quitar sin serie", "limpiar basura".
+                - JSON: [{{"accion": "borrar_vacios"}}]
+
+                CASO 3: BORRADO POR FILTRO (GRUPO)
+                - Si dice "borrar todos los mouses", "borrar marca hp", "borrar estado dañado".
+                - JSON: [{{"accion": "borrar_filtro", "columna": "equipo/marca/estado", "valor": "..."}}]
+
+                CASO 4: BORRADO QUIRÚRGICO (ESPECÍFICO)
+                - Si especifica una serie: "borrar serie 12345".
+                - JSON: [{{"accion": "borrar", "serie": "12345"}}]
+                
+                CASO 5: BORRADO POR CONTENIDO
+                - Si dice "borrar lo que diga 'pedernales'".
+                - JSON: [{{"accion": "borrar_contiene", "valor": "pedernales"}}]
+
+                RESPONDE SOLO EL JSON.
+                """
+                
+                try:
+                    resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+                    orden_json = extraer_json(resp.text)
+                    
+                    if orden_json:
+                        data_borrado = json.loads(orden_json)
+                        # Mostrar qué entendió la IA antes de enviarlo
+                        st.write("🤖 Interpretación:", data_borrado)
+                        
+                        if enviar_buzon(data_borrado):
+                            st.success("✅ Orden enviada al sistema.")
+                            st.balloons()
+                        else:
+                            st.error("Error conectando con el buzón.")
+                    else:
+                        st.error("No se entendió la orden de borrado.")
+                except Exception as e:
+                    st.error(f"Error en IA de borrado: {e}")
 
 # --- TAB 4: DASHBOARD (REORGANIZADO: DAÑADOS -> STOCK -> MOVIMIENTOS) ---
 with t4:
