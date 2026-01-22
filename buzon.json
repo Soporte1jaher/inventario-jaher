@@ -22,5 +22,17 @@
         "ubicacion": "Pendiente",
         "reporte": "Recibidos 50 teclados sin n\u00famero de serie. Investigar la omisi\u00f3n de n\u00fameros de serie y determinar la marca para registro adecuado.",
         "fecha": "2026-01-21 21:13"
+    },
+    {
+        "tipo": "Enviado",
+        "cantidad": 1,
+        "estado": "Operativo",
+        "serie": null,
+        "marca": null,
+        "equipo": "Mouse",
+        "accion": "consultar",
+        "ubicacion": null,
+        "reporte": "Solicitud de consulta de stock de mouses.",
+        "fecha": "2026-01-21 21:17"
     }
 ]
