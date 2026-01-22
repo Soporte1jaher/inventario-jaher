@@ -39,18 +39,6 @@
         "destino":"Colorado",
         "tipo":"Enviado",
         "cantidad":1,
-        "equipo":"Monitor",
-        "marca":"LG",
-        "serie":"zxcvb",
-        "estado":"Nuevo",
-        "ubicacion":"Colorado",
-        "reporte":"",
-        "fecha":"2026-01-22 12:16"
-    },
-    {
-        "destino":"Colorado",
-        "tipo":"Enviado",
-        "cantidad":1,
         "equipo":"Teclado",
         "marca":"N\/A",
         "serie":"N\/A",
@@ -130,29 +118,5 @@
         "ubicacion":"N\/A",
         "reporte":"N\/A",
         "fecha":"2026-01-22 12:18"
-    },
-    {
-        "destino":"Manta",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"CPU",
-        "marca":"Xtratech",
-        "serie":"zxcvb",
-        "estado":"Nuevo",
-        "ubicacion":"Origen Desconocido",
-        "reporte":"",
-        "fecha":"2026-01-22 12:28"
-    },
-    {
-        "destino":"Azogues",
-        "tipo":"Enviado",
-        "cantidad":1,
-        "equipo":"CPU",
-        "marca":"Xtratech",
-        "serie":"zxcvb",
-        "estado":"Nuevo",
-        "ubicacion":"Origen",
-        "reporte":"",
-        "fecha":"2026-01-22 12:28"
     }
 ]
