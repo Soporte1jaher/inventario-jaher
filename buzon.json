@@ -1,14 +1,1 @@
-[
-    {
-        "destino": "Movimientos",
-        "tipo": "Recibido",
-        "cantidad": 1,
-        "equipo": "cpu",
-        "marca": "xtratech",
-        "serie": "7478474",
-        "estado": "Da\u00f1ado",
-        "ubicacion": "paute",
-        "reporte": "carcasa rayada",
-        "fecha": "2026-01-21 22:22"
-    }
-]
+[]
