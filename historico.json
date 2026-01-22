@@ -70,5 +70,41 @@
         "ubicacion":"Data Center Nuevo",
         "reporte":"Se va a guardar en Data Center Nuevo.",
         "fecha":"2026-01-22 11:17"
+    },
+    {
+        "destino":"Latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:19"
+    },
+    {
+        "destino":"Tena",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:19"
+    },
+    {
+        "destino":"Lim\u00f3n",
+        "tipo":"Enviado",
+        "cantidad":2,
+        "equipo":"CPU",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "estado":"Nuevo",
+        "ubicacion":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 11:19"
     }
 ]
