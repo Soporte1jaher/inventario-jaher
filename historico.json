@@ -46,5 +46,29 @@
         "ubicacion":"datacenter",
         "reporte":"N\/A",
         "fecha":"2026-01-22 10:47"
+    },
+    {
+        "destino":"data center",
+        "tipo":"Recibido",
+        "cantidad":50,
+        "equipo":"Teclado",
+        "marca":null,
+        "serie":null,
+        "estado":"nuevo",
+        "ubicacion":"data center",
+        "reporte":null,
+        "fecha":"2026-01-22 10:49"
+    },
+    {
+        "destino":"data center",
+        "tipo":"Recibido",
+        "cantidad":50,
+        "equipo":"Mouse",
+        "marca":null,
+        "serie":null,
+        "estado":"nuevo",
+        "ubicacion":"data center",
+        "reporte":null,
+        "fecha":"2026-01-22 10:49"
     }
 ]
