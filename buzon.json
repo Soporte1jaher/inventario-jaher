@@ -1,1 +1,68 @@
-[]
+[
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de pantalla",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de equipos",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Agregar al stock",
+        "fecha": "2026-01-22 19:50"
+    }
+]
