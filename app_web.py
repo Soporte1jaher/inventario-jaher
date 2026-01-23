@@ -36,7 +36,24 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
-
+def extraer_json(texto):
+    try:
+        # Si la IA pone marcas de código ```json ... ```, las quitamos
+        if "```" in texto:
+            texto = texto.split("```")[1]
+            if texto.startswith("json"): texto = texto[4:]
+        
+        # Buscamos dónde empieza y termina el JSON real
+        inicio = texto.find("[")
+        if inicio == -1: inicio = texto.find("{")
+        fin = texto.rfind("]") + 1
+        if fin == 0: fin = texto.rfind("}") + 1
+        
+        if inicio != -1 and fin > inicio:
+            return texto[inicio:fin].strip()
+        return texto.strip()
+    except:
+        return ""
 def obtener_github(archivo):
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
