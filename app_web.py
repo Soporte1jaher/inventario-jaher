@@ -18,7 +18,6 @@ st.markdown("""
     .stApp { background-color: #0e1117; color: #e0e0e0; }
     .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #1E4E78; color: white; border: none; }
     .stChatFloatingInputContainer { background-color: #0e1117; }
-    .status-box { padding: 20px; border-radius: 10px; border: 1px solid #30363d; background-color: #161b22; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -29,16 +28,19 @@ try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets.")
+    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY).")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
+
+# Corrección de sintaxis a prueba de fallos
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
+
 def obtener_github(archivo):
-    # CAMBIO A PRUEBA DE FALLOS: Sin llaves {}, solo sumas +
+    # URL construida con sumas para evitar errores de llaves
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -50,12 +52,16 @@ def obtener_github(archivo):
 
 def enviar_github(archivo, datos, mensaje="Update"):
     actuales, sha = obtener_github(archivo)
+    if isinstance(datos, list):
+        actuales.extend(datos)
+    else:
+        actuales.append(datos)
+        
     payload = {
         "message": mensaje,
-        "content": base64.b64encode(json.dumps(datos, indent=4).encode('utf-8')).decode('utf-8'),
+        "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
-    # CAMBIO A PRUEBA DE FALLOS AQUÍ TAMBIÉN
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
@@ -76,6 +82,7 @@ def calcular_stock_web(df):
         dest = str(row.get('destino', '')).lower()
         cant = row['cantidad']
         
+        # Lógica de Stock
         if 'dañ' in condicion or 'obs' in condicion: return 0
         if 'stock' in dest or 'recibido' in tipo: return cant
         if 'enviado' in tipo: return -cant
@@ -84,6 +91,9 @@ def calcular_stock_web(df):
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     
     # Agrupación por Equipo, Marca y ESTADO (Nuevo/Usado)
+    if 'estado_fisico' not in df_c.columns:
+        df_c['estado_fisico'] = 'No especificado'
+
     stock_resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
     stock_resumen = stock_resumen[stock_resumen['val'] > 0]
     
@@ -103,8 +113,8 @@ REGLAS DE CATEGORÍA:
 2. PERIFÉRICOS (No requieren serie): Mouse, Teclado, Cables, Cargador.
 
 REGLAS DE NEGOCIO:
-- Si el usuario no dice si es NUEVO o USADO, DEBES PREGUNTAR.
-- Si el usuario no dice si está BUENO o DAÑADO, DEBES PREGUNTAR.
+- Si el usuario no dice si es NUEVO o USADO, DEBES PREGUNTAR (estado_fisico).
+- Si el usuario no dice si está BUENO o DAÑADO, DEBES PREGUNTAR (condicion).
 - Ignora info irrelevante (dibujitos, suciedad).
 - Captura info de daño (pantalla rota, no prende) y marca condicion="Dañado".
 - Si algo es BUENO pero lo mandan a TALLER, pregunta por qué.
@@ -132,15 +142,15 @@ with tab1:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-   if prompt := st.chat_input("Ej: Llegaron 5 laptops de Pascuales..."):
+    if prompt := st.chat_input("Ej: Llegaron 5 laptops de Pascuales..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
         # Llamada a la IA
-        client = genai.Client(api_key=API_KEY)
-        contexto = f"{SYSTEM_PROMPT}\nHistorial reciente: {st.session_state.messages[-3:]}\nUsuario dice: {prompt}"
-        
         try:
+            client = genai.Client(api_key=API_KEY)
+            contexto = f"{SYSTEM_PROMPT}\nHistorial reciente: {st.session_state.messages[-3:]}\nUsuario dice: {prompt}"
+            
             response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
             
             # Extraer JSON de la respuesta
@@ -152,11 +162,11 @@ with tab1:
             
             res_json = json.loads(raw_text)
             
-            if res_json["status"] == "READY":
-                st.session_state.draft = res_json["items"]
+            if res_json.get("status") == "READY":
+                st.session_state.draft = res_json.get("items", [])
                 resp_laia = "✅ Tengo la información completa. Revisa la tabla de abajo y confirma el registro."
             else:
-                resp_laia = res_json["missing_info"]
+                resp_laia = res_json.get("missing_info", "Necesito más detalles.")
                 st.session_state.draft = None
 
             with st.chat_message("assistant"): st.markdown(resp_laia)
@@ -164,6 +174,7 @@ with tab1:
 
         except Exception as e:
             st.error(f"Error procesando respuesta: {}")
+
     # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Registro")
@@ -176,14 +187,15 @@ with tab1:
                 for item in st.session_state.draft:
                     item["fecha"] = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 
-                # Enviar al buzón
-                actuales, _ = obtener_github(FILE_BUZON)
-                actuales.extend(st.session_state.draft)
-                if enviar_github(FILE_BUZON, actuales):
+                # Enviar al buzón (que luego tú fusionas al histórico manualmente o automáticamente)
+                # Aquí enviamos directamente al buzon para seguridad
+                if enviar_github(FILE_BUZON, st.session_state.draft):
                     st.success("¡Registro guardado exitosamente!")
                     st.session_state.draft = None
                     time.sleep(2)
                     st.rerun()
+                else:
+                    st.error("Error al conectar con GitHub.")
         
         if c2.button("❌ CANCELAR"):
             st.session_state.draft = None
@@ -201,8 +213,12 @@ with tab2:
         
         # KPIs
         k1, k2, k3 = st.columns(3)
-        k1.metric("📦 Total Items", int(st_resumen['val'].sum()) if not st_resumen.empty else 0)
-        k2.metric("⚠️ Dañados", len(df_hist[df_hist['condicion'].str.lower().str.contains('dañ', na=False)]))
+        if not st_resumen.empty:
+            k1.metric("📦 Total Items", int(st_resumen['val'].sum()))
+        else:
+            k1.metric("📦 Total Items", 0)
+            
+        k2.metric("⚠️ Dañados", len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)]))
         k3.metric("🚚 Movimientos", len(df_hist))
 
         t_res, t_det, t_dañ = st.tabs(["📦 Resumen de Stock", "🔍 Detalle por Series", "🚨 Dañados/Obsoletos"])
@@ -211,20 +227,26 @@ with tab2:
             st.write("### Resumen Minimalista (Opción B)")
             if not st_resumen.empty:
                 # Pivotar para ver: Equipo | Marca | Nuevo | Usado
-                res_pivot = st_resumen.pivot_table(index=['equipo', 'marca'], 
-                                                 columns='estado_fisico', 
-                                                 values='val', 
-                                                 aggfunc='sum').fillna(0)
-                st.dataframe(res_pivot, use_container_width=True)
+                try:
+                    res_pivot = st_resumen.pivot_table(index=['equipo', 'marca'], 
+                                                     columns='estado_fisico', 
+                                                     values='val', 
+                                                     aggfunc='sum').fillna(0)
+                    st.dataframe(res_pivot, use_container_width=True)
+                except:
+                    st.dataframe(st_resumen, use_container_width=True)
             else: st.info("No hay stock disponible.")
 
         with t_det:
             st.write("### Inventario Detallado (Series)")
             if not st_detalle.empty:
-                st.dataframe(st_detalle[['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'destino']], use_container_width=True, hide_index=True)
+                cols_to_show = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'destino']
+                # Filtrar solo columnas que existan
+                cols_existentes = [c for c in cols_to_show if c in st_detalle.columns]
+                st.dataframe(st_detalle[cols_existentes], use_container_width=True, hide_index=True)
 
         with t_dañ:
-            df_bad = df_hist[df_hist['condicion'].str.lower().str.contains('dañ|obs', na=False)]
+            df_bad = df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ|obs', na=False)]
             if not df_bad.empty:
                 st.error("Equipos fuera de servicio")
                 st.dataframe(df_bad, use_container_width=True)
