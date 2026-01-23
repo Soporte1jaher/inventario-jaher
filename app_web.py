@@ -1,6 +1,5 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+from openai import OpenAI
 import json
 import requests
 import base64
@@ -32,6 +31,8 @@ except:
     st.error("❌ Configura los Secrets (GITHUB_TOKEN y GPT_API_KEY).")
     st.stop()
 
+client = OpenAI(api_key=API_KEY)
+
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
@@ -51,44 +52,61 @@ def extraer_json(texto):
         return ""
 
 def obtener_github(archivo):
-    url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
             d = resp.json()
             return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
-    except: pass
+    except:
+        pass
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
     actuales, sha = obtener_github(archivo)
-    if isinstance(datos, list): actuales.extend(datos)
-    else: actuales.append(datos)
+    if isinstance(datos, list):
+        actuales.extend(datos)
+    else:
+        actuales.append(datos)
+
     payload = {
         "message": mensaje,
-        "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
+        "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
         "sha": sha
     }
-    url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
 # 3. MOTOR DE STOCK
 # ==========================================
 def calcular_stock_web(df):
-    if df.empty: return pd.DataFrame(), pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
+
     cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
     for col in cols:
-        if col not in df_c.columns: df_c[col] = "No especificado"
+        if col not in df_c.columns:
+            df_c[col] = "No especificado"
+
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+
     def procesar_fila(row):
-        est, t, d = str(row.get('estado','')).lower(), str(row.get('tipo','')).lower(), str(row.get('destino','')).lower()
-        if 'dañ' in est or 'obs' in est: return 0
-        if d == 'stock' or 'recibido' in t: return row['cant_n']
-        if 'enviado' in t: return -row['cant_n']
+        est = str(row['estado']).lower()
+        t = str(row['tipo']).lower()
+        d = str(row['destino']).lower()
+
+        if 'dañ' in est or 'obs' in est:
+            return 0
+        if d == 'stock' or 'recibido' in t:
+            return row['cant_n']
+        if 'enviado' in t:
+            return -row['cant_n']
         return 0
+
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
     return resumen[resumen['val'] > 0], df_c[df_c['val'] != 0]
@@ -131,7 +149,7 @@ Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superi
 - EQUIPOS: (Laptop, CPU, Monitor, Impresora, Regulador, UPS, Cámaras). REQUIEREN serie obligatoria. ACÉPTALA aunque sea corta o extraña (ej: "aaaaas").
 - PERIFÉRICOS: (Mouse, Teclado, Cables, Ponchadora). NO requieren serie.
 
-6. LÓGICA DE OBSOLETOS:
+8. LÓGICA DE OBSOLETOS:
 - Si detectas procesadores antiguos (Intel 9na Gen o inferior, Core 2 Duo, Pentium), sugiere mover a "Obsoletos".
 
 9. MEMORIA Y NEGACIONES:
@@ -168,46 +186,45 @@ SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
 # ==========================================
 st.title("🧠 LAIA v91.0 - Auditoría Senior")
 
-if "messages" not in st.session_state: st.session_state.messages = []
-if "draft" not in st.session_state: st.session_state.draft = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "draft" not in st.session_state:
+    st.session_state.draft = None
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
 with t1:
-    # 1. Mostrar historial de chat
     for m in st.session_state.messages:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
-    # 2. Entrada de usuario
     if prompt := st.chat_input("Ej: Envié 20 mouses y una laptop HP serie aaaaa a Paute"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
         try:
-            client = genai.Client(api_key=API_KEY)
-            
-            # 3. Construcción de memoria para que no sea tonta
             historial_contexto = ""
             for m in st.session_state.messages[-10:]:
-                historial_contexto += m["role"].upper() + ": " + m["content"] + "\n"
+                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
 
-            # 4. Llamada a la IA con el Prompt V100.0
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-exp",
-                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
-                contents=historial_contexto + "\nUSUARIO ACTUAL: " + prompt
+            response = client.responses.create(
+                model="gpt-4.1-mini",
+                input=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": historial_contexto + "\nUSUARIO ACTUAL: " + prompt}
+                ]
             )
-            
-            json_txt = extraer_json(response.text)
-            
+
+            texto = response.output_text
+            json_txt = extraer_json(texto)
+
             if not json_txt:
-                # Si la IA solo habla (sin JSON), mostramos su texto
-                resp_laia = response.text
+                resp_laia = texto
                 st.session_state.draft = None
             else:
                 res_json = json.loads(json_txt)
-                # Si la IA manda lista en vez de objeto, lo arreglamos
-                if isinstance(res_json, list): 
+                if isinstance(res_json, list):
                     res_json = {"status": "READY", "items": res_json}
 
                 if res_json.get("status") == "READY":
@@ -217,60 +234,30 @@ with t1:
                     resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
                     st.session_state.draft = None
 
-            with st.chat_message("assistant"): st.markdown(resp_laia)
+            with st.chat_message("assistant"):
+                st.markdown(resp_laia)
+
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
-        except Exception as e: 
+        except Exception as e:
             st.error("Error de Auditoría: " + str(e))
 
-    # 5. Zona de confirmación (Se muestra si el status es READY)
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Movimientos")
         df_draft = pd.DataFrame(st.session_state.draft)
         st.table(df_draft)
-        
+
         if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
             with st.spinner("Sincronizando con GitHub..."):
                 fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                for item in st.session_state.draft: 
+                for item in st.session_state.draft:
                     item["fecha"] = fecha_ecu
-                
+
                 if enviar_github(FILE_BUZON, st.session_state.draft):
-                    st.success("✅ ¡Datos enviados al Buzón! Tu PC sincronizará esto en segundos.")
+                    st.success("✅ ¡Datos enviados al Buzón!")
                     st.session_state.draft = None
                     st.session_state.messages = []
                     time.sleep(2)
                     st.rerun()
                 else:
                     st.error("Error al conectar con GitHub.")
-with t2:
-    hist, _ = obtener_github(FILE_HISTORICO)
-    if hist:
-        df_h = pd.DataFrame(hist)
-        df_h.columns = df_h.columns.str.lower().str.strip()
-        st_res, st_det = calcular_stock_web(df_h)
-        k1, k2 = st.columns(2)
-        k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
-        k2.metric("🚚 Movimientos", len(df_h))
-        if not st_res.empty:
-            st.dataframe(st_res.pivot_table(index=['equipo','marca'], columns='estado_fisico', values='val', aggfunc='sum').fillna(0))
-        st.dataframe(st_det, use_container_width=True)
-    else: st.info("Sincronizando con GitHub...")
-
-with t3:
-    st.subheader("🗑️ Limpieza Inteligente")
-    txt_borrar = st.text_input("¿Qué deseas eliminar?")
-    if st.button("🔥 EJECUTAR BORRADO"):
-        if txt_borrar:
-            try:
-                client = genai.Client(api_key=API_KEY)
-                p_db = "Actúa como DBA. COLUMNAS: [equipo, marca, serie, estado, destino]. ORDEN: " + txt_borrar
-                p_db += "\nRESPONDE SOLO JSON: {\"accion\":\"borrar_todo\"} o {\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
-                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=p_db)
-                order = json.loads(extraer_json(resp.text))
-                if enviar_github(FILE_BUZON, order):
-                    st.success("✅ Orden enviada."); st.json(order)
-            except Exception as e: st.error("Error: " + str(e))
-
-if st.sidebar.button("🧹 Borrar Chat"):
-    st.session_state.messages = []; st.session_state.draft = None; st.rerun()
