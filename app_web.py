@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 import json
 import requests
 import base64
@@ -11,7 +12,7 @@ import time
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA v50.0 - Super Auditora", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v90.0 - Auditora Extrema", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
@@ -22,7 +23,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES Y APOYO
+# 2. CREDENCIALES
 # ==========================================
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -45,11 +46,9 @@ def extraer_json(texto):
         if inicio == -1: inicio = texto.find("{")
         fin = texto.rfind("]") + 1
         if fin == 0: fin = texto.rfind("}") + 1
-        if inicio != -1 and fin > inicio:
-            return texto[inicio:fin].strip()
+        if inicio != -1 and fin > inicio: return texto[inicio:fin].strip()
         return texto
-    except:
-        return ""
+    except: return ""
 
 def obtener_github(archivo):
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
@@ -95,62 +94,34 @@ def calcular_stock_web(df):
     return resumen[resumen['val'] > 0], df_c[df_c['val'] != 0]
 
 # ==========================================
-# 4. CEREBRO MAESTRO LAIA V50.0
+# 4. PROMPT DE HIERRO (LA LEY)
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu única prioridad es la INTEGRIDAD de los datos. 
-Si un registro entra incompleto, el inventario no sirve. Por lo tanto, eres extremadamente exigente.
+Eres LAIA, Auditora Senior de Inventarios de Jaher. Eres estricta, profesional y TIENES PROHIBIDO registrar datos incompletos.
 
-1. REGLA DE BLOQUEO #1 (SERIES OBLIGATORIAS):
-- Laptops, CPUs, Monitores, Impresoras, Reguladores, UPS, Cámaras, Bocinas, Tablets.
-- SI FALTA LA SERIE, TIENES PROHIBIDO DAR EL STATUS "READY". 
-- No importa si el usuario te dio el equipo y la marca; si no hay serie, tu respuesta DEBE ser "QUESTION".
+REGLAS DE BLOQUEO ABSOLUTO:
+1. SI FALTA LA SERIE en un activo (Laptop, CPU, Monitor, Impresora, Regulador, Cámara, Bocina), el status es "QUESTION". No puedes inventar "N/A" ni "Sin serie".
+2. SI FALTA LA MARCA, el status es "QUESTION". No puedes poner "Genérica" o "N/A" a menos que el usuario lo diga.
+3. SI EL EQUIPO SE LLAMA "EQUIPO", el status es "QUESTION". Pregunta exactamente qué es.
+4. SI NO HAY ORIGEN/DESTINO (Agencia o Proveedor), el status es "QUESTION".
 
-2. REGLA DE BLOQUEO #2 (AGENCIA/ORIGEN):
-- No puedes registrar nada si no sabes de dónde viene (Proveedor o Agencia) o a dónde va.
-- Si no se menciona el lugar, PREGUNTA: "¿De qué agencia o proveedor es este movimiento?".
+DEDUCCIONES PERMITIDAS:
+- "Pascuales, Tena, Paute..." -> Destino/Origen = esa ciudad, estado_fisico = "Usado".
+- "Proveedor / Matriz" -> estado_fisico = "Nuevo".
+- "Roto / Pantalla negra / No prende" -> estado = "Dañado", destino = "Dañados".
 
-3. REGLA DE BLOQUEO #3 (ANTI-RELLENO):
-- Tienes ESTRICTAMENTE PROHIBIDO inventar marcas o series como "N/A", "Sin serie", "Genérica" o "Equipo" por tu cuenta.
-- El "N/A" solo se permite si el usuario escribe literalmente: "No tiene serie" o "No tiene marca".
+PROTOCOLO DE RESPUESTA:
+- Antes de responder, verifica: ¿Tengo Equipo, Marca, Serie, Cantidad, Origen y Estado?
+- Si falta algo, pide TODO lo que falta en una lista amigable. No preguntes uno por uno.
 
-4. LISTA DE VERIFICACIÓN MENTAL (HAZ ESTO SIEMPRE):
-Antes de responder, revisa este checklist. Si falta algo, status="QUESTION":
-   [ ] ¿Tengo el nombre real del equipo? (Ej: Laptop, no "equipo").
-   [ ] ¿Tengo la marca?
-   [ ] ¿Tengo la serie única para cada unidad?
-   [ ] ¿Sé si es Nuevo o Usado?
-   [ ] ¿Sé la Agencia o Proveedor?
-   [ ] ¿Sé si está Bueno o Dañado?
-
-5. DEDUCCIÓN LÓGICA (PARA NO SER REPETITIVA):
-- Menciona Ciudad/Agencia -> Deduces: Usado, Recibido, Stock.
-- Menciona Proveedor -> Deduces: Nuevo, Recibido, Stock.
-- Menciona Roto/Falla -> Deduces: Dañado, Destino: Dañados.
-
-6. TRADUCCIÓN DE JERGA:
-- "Portátil" = Laptop | "Fierro / Case" = CPU | "Pantalla" = Monitor | "Suprimido" = Regulador.
-
-7. MULTI-ORDEN Y COMBOS:
-- Desglosa kits: "CPU con mouse" = 2 registros.
-- Si envías periféricos, cantidad: 1 y tipo: "Enviado" (para que el Excel reste).
-
-8. PROTOCOLO DE PREGUNTA EN LOTE:
-- Si faltan 3 datos, pide los 3 en un solo mensaje profesional: "Entendido el ingreso del CPU Xtech. Para finalizar el registro necesito: 1. El número de serie. 2. La agencia de origen. 3. Si es nuevo o usado."
-
-SALIDA JSON (OBLIGATORIA Y ESTRICTA):
-{
-  "status": "READY" o "QUESTION",
-  "missing_info": "Texto pidiendo los datos REALES faltantes",
-  "items": [
-    { "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1, "estado": "Bueno/Dañado/Obsoleto", "estado_fisico": "Nuevo/Usado", "tipo": "Recibido/Enviado", "destino": "...", "reporte": "..." }
-  ]
-}
+JSON FORMAT:
+{"status": "READY" o "QUESTION", "missing_info": "Texto pidiendo datos", "items": [...]}
 """
+
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
-st.title("🧠 LAIA v50.0 - Enlace a Excel")
+st.title("🧠 LAIA v90.0 - Auditoría en Tiempo Real")
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = None
@@ -167,43 +138,42 @@ with t1:
 
         try:
             client = genai.Client(api_key=API_KEY)
-            hist = ""
-            for m in st.session_state.messages: hist += m["role"].upper() + ": " + m["content"] + "\n"
             
-            contexto = SYSTEM_PROMPT + "\n\n--- CONVERSACIÓN ---\n" + hist
-            response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
+            # Pasamos las instrucciones como SYSTEM INSTRUCTION (Nivel máximo de obediencia)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash-exp",
+                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+                contents=prompt
+            )
             
-            raw = response.text
-            if "```json" in raw: raw = raw.split("```json")[1].split("```")[0]
-            elif "```" in raw: raw = raw.split("```")[1].split("```")[0]
+            res_json = json.loads(extraer_json(response.text))
             
-            res_json = json.loads(extraer_json(raw))
-            
-            if isinstance(res_json, list):
-                res_json = {"status": "READY", "items": res_json}
-            
-            raw_missing = res_json.get("missing_info", "Necesito más detalles.")
-            resp_laia = str(raw_missing) if not isinstance(raw_missing, list) else ". ".join(map(str, raw_missing))
+            # --- FILTRO DE SEGURIDAD (Si la IA intenta saltarse las reglas) ---
+            items = res_json.get("items", [])
+            for item in items:
+                if str(item.get("serie")).upper() in ["N/A", "NONE", "NULL"] or str(item.get("marca")).upper() in ["N/A", "EQUIPO"]:
+                    res_json["status"] = "QUESTION"
+                    res_json["missing_info"] = "Necesito la marca y serie REAL de los equipos para poder registrarlos."
 
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                resp_laia = "✅ ¡Todo capturado! Revisa la tabla y confirma para sincronizar con el Excel."
+                resp_laia = "✅ He verificado los datos. Todo está completo. ¿Confirmas el envío?"
             else:
+                resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
                 st.session_state.draft = None
 
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
         except Exception as e: 
-            st.error("Error IA: " + str(e))
+            st.error("Error: " + str(e))
 
     if st.session_state.draft:
-        st.write("### 📋 Pre-visualización de Movimientos")
         st.table(pd.DataFrame(st.session_state.draft))
-        if st.button("🚀 ENVIAR AL BUZÓN PARA SINCRONIZAR"):
+        if st.button("🚀 ENVIAR AL EXCEL"):
             fecha = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
             for i in st.session_state.draft: i["fecha"] = fecha
             if enviar_github(FILE_BUZON, st.session_state.draft):
-                st.success("✅ ¡Datos enviados!")
+                st.success("✅ ¡Datos enviados al Sincronizador!")
                 st.session_state.draft = None
                 st.session_state.messages = []
                 time.sleep(2)
@@ -216,27 +186,26 @@ with t2:
         df_h.columns = df_h.columns.str.lower().str.strip()
         st_res, st_det = calcular_stock_web(df_h)
         k1, k2 = st.columns(2)
-        k1.metric("📦 Stock en Excel", int(st_res['val'].sum()) if not st_res.empty else 0)
-        k2.metric("🚚 Total Movimientos", len(df_h))
+        k1.metric("📦 Stock", int(st_res['val'].sum()) if not st_res.empty else 0)
+        k2.metric("🚚 Movimientos", len(df_h))
         if not st_res.empty:
             st.dataframe(st_res.pivot_table(index=['equipo','marca'], columns='estado_fisico', values='val', aggfunc='sum').fillna(0))
         st.dataframe(st_det, use_container_width=True)
     else: st.info("Sincronizando...")
 
 with t3:
-    st.subheader("🗑️ Eliminación y Limpieza Inteligente")
-    txt_borrar = st.text_input("Orden de eliminación:", placeholder="Ej: 'Borrar todo lo de HP'")
-    if st.button("🔥 EJECUTAR ORDEN DE LIMPIEZA", type="primary"):
-        if txt_borrar:
+    st.subheader("🗑️ Limpieza")
+    txt_b = st.text_input("Orden de borrado:")
+    if st.button("🔥 EJECUTAR"):
+        if txt_b:
             try:
                 client = genai.Client(api_key=API_KEY)
-                p_db = "Actúa como DBA. COLUMNAS: [equipo, marca, serie, estado, destino]. ORDEN: " + txt_borrar
+                p_db = "Actúa como DBA. COLUMNAS: [equipo, marca, serie, estado, destino]. ORDEN: " + txt_b
                 p_db += "\nRESPONDE SOLO JSON: {\"accion\":\"borrar_todo\"} o {\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
                 resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=p_db)
                 order = json.loads(extraer_json(resp.text))
-                if enviar_github(FILE_BUZON, order):
-                    st.success("✅ Orden enviada al buzón."); st.json(order)
-            except Exception as e: st.error("Error: " + str(e))
+                if enviar_github(FILE_BUZON, order): st.success("Orden enviada."); st.json(order)
+            except Exception as e: st.error(str(e))
 
-if st.sidebar.button("🧹 Borrar Chat"):
+if st.sidebar.button("🧹 Limpiar Chat"):
     st.session_state.messages = []; st.session_state.draft = None; st.rerun()
