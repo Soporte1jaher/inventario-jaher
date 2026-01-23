@@ -171,12 +171,11 @@ with t1:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-       try:
+        try:
             client = genai.Client(api_key=API_KEY)
-            # Memoria extendida
-            historial_contexto = ""
+            h_txt = ""
             for m in st.session_state.messages[-10:]:
-                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
+                h_txt += f"{m['role'].upper()}: {m['content']}\n"
 
             response = client.models.generate_content(
                 model="gemini-2.0-flash-exp",
