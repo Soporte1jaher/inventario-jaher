@@ -1,14 +1,1 @@
-[
-    {
-        "equipo": "Laptop",
-        "marca": "Lenovo",
-        "serie": "90909090",
-        "cantidad": 1,
-        "estado": "Da\u00f1ado",
-        "estado_fisico": "Usado",
-        "tipo": "Recibido",
-        "destino": "Da\u00f1ados",
-        "reporte": "Pantalla trizada y no enciende, sin cargador. Recibido de la agencia Portete.",
-        "fecha": "2026-01-23 16:30"
-    }
-]
+[]
