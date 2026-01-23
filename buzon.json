@@ -1,1 +1,26 @@
-[]
+[
+    {
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Paute",
+        "reporte": "Env\u00edo a Paute",
+        "fecha": "2026-01-23 16:32"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Paute",
+        "reporte": "Env\u00edo a Paute",
+        "fecha": "2026-01-23 16:32"
+    }
+]
