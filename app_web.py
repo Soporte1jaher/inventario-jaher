@@ -161,7 +161,7 @@ with tab1:
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
         except Exception as e:
-            st.error(f"Error procesando respuesta: {}")
+        st.error(f"Error procesando respuesta: {}")
 
     # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
