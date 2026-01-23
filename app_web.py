@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 import pandas as pd
 import time
 
-# ==========================================
+# =========================================
 # 1. CONFIGURACIÓN
 # ==========================================
 st.set_page_config(page_title="LAIA v25.0 - Auditora Conectada", page_icon="🧠", layout="wide")
@@ -174,17 +174,22 @@ with t1:
             
             res_json = json.loads(raw)
             
+            # --- BLINDAJE CONTRA EL ERROR DE LISTA ---
+            resp_laia = res_json.get("missing_info", "Necesito más detalles.")
+            if isinstance(resp_laia, list): # Si la IA mandó una lista por error
+                resp_laia = " . ".join(map(str, resp_laia))
+            # -----------------------------------------
+
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                msg = "✅ Todo listo para el Excel. ¿Confirmas el envío al buzón?"
+                resp_laia = "✅ ¡Excelente! He recolectado toda la información. ¿Confirmas el envío al buzón?"
             else:
-                msg = res_json.get("missing_info", "¿Me das más detalles?")
                 st.session_state.draft = None
 
-            with st.chat_message("assistant"): st.markdown(msg)
-            st.session_state.messages.append({"role": "assistant", "content": msg})
-        except Exception as e: st.error("Error IA: " + str(e))
-
+            with st.chat_message("assistant"): st.markdown(resp_laia)
+            st.session_state.messages.append({"role": "assistant", "content": resp_laia})
+        except Exception as e: 
+            st.error("Error IA: " + str(e))
     if st.session_state.draft:
         st.table(pd.DataFrame(st.session_state.draft))
         if st.button("🚀 ENVIAR AL BUZÓN PARA SINCRONIZAR"):
