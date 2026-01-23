@@ -73,10 +73,15 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     df_c = df.copy()
     
-    # Normalización
+    # Normalización dentro de la función de cálculo
     df_c.columns = df_c.columns.str.lower().str.strip()
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
+    # Asegurar columnas críticas para evitar KeyError
+    for col in ['condicion', 'estado_fisico', 'tipo', 'destino']:
+        if col not in df_c.columns:
+            df_c[col] = ''
+
     def procesar_fila(row):
         condicion = str(row.get('condicion', '')).lower()
         tipo = str(row.get('tipo', '')).lower()
@@ -92,9 +97,6 @@ def calcular_stock_web(df):
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     
     # Agrupación por Equipo, Marca y ESTADO (Nuevo/Usado)
-    if 'estado_fisico' not in df_c.columns:
-        df_c['estado_fisico'] = 'No especificado'
-
     stock_resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
     stock_resumen = stock_resumen[stock_resumen['val'] > 0]
     
@@ -211,6 +213,18 @@ with tab2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
         df_hist = pd.DataFrame(hist)
+        
+        # --- PARCHE DE COMPATIBILIDAD (AQUÍ ESTÁ LA SOLUCIÓN AL KEYERROR) ---
+        # Normalizamos nombres de columnas antes de hacer nada
+        df_hist.columns = df_hist.columns.str.lower().str.strip()
+        
+        # Si no existen las columnas nuevas, las creamos vacías para que no falle
+        columnas_necesarias = ['condicion', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca']
+        for col in columnas_necesarias:
+            if col not in df_hist.columns:
+                df_hist[col] = "No especificado"
+        # --------------------------------------------------------------------
+
         st_resumen, st_detalle = calcular_stock_web(df_hist)
         
         # KPIs
@@ -220,6 +234,7 @@ with tab2:
         else:
             k1.metric("📦 Total Items", 0)
             
+        # Ahora esto ya no fallará porque aseguramos que 'condicion' existe
         k2.metric("⚠️ Dañados", len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)]))
         k3.metric("🚚 Movimientos", len(df_hist))
 
