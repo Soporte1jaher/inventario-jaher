@@ -228,55 +228,45 @@ with t3:
     
     if st.button("🔥 EJECUTAR ORDEN DE LIMPIEZA", type="primary"):
         if txt_borrar:
-            with st.spinner("LAIA analizando bases de datos para borrado..."):
+            with st.spinner("LAIA analizando intención de borrado..."):
                 try:
-                    # Obtenemos una muestra del histórico para que la IA sepa los nombres de las columnas
+                    # 1. Obtenemos muestra para que la IA sepa qué hay
                     hist, _ = obtener_github(FILE_HISTORICO)
-                    muestra = hist[-10:] if hist else []
+                    muestra = hist[-5:] if hist else []
                     
                     client = genai.Client(api_key=API_KEY)
                     
-                    # Prompt de DBA Avanzado
-                    prompt_b = f"""
-                    Actúa como un Administrador de Bases de Datos (DBA) experto.
-                    Tu objetivo es convertir una orden de usuario en un comando JSON para limpiar un inventario.
+                    # 2. Construimos el prompt usando SUMA (+) para evitar errores de llaves {}
+                    prompt_b = "Actúa como un DBA experto. Convierte la orden del usuario en un comando JSON.\n\n"
+                    prompt_b += "COLUMNAS DISPONIBLES: [fecha, equipo, marca, serie, cantidad, estado, estado_fisico, tipo, destino, reporte]\n"
+                    prompt_b += "MUESTRA DE DATOS: " + json.dumps(muestra) + "\n"
+                    prompt_b += "ORDEN DEL USUARIO: " + txt_borrar + "\n\n"
+                    prompt_b += "REGLAS DE SALIDA (JSON):\n"
+                    prompt_b += "1. BORRADO TOTAL -> {\"accion\": \"borrar_todo\"}\n"
+                    prompt_b += "2. LIMPIEZA VACÍOS -> {\"accion\": \"borrar_vacios\"}\n"
+                    prompt_b += "3. POR FILTRO (ej. marca, equipo, destino) -> {\"accion\": \"borrar_filtro\", \"columna\": \"...\", \"valor\": \"...\"}\n"
+                    prompt_b += "4. POR SERIE -> {\"accion\": \"borrar\", \"serie\": \"...\"}\n"
+                    prompt_b += "5. GLOBAL (contiene palabra) -> {\"accion\": \"borrar_contiene\", \"valor\": \"...\"}\n\n"
+                    prompt_b += "RESPONDE SOLO EL JSON."
                     
-                    COLUMNAS DISPONIBLES: [fecha, equipo, marca, serie, cantidad, estado, estado_fisico, tipo, destino, reporte]
-                    MUESTRA DE DATOS: {json.dumps(muestra)}
-                    ORDEN DEL USUARIO: "{}"
-                    
-                    REGLAS DE SALIDA (JSON):
-                    1. BORRADO TOTAL: Si pide borrar todo.
-                       {{"accion": "borrar_todo"}}
-                    2. LIMPIEZA DE VACÍOS: Si pide quitar lo que no tiene serie o está vacío.
-                       {{"accion": "borrar_vacios"}}
-                    3. BORRADO POR FILTRO (MÁS LISTO): Si pide borrar algo específico (ej. "borra los dell" o "quita lo de pascuales").
-                       {{"accion": "borrar_filtro", "columna": "nombre_de_la_columna", "valor": "valor_a_buscar"}}
-                    4. BORRADO POR SERIE: Si da un código alfanumérico.
-                       {{"accion": "borrar", "serie": "valor"}}
-                    5. BORRADO GLOBAL: Si pide borrar una palabra que puede estar en cualquier lado (ej. "quita todo lo que diga roto").
-                       {{"accion": "borrar_contiene", "valor": "palabra"}}
-                    
-                    RESPONDE SOLO EL JSON.
-                    """
-                    
+                    # 3. Llamada a la IA
                     response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
                     
-                    # Usamos la función extraer_json que ya tienes en tu código
+                    # 4. Extraer y procesar JSON
                     orden_json = extraer_json(response.text)
                     
                     if orden_json:
                         data_borrado = json.loads(orden_json)
-                        # Enviamos la instrucción al buzón para que el sincronizar.py la procese
+                        # Enviamos la instrucción al buzón (FILE_BUZON)
                         if enviar_github(FILE_BUZON, data_borrado, mensaje="Orden de Limpieza LAIA"):
                             st.success("✅ Orden enviada correctamente al buzón.")
-                            st.markdown("### Resumen de la orden:")
                             st.json(data_borrado)
-                            st.info("La limpieza se reflejará en el Excel cuando el Sincronizador de tu PC procese el buzón.")
+                            st.info("La limpieza se reflejará en el Excel en la próxima sincronización de tu PC.")
                         else:
                             st.error("Error al conectar con GitHub.")
                     else:
-                        st.warning("LAIA no pudo interpretar la orden de borrado. Intenta ser más específico.")
+                        st.warning("LAIA no pudo interpretar la orden. Intenta decir: 'Borra la serie [numero]'")
                         
                 except Exception as e:
-                    st.error(f"Error en el motor de limpieza: {}")
+                    # CORRECCIÓN FINAL: Error sin llaves vacías
+                    st.error("Error en el motor de limpieza: " + str(e))
