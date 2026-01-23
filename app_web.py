@@ -144,7 +144,7 @@ SIEMPRE genera un objeto para CADA ítem mencionado en el mensaje.
   "missing_info": "Mensaje amable y completo pidiendo todos los datos faltantes de una vez",
   "items": [
     {
-      "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1,
+      "equipo": "...", "marca": "...", "modelo": "...", "serie": "...", "cantidad": 1,
       "estado": "Bueno/Dañado/Obsoleto", "estado_fisico": "Nuevo/Usado",
       "tipo": "Recibido/Enviado", "destino": "Stock/Dañados/Nombre Agencia", "reporte": "..."
     }
