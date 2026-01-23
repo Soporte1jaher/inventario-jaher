@@ -1,1 +1,38 @@
-[]
+[
+    {
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 10,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Paute",
+        "reporte": "N/A",
+        "fecha": "2026-01-23 16:42"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 10,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Paute",
+        "reporte": "N/A",
+        "fecha": "2026-01-23 16:42"
+    },
+    {
+        "equipo": "Cable HDMI",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Paute",
+        "reporte": "N/A",
+        "fecha": "2026-01-23 16:42"
+    }
+]
