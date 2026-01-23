@@ -154,7 +154,11 @@ def calcular_stock_web(df):
 
     # Filtro Final: Solo mostramos lo que existe (>0) y ordenamos
     return stock[stock['Stock_Disponible'] > 0].sort_values('Equipo')
-# --- TAB 1: REGISTRO CON CEREBRO HÍBRIDO (IA + REGLAS) ---
+    # ==========================================
+# 5. INTERFAZ
+# ==========================================
+st.title("🤖 LAIA NEURAL ENGINE v21.0 FINAL")
+t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 # --- TAB 1: REGISTRO CORREGIDO (LÓGICA BLINDADA ANTI-STOCK PARA DAÑADOS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
