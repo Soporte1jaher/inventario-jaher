@@ -29,7 +29,7 @@ try:
     API_KEY = st.secrets["GPT_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY).")
+    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GPT_API_KEY).")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
