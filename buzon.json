@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "1234",
+        "cantidad": 1,
+        "estado_fisico": "Usado",
+        "condicion": "Bueno",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": "Viene de Latacunga",
+        "fecha": "2026-01-23 11:45"
+    }
+]
