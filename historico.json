@@ -141,5 +141,16 @@
         "estado":"Bueno",
         "reporte":"Env\u00edo de cable HDMI con CPU Xtech y monitor Samsung a Latacunga",
         "fecha":"2026-01-22 19:52"
+    },
+    {
+        "destino":"Bodega",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "reporte":"La pantalla est\u00e1 trizada y no enciende, falta el cargador.",
+        "fecha":"2026-01-22 19:53"
     }
 ]
