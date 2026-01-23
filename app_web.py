@@ -317,7 +317,7 @@ with t3:
 
             except Exception as e:
                 st.error("Error: " + str(e))
-        if st.sidebar.button("🧹 Borrar Chat"):
+     if st.sidebar.button("🧹 Borrar Chat"):
     st.session_state.messages = []
     st.session_state.draft = None
     st.rerun()
