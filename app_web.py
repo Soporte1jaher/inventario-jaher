@@ -62,7 +62,7 @@ def enviar_buzon(datos):
     actuales, sha = obtener_github(FILE_BUZON)
     actuales.extend(datos)
     payload = {
-        "message": "LAIA NEURAL UPDATE",
+        "message": "LAIA UPDATE",
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
@@ -157,7 +157,7 @@ def calcular_stock_web(df):
     # ==========================================
 # 5. INTERFAZ
 # ==========================================
-st.title("🤖 LAIA NEURAL ENGINE v21.0 FINAL")
+st.title("🤖 LAIA v21.0")
 t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
 # --- TAB 1: REGISTRO CORREGIDO (LÓGICA BLINDADA ANTI-STOCK PARA DAÑADOS) ---
 with t1:
@@ -167,7 +167,7 @@ with t1:
     texto_input = st.text_area("Orden Logística:", height=200, 
         placeholder="Ej: Me llegó un Monitor AOC serie 888 roto... / Recibí 10 mouses...")
 
-    if st.button("🚀 EJECUTAR ANÁLISIS", type="primary"):
+    if st.button("EJECUTAR ANÁLISIS", type="primary"):
         if texto_input.strip():
             with st.spinner("Procesando lógica de inventario..."):
                 try:
