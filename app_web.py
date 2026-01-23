@@ -285,9 +285,9 @@ with t2:
         st.dataframe(st_det, use_container_width=True)
     else:
         st.info("Sincronizando con GitHub...")
-
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
+
     txt_borrar = st.text_input("¿Qué deseas eliminar?")
 
     if st.button("🔥 EJECUTAR BORRADO"):
@@ -317,7 +317,9 @@ with t3:
 
             except Exception as e:
                 st.error("Error: " + str(e))
-     if st.sidebar.button("🧹 Borrar Chat"):
+
+
+if st.sidebar.button("🧹 Borrar Chat"):
     st.session_state.messages = []
     st.session_state.draft = None
     st.rerun()
