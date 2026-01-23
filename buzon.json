@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "Lenovo",
+        "serie": "176453",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Pedernales",
+        "reporte": "HPxx5635",
+        "fecha": "2026-01-23 17:34"
+    }
+]
