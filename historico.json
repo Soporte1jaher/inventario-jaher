@@ -64,5 +64,159 @@
         "estado":"Bueno",
         "reporte":"Agregar al stock",
         "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Mouse",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":20,
+        "equipo":"Teclado",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Ponchadora RJ45",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de pantalla",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":5,
+        "equipo":"Limpiador de equipos",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":10,
+        "equipo":"Cable HDMI",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"Agregar al stock",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"portete",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Dell",
+        "serie":"AAAAAS",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"portete",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cargador",
+        "marca":"Dell",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtech",
+        "serie":"838474",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Monitor",
+        "marca":"Samsung",
+        "serie":"HGBCBCBBC",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Mouse",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Teclado",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"latacunga",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "equipo":"Cable HDMI",
+        "marca":"Gen\u00e9rica",
+        "serie":"N\/A",
+        "estado":"Bueno",
+        "reporte":"N\/A",
+        "fecha":"2026-01-22 19:50"
+    },
+    {
+        "destino":"Bodega",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "reporte":"Pantalla trizada y no enciende, sin cargador.",
+        "fecha":"2026-01-22 19:51"
     }
 ]
