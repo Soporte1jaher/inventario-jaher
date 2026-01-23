@@ -38,8 +38,8 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 def obtener_github(archivo):
-    # CORREGIDO: Las variables GITHUB_USER, GITHUB_REPO y archivo están DENTRO de las llaves
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    # CAMBIO A PRUEBA DE FALLOS: Sin llaves {}, solo sumas +
+    url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
@@ -55,8 +55,8 @@ def enviar_github(archivo, datos, mensaje="Update"):
         "content": base64.b64encode(json.dumps(datos, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
-    # CORREGIDO TAMBIÉN AQUÍ:
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    # CAMBIO A PRUEBA DE FALLOS AQUÍ TAMBIÉN
+    url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
