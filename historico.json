@@ -3,7 +3,7 @@
         "marca":"hp",
         "equipo":"CPU",
         "serie":"1234",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -12,13 +12,14 @@
         "reporte":null,
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"lenovo",
         "equipo":"CPU",
         "serie":"asdf",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -27,13 +28,14 @@
         "reporte":null,
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"dell",
         "equipo":"CPU",
         "serie":"\u00f1lkj",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -42,13 +44,14 @@
         "reporte":null,
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"Lenovo",
         "equipo":"Laptop",
         "serie":"12345",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -57,13 +60,14 @@
         "reporte":"Procesador Core i5 de 11va gen, 8GB RAM, 240GB SSD",
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"HP",
         "equipo":"Laptop",
         "serie":"asdfg",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -72,13 +76,14 @@
         "reporte":"Procesador Core i3 de 10ma gen, 4GB RAM, 120GB SSD",
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"HP",
         "equipo":"Laptop",
         "serie":"zxcvb",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -87,13 +92,14 @@
         "reporte":"Procesador Core i7 de 8va gen, 16GB RAM, 1TB SSD.  Considerar enviar a obsoletos por procesador desactualizado.",
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"Lenovo",
         "equipo":"Laptop",
         "serie":"12345",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -102,13 +108,14 @@
         "reporte":"Agencia el carmen",
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"Xtratecjh",
         "equipo":"CPU",
         "serie":"qwert",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -117,13 +124,14 @@
         "reporte":"Agencia el carmen",
         "modelo":null,
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"HP",
         "equipo":"Laptop",
         "serie":"123456",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -132,13 +140,14 @@
         "reporte":"Agencia Azogues",
         "modelo":"Probook",
         "origen":null,
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"Lenovo",
         "equipo":"Laptop",
         "serie":"123456",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -147,13 +156,14 @@
         "reporte":null,
         "modelo":null,
         "origen":"Agencia Concordia",
-        "origen\/agencia":null
+        "origen\/agencia":null,
+        "accion":null
     },
     {
         "marca":"HP",
         "equipo":"Laptop",
         "serie":"12345",
-        "cantidad":1,
+        "cantidad":1.0,
         "estado":"Bueno",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
@@ -162,6 +172,23 @@
         "reporte":null,
         "modelo":null,
         "origen":null,
-        "origen\/agencia":"Concordia"
+        "origen\/agencia":"Concordia",
+        "accion":null
+    },
+    {
+        "marca":null,
+        "equipo":null,
+        "serie":null,
+        "cantidad":null,
+        "estado":null,
+        "estado_fisico":null,
+        "tipo":null,
+        "destino":null,
+        "fecha":null,
+        "reporte":null,
+        "modelo":null,
+        "origen":null,
+        "origen\/agencia":null,
+        "accion":"borrar_todo"
     }
 ]
