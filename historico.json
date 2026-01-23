@@ -154,5 +154,29 @@
         "ubicacion":"Agencia Latacunga",
         "reporte":"Cable HDMI enviado a la agencia Latacunga.",
         "fecha":"2026-01-22 19:16"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado (Pantalla trizada, no enciende)",
+        "ubicacion":"Stock",
+        "reporte":"Laptop recibida en stock con la pantalla trizada y sin encender.",
+        "fecha":"2026-01-22 19:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Cargador",
+        "marca":"Lenovo",
+        "serie":"N\/A",
+        "estado":"Faltante",
+        "ubicacion":"Stock",
+        "reporte":"Cargador original de la agencia Portete faltante. No se recibi\u00f3 con el equipo.",
+        "fecha":"2026-01-22 19:17"
     }
 ]
