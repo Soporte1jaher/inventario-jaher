@@ -207,5 +207,16 @@
         "estado":"Bueno",
         "reporte":"Envio de cpu xtech serie 838474 con su monitor samnsung serie hgbcbcbbc, se envia con un mouse y un teclado y un cable hdmi a la agencia latacunga",
         "fecha":"2026-01-22 20:04"
+    },
+    {
+        "destino":"Bodega",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "reporte":"Pantalla trizada y no enciende, sin cargador de la agencia",
+        "fecha":"2026-01-22 20:04"
     }
 ]
