@@ -1,15 +1,1 @@
-[
-    {
-        "equipo": "Laptop",
-        "marca": "Lenovo",
-        "serie": "123456",
-        "cantidad": 1,
-        "estado": "Bueno",
-        "estado_fisico": "Usado",
-        "tipo": "Recibido",
-        "destino": "Stock",
-        "origen": "Agencia Concordia",
-        "reporte": null,
-        "fecha": "2026-01-23 14:36"
-    }
-]
+[]
