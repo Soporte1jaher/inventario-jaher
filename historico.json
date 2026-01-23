@@ -167,5 +167,18 @@
         "reporte":"Pantalla trizada, no enciende, sin cargador (N\/A)",
         "fecha":"2026-01-23 17:16",
         "modelo":"N\/A"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"176453",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"Pedernales",
+        "reporte":"HPxx5635",
+        "fecha":"2026-01-23 17:34",
+        "modelo":"N\/A"
     }
 ]
