@@ -180,5 +180,18 @@
         "reporte":"HPxx5635",
         "fecha":"2026-01-23 17:34",
         "modelo":"N\/A"
+    },
+    {
+        "equipo":"Router",
+        "marca":"Cisco",
+        "serie":"109747TY6",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"Pendiente avisar a Javier Rubio",
+        "fecha":"2026-01-23 17:40",
+        "modelo":"N\/A"
     }
 ]
