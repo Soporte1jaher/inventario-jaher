@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "equipo": "CPU",
+        "marca": "Xtratech",
+        "serie": "73873873",
+        "cantidad": 1,
+        "estado": "Da\u00f1ado",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Da\u00f1ados",
+        "reporte": "Recibido CPU da\u00f1ado (no enciende) y usado desde Paute. Se sugiere mover a la hoja de Obsoletos.",
+        "fecha": "2026-01-23 16:27"
+    }
+]
