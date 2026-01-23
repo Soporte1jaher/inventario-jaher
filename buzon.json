@@ -1,1 +1,86 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "Dell",
+        "modelo": "Tx34ty",
+        "serie": "aaaaas",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Portete",
+        "reporte": "Con cargador",
+        "fecha": "2026-01-23 18:54"
+    },
+    {
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "modelo": "Coreprobook",
+        "serie": "838474",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-23 18:54"
+    },
+    {
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "modelo": "",
+        "serie": "hgbcbcbbc",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-23 18:54"
+    },
+    {
+        "equipo": "Mouse",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-23 18:54"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-23 18:54"
+    },
+    {
+        "equipo": "Cable HDMI",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-23 18:54"
+    }
+]
