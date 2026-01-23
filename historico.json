@@ -8,7 +8,9 @@
         "serie":"N\/A",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -19,7 +21,9 @@
         "serie":"12345",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -30,7 +34,9 @@
         "serie":"12346",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -41,7 +47,9 @@
         "serie":"12347",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -52,7 +60,9 @@
         "serie":"12348",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -63,7 +73,9 @@
         "serie":"12349",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"agencia sangolqui",
@@ -74,7 +86,9 @@
         "serie":"ABCD",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"agencia sangolqui",
@@ -85,7 +99,9 @@
         "serie":"XYZS",
         "estado":"Bueno",
         "reporte":"N\/A",
-        "fecha":"2026-01-23 09:20"
+        "fecha":"2026-01-23 09:20",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Bodega",
@@ -96,7 +112,9 @@
         "serie":"No especificada",
         "estado":"Da\u00f1ado",
         "reporte":"me legaron 5 laptops series genericas a matriz",
-        "fecha":"2026-01-23 09:24"
+        "fecha":"2026-01-23 09:24",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -107,7 +125,9 @@
         "serie":"7373663",
         "estado":"Bueno",
         "reporte":"me llego de sanglqui cpu marca xtech serie7373663",
-        "fecha":"2026-01-23 09:24"
+        "fecha":"2026-01-23 09:24",
+        "estado_fisico":null,
+        "condicion":null
     },
     {
         "destino":"Stock",
@@ -118,6 +138,47 @@
         "serie":"N\/A",
         "estado":"Bueno",
         "reporte":"con un teclado",
-        "fecha":"2026-01-23 09:24"
+        "fecha":"2026-01-23 09:24",
+        "estado_fisico":null,
+        "condicion":null
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtratech",
+        "serie":"1234",
+        "estado":null,
+        "reporte":"Viene de Agencia Pascuales",
+        "fecha":"2026-01-23 11:36",
+        "estado_fisico":"Usado",
+        "condicion":"Bueno"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtratech",
+        "serie":"1235",
+        "estado":null,
+        "reporte":"Viene de Agencia Pascuales",
+        "fecha":"2026-01-23 11:36",
+        "estado_fisico":"Usado",
+        "condicion":"Bueno"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"CPU",
+        "marca":"Xtratech",
+        "serie":"1236",
+        "estado":null,
+        "reporte":"Viene de Agencia Pascuales",
+        "fecha":"2026-01-23 11:36",
+        "estado_fisico":"Usado",
+        "condicion":"Bueno"
     }
 ]
