@@ -9,27 +9,25 @@ import pandas as pd
 import time
 
 # ==========================================
-# 1. CONFIGURACIÓN Y ESTILOS
+# 1. CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="LAIA v24.0 - Agente Logístico Pro", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v25.0 - Auditora Conectada", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; color: #e0e0e0; }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
-    .stChatFloatingInputContainer { background-color: #0e1117; }
-    .status-card { background-color: #161b22; border-radius: 10px; padding: 15px; border-left: 5px solid #2e7d32; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES Y GITHUB
+# 2. CREDENCIALES
 # ==========================================
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GOOGLE_API_KEY).")
+    st.error("❌ Configura los Secrets en Streamlit.")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
@@ -49,11 +47,10 @@ def obtener_github(archivo):
     except: pass
     return [], None
 
-def enviar_github(archivo, datos, mensaje="Update"):
+def enviar_github(archivo, datos, mensaje="LAIA Input"):
     actuales, sha = obtener_github(archivo)
     if isinstance(datos, list): actuales.extend(datos)
     else: actuales.append(datos)
-        
     payload = {
         "message": mensaje,
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
@@ -63,223 +60,135 @@ def enviar_github(archivo, datos, mensaje="Update"):
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
-# 3. MOTOR DE STOCK (NUEVO vs USADO)
+# 3. MOTOR DE STOCK (ALINEADO CON SINCRONIZADOR)
 # ==========================================
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
-    df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    columnas = ['condicion', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca']
-    for col in columnas:
+    # Asegurar columnas para el cálculo
+    cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad']
+    for col in cols:
         if col not in df_c.columns: df_c[col] = "No especificado"
+    
+    df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
 
     def procesar_fila(row):
-        condicion = str(row.get('condicion', '')).lower()
+        est = str(row.get('estado', '')).lower()
         tipo = str(row.get('tipo', '')).lower()
         dest = str(row.get('destino', '')).lower()
-        cant = row['cantidad']
-        if 'dañ' in condicion or 'obs' in condicion: return 0
-        if 'stock' in dest or 'recibido' in tipo: return cant
-        if 'enviado' in tipo: return -cant
+        if 'dañ' in est or 'obs' in est: return 0
+        if dest == 'stock' or 'recibido' in tipo: return row['cant_n']
+        if 'enviado' in tipo: return -row['cant_n']
         return 0
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    stock_resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
-    stock_resumen = stock_resumen[stock_resumen['val'] > 0]
-    stock_detalle = df_c[df_c['val'] > 0].copy()
-    return stock_resumen, stock_detalle
+    resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
+    resumen = resumen[resumen['val'] > 0]
+    return resumen, df_c[df_c['val'] != 0]
 
 # ==========================================
-# 4. EL CEREBRO DE LAIA (PROMPT MAESTRO)
+# 4. CEREBRO DE LAIA (CONSTRUCTOR DE JSON PARA SINCRONIZADOR)
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, la inteligencia de control de inventarios de Jaher. No eres un chatbot común, eres una AUDITORA.
+Eres LAIA. Debes recolectar datos para un sistema de inventario.
+Tu salida debe ser un JSON compatible con el script sincronizador.py.
 
-TU MISIÓN:
-Registrar movimientos de bodega con precisión absoluta. El registro SOLO se completa cuando tienes TODA la información.
+REGLAS:
+1. EQUIPOS (Serie Obligatoria): Laptop, CPU, Monitor, Impresora, Cámaras, Bocinas. 
+   - 1 Equipo = 1 Serie única. No repitas series.
+2. PERIFÉRICOS: Mouse, Teclado, Cables, Cargador (No piden serie).
+3. CAMPOS OBLIGATORIOS:
+   - marca, equipo, serie, cantidad.
+   - estado: ¿Bueno o Dañado? (Tu script de Excel usa esta columna para filtrar dañados).
+   - estado_fisico: ¿Nuevo o Usado?
+   - tipo: Recibido o Enviado.
+   - destino: Stock, Taller o el nombre de una Agencia.
 
-REGLAS DE CLASIFICACIÓN:
-1. EQUIPOS (Serie Obligatoria): Laptop, CPU, Monitor, Impresora, Cámaras, Bocinas.
-   - REGLA DE ORO: 1 Equipo = 1 Serie.
-   - Si dicen "2 laptops", DEBES recibir 2 series distintas.
-2. PERIFÉRICOS (Sin Serie): Mouse, Teclado, Cables, Cargadores. Solo importa la cantidad.
-
-REGLAS DE CUESTIONAMIENTO (Ponte lista):
-- Si falta el ORIGEN (¿De dónde viene? Proveedor, Agencia Pascuales, etc.), ¡PREGUNTA!
-- Si falta la MARCA, ¡PREGUNTA!
-- Si falta el ESTADO FÍSICO (¿Nuevo o Usado?), ¡PREGUNTA!
-- Si falta la CONDICIÓN (¿Bueno o Dañado?), ¡PREGUNTA!
-- Si mencionan daños (roto, no prende, quemado), asume CONDICIÓN="Dañado" y DESTINO="Bodega Dañados".
-- Si algo está "Bueno" pero va a "Taller", pregunta por qué.
-- IGNORA comentarios irrelevantes como "tiene stickers" o "está sucio", pero anótalos en el reporte si quieres.
-
-MEMORIA:
-Revisa todo el historial. Si el usuario dio las series en un mensaje y la marca en otro, únelos.
-
-SALIDA JSON (Estricta):
-Si falta algo (aunque sea un solo dato):
-{ "status": "QUESTION", "missing_info": "Escribe aquí tu pregunta al usuario" }
-
-Si todo está completo (Cantidad = Número de series para equipos):
-{
-  "status": "READY",
-  "items": [
-    {
-      "equipo": "Laptop",
-      "marca": "HP",
-      "serie": "ABC123",
-      "cantidad": 1,
-      "estado_fisico": "Usado",
-      "condicion": "Bueno",
-      "tipo": "Recibido",
-      "destino": "Stock",
-      "reporte": "Viene de Agencia Pascuales"
-    }
-  ]
-}
+SI FALTA INFO: Responde con {"status": "QUESTION", "missing_info": "Tu pregunta aquí"}.
+SI TODO ESTÁ OK: Responde con {"status": "READY", "items": [...]}.
 """
 
 # ==========================================
-# 5. INTERFAZ Y LÓGICA DE DIÁLOGO
+# 5. INTERFAZ
 # ==========================================
-st.title("🧠 LAIA v24.0: Super Auditora")
+st.title("🧠 LAIA v25.0 - Enlace a Excel")
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = None
 
-tab1, tab2 = st.tabs(["💬 Chat Auditor", "📊 Dashboard de Stock"])
+t1, t2 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo"])
 
-with tab1:
+with t1:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("Escribe tu orden logística aquí..."):
+    if prompt := st.chat_input("¿Qué ingresó a bodega hoy?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
         try:
             client = genai.Client(api_key=API_KEY)
+            hist = ""
+            for m in st.session_state.messages: hist += m["role"].upper() + ": " + m["content"] + "\n"
             
-            # Construcción de la memoria total para la IA
-            historial_completo = ""
-            for msg in st.session_state.messages:
-                historial_completo += msg["role"].upper() + ": " + msg["content"] + "\n"
-
-            contexto = SYSTEM_PROMPT + "\n\n--- HISTORIAL DE AUDITORÍA ---\n" + historial_completo + "\n\n--- INSTRUCCIÓN ---\nAnaliza si con lo que ha dicho el usuario ya podemos cerrar el registro o si falta preguntar algo más."
-            
+            contexto = SYSTEM_PROMPT + "\n\n--- CONVERSACIÓN ---\n" + hist
             response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
             
-            # Limpieza del JSON
-            raw_text = response.text
-            if "```json" in raw_text: raw_text = raw_text.split("```json")[1].split("```")[0]
-            elif "```" in raw_text: raw_text = raw_text.split("```")[1].split("```")[0]
+            raw = response.text
+            if "```json" in raw: raw = raw.split("```json")[1].split("```")[0]
+            elif "```" in raw: raw = raw.split("```")[1].split("```")[0]
             
-            res_json = json.loads(raw_text)
+            res_json = json.loads(raw)
             
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                resp_laia = "✅ He verificado toda la información. Los datos son coherentes. ¿Deseas que guarde esto en el inventario?"
+                msg = "✅ Todo listo para el Excel. ¿Confirmas el envío al buzón?"
             else:
-                resp_laia = res_json.get("missing_info", "Necesito más detalles para proceder.")
+                msg = res_json.get("missing_info", "¿Me das más detalles?")
                 st.session_state.draft = None
 
-            with st.chat_message("assistant"): st.markdown(resp_laia)
-            st.session_state.messages.append({"role": "assistant", "content": resp_laia})
-
-        except Exception as e:
-            st.error("Error de análisis: " + str(e))
+            with st.chat_message("assistant"): st.markdown(msg)
+            st.session_state.messages.append({"role": "assistant", "content": msg})
+        except Exception as e: st.error("Error IA: " + str(e))
 
     if st.session_state.draft:
-        st.write("---")
-        st.markdown("### 📋 Pre-visualización del Registro")
-        df_draft = pd.DataFrame(st.session_state.draft)
-        st.table(df_draft)
-        
-        c1, c2 = st.columns(2)
-        if c1.button("✅ CONFIRMAR Y SUBIR A BODEGA"):
-            with st.spinner("Sincronizando con GitHub..."):
-                fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                for item in st.session_state.draft: item["fecha"] = fecha_ecu
-                
-                if enviar_github(FILE_BUZON, st.session_state.draft):
-                    st.success("¡Datos guardados! El chat se reiniciará.")
-                    st.session_state.draft = None
-                    st.session_state.messages = []
-                    time.sleep(2)
-                    st.rerun()
-                else: st.error("Error de conexión.")
-        
-        if c2.button("❌ CANCELAR REGISTRO"):
-            st.session_state.draft = None
-            st.rerun()
+        st.table(pd.DataFrame(st.session_state.draft))
+        if st.button("🚀 ENVIAR AL BUZÓN PARA SINCRONIZAR"):
+            fecha = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+            for i in st.session_state.draft: i["fecha"] = fecha
+            
+            if enviar_github(FILE_BUZON, st.session_state.draft):
+                st.success("¡Enviado! Tu script local lo procesará en unos segundos.")
+                st.session_state.draft = None
+                st.session_state.messages = []
+                time.sleep(2)
+                st.rerun()
 
-# ==========================================
-# 6. DASHBOARD (OPCIÓN B + DETALLE)
-# ==========================================
-with tab2:
+with t2:
+    # El dashboard lee el histórico para mostrarte qué hay actualmente
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
-        df_hist = pd.DataFrame(hist)
+        df_h = pd.DataFrame(hist)
+        # Parche de nombres de columnas para el dashboard de LAIA
+        df_h.columns = df_h.columns.str.lower().str.strip()
+        if 'estado' in df_h.columns and 'condicion' not in df_h.columns:
+            df_h['condicion'] = df_h['estado'] # Compatibilidad visual
         
-        # --- BLINDAJE ANTI-KEYERROR ---
-        # 1. Pasamos todo a minúsculas para no pelear con mayúsculas/minúsculas
-        df_hist.columns = df_hist.columns.str.lower().str.strip()
+        st_res, st_det = calcular_stock_web(df_h)
+        k1, k2 = st.columns(2)
+        k1.metric("📦 Stock en Excel", int(st_res['val'].sum()) if not st_res.empty else 0)
+        k2.metric("🚚 Total Movimientos", len(df_h))
         
-        # 2. Lista de columnas que el sistema NUEVO necesita
-        columnas_vitales = ['equipo', 'marca', 'serie', 'cantidad', 'estado_fisico', 'condicion', 'tipo', 'destino']
-        
-        # 3. Si una columna no existe en tu JSON viejo, la creamos con un valor por defecto
-        for col in columnas_vitales:
-            if col not in df_hist.columns:
-                df_hist[col] = "No especificado"
-        
-        # 4. Forzamos que la cantidad sea número
-        df_hist['cantidad'] = pd.to_numeric(df_hist['cantidad'], errors='coerce').fillna(1)
-        # ------------------------------
+        st.write("#### Resumen por Estado Físico")
+        if not st_res.empty:
+            st.dataframe(st_res.pivot_table(index=['equipo','marca'], columns='estado_fisico', values='val', aggfunc='sum').fillna(0))
+        st.write("#### Detalle de Series")
+        st.dataframe(st_det, use_container_width=True)
+    else: st.info("Sincronizando con GitHub...")
 
-        # Ahora sí calculamos el stock sin miedo a errores
-        st_resumen, st_detalle = calcular_stock_web(df_hist)
-        
-        k1, k2, k3 = st.columns(3)
-        total_st = int(st_resumen['val'].sum()) if not st_resumen.empty else 0
-        k1.metric("📦 Stock Total", total_st)
-        
-        # El conteo de dañados ahora es seguro porque 'condicion' existe sí o sí
-        danados = len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)])
-        k2.metric("⚠️ Dañados", danados)
-        k3.metric("🚚 Movimientos", len(df_hist))
-
-        t_res, t_det, t_dañ = st.tabs(["📦 Stock (Resumen)", "🔍 Stock (Series)", "🚨 Bodega Dañados"])
-        
-        with t_res:
-            st.write("#### Saldo por Estado (Nuevo/Usado)")
-            if not st_resumen.empty:
-                try:
-                    res_pivot = st_resumen.pivot_table(index=['equipo', 'marca'], 
-                                                     columns='estado_fisico', 
-                                                     values='val', 
-                                                     aggfunc='sum').fillna(0)
-                    st.dataframe(res_pivot, use_container_width=True)
-                except: 
-                    st.dataframe(st_resumen, use_container_width=True)
-            else: 
-                st.info("No hay stock disponible.")
-
-        with t_det:
-            if not st_detalle.empty:
-                # Mostramos solo las columnas que nos interesan
-                cols_ver = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'condicion', 'destino']
-                existentes = [c for c in cols_ver if c in st_detalle.columns]
-                st.dataframe(st_detalle[existentes], use_container_width=True, hide_index=True)
-
-        with t_dañ:
-            df_bad = df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ|obs', na=False)]
-            if not df_bad.empty: 
-                st.error(f"Se han encontrado {len(df_bad)} registros en mal estado.")
-                st.dataframe(df_bad, use_container_width=True)
-            else: 
-                st.success("Sin equipos dañados en el historial.")
-    else: 
-        st.warning("Esperando datos del histórico o archivo vacío...")
+if st.sidebar.button("🧹 Limpiar Chat"):
+    st.session_state.messages = []
+    st.session_state.draft = None
+    st.rerun()
