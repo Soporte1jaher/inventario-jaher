@@ -64,5 +64,71 @@
         "estado": "Bueno",
         "reporte": "A\u00f1adir al stock",
         "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Mouse",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agregaron 20 mouse al stock.",
+        "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 20,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agregaron 20 teclados al stock.",
+        "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Ponchadora RJ45",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agreg\u00f3 1 ponchadora RJ45 al stock.",
+        "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de pantalla",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agregaron 5 limpiadores de pantalla al stock.",
+        "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Limpiador de equipos",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agregaron 5 limpiadores de equipos al stock.",
+        "fecha": "2026-01-22 20:04"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 10,
+        "equipo": "Cable HDMI",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "Se agregaron 10 cables HDMI al stock.",
+        "fecha": "2026-01-22 20:04"
     }
 ]
