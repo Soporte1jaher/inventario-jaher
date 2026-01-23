@@ -222,12 +222,33 @@ with tab2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
         df_hist = pd.DataFrame(hist)
+        
+        # --- BLINDAJE ANTI-KEYERROR ---
+        # 1. Pasamos todo a minúsculas para no pelear con mayúsculas/minúsculas
+        df_hist.columns = df_hist.columns.str.lower().str.strip()
+        
+        # 2. Lista de columnas que el sistema NUEVO necesita
+        columnas_vitales = ['equipo', 'marca', 'serie', 'cantidad', 'estado_fisico', 'condicion', 'tipo', 'destino']
+        
+        # 3. Si una columna no existe en tu JSON viejo, la creamos con un valor por defecto
+        for col in columnas_vitales:
+            if col not in df_hist.columns:
+                df_hist[col] = "No especificado"
+        
+        # 4. Forzamos que la cantidad sea número
+        df_hist['cantidad'] = pd.to_numeric(df_hist['cantidad'], errors='coerce').fillna(1)
+        # ------------------------------
+
+        # Ahora sí calculamos el stock sin miedo a errores
         st_resumen, st_detalle = calcular_stock_web(df_hist)
         
         k1, k2, k3 = st.columns(3)
         total_st = int(st_resumen['val'].sum()) if not st_resumen.empty else 0
         k1.metric("📦 Stock Total", total_st)
-        k2.metric("⚠️ Dañados", len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)]))
+        
+        # El conteo de dañados ahora es seguro porque 'condicion' existe sí o sí
+        danados = len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)])
+        k2.metric("⚠️ Dañados", danados)
         k3.metric("🚚 Movimientos", len(df_hist))
 
         t_res, t_det, t_dañ = st.tabs(["📦 Stock (Resumen)", "🔍 Stock (Series)", "🚨 Bodega Dañados"])
@@ -241,20 +262,24 @@ with tab2:
                                                      values='val', 
                                                      aggfunc='sum').fillna(0)
                     st.dataframe(res_pivot, use_container_width=True)
-                except: st.dataframe(st_resumen, use_container_width=True)
-            else: st.info("No hay stock disponible.")
+                except: 
+                    st.dataframe(st_resumen, use_container_width=True)
+            else: 
+                st.info("No hay stock disponible.")
 
         with t_det:
             if not st_detalle.empty:
-                st.dataframe(st_detalle, use_container_width=True, hide_index=True)
+                # Mostramos solo las columnas que nos interesan
+                cols_ver = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'condicion', 'destino']
+                existentes = [c for c in cols_ver if c in st_detalle.columns]
+                st.dataframe(st_detalle[existentes], use_container_width=True, hide_index=True)
 
         with t_dañ:
             df_bad = df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ|obs', na=False)]
-            if not df_bad.empty: st.dataframe(df_bad, use_container_width=True)
-            else: st.success("Sin equipos dañados.")
-    else: st.warning("Esperando datos del histórico...")
-
-if st.sidebar.button("🧹 Limpiar Chat"):
-    st.session_state.messages = []
-    st.session_state.draft = None
-    st.rerun()
+            if not df_bad.empty: 
+                st.error(f"Se han encontrado {len(df_bad)} registros en mal estado.")
+                st.dataframe(df_bad, use_container_width=True)
+            else: 
+                st.success("Sin equipos dañados en el historial.")
+    else: 
+        st.warning("Esperando datos del histórico o archivo vacío...")
