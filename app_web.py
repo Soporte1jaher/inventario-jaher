@@ -36,7 +36,7 @@ GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
-HEADERS = {"Authorization": f"token {}", "Cache-Control": "no-cache"}
+HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 def obtener_github(archivo):
     url = f"https://api.github.com/repos/{}/{}/contents/{}"
     try:
