@@ -267,28 +267,57 @@ with t2:
         df_h = pd.DataFrame(hist)
         df_h.columns = df_h.columns.str.lower().str.strip()
         st_res, st_det = calcular_stock_web(df_h)
+
         k1, k2 = st.columns(2)
         k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
         k2.metric("🚚 Movimientos", len(df_h))
+
         if not st_res.empty:
-            st.dataframe(st_res.pivot_table(index=['equipo','marca'], columns='estado_fisico', values='val', aggfunc='sum').fillna(0))
+            st.dataframe(
+                st_res.pivot_table(
+                    index=['equipo', 'marca'],
+                    columns='estado_fisico',
+                    values='val',
+                    aggfunc='sum'
+                ).fillna(0)
+            )
+
         st.dataframe(st_det, use_container_width=True)
-    else: st.info("Sincronizando con GitHub...")
+    else:
+        st.info("Sincronizando con GitHub...")
 
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
     txt_borrar = st.text_input("¿Qué deseas eliminar?")
+
     if st.button("🔥 EJECUTAR BORRADO"):
         if txt_borrar:
             try:
-                client = genai.Client(api_key=API_KEY)
-                p_db = "Actúa como DBA. COLUMNAS: [equipo, marca, serie, estado, destino]. ORDEN: " + txt_borrar
-                p_db += "\nRESPONDE SOLO JSON: {\"accion\":\"borrar_todo\"} o {\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
-                resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=p_db)
-                order = json.loads(extraer_json(resp.text))
-                if enviar_github(FILE_BUZON, order):
-                    st.success("✅ Orden enviada."); st.json(order)
-            except Exception as e: st.error("Error: " + str(e))
+                p_db = (
+                    "Actúa como DBA. "
+                    "COLUMNAS: [equipo, marca, serie, estado, destino]. "
+                    "ORDEN: " + txt_borrar +
+                    "\nRESPONDE SOLO JSON: "
+                    "{\"accion\":\"borrar_todo\"} "
+                    "o "
+                    "{\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
+                )
 
-if st.sidebar.button("🧹 Borrar Chat"):
-    st.session_state.messages = []; st.session_state.draft = None; st.rerun()
+                resp = client.responses.create(
+                    model="gpt-4.1-mini",
+                    input=p_db
+                )
+
+                texto = resp.output_text
+                order = json.loads(extraer_json(texto))
+
+                if enviar_github(FILE_BUZON, order):
+                    st.success("✅ Orden enviada.")
+                    st.json(order)
+
+            except Exception as e:
+                st.error("Error: " + str(e))
+        if st.sidebar.button("🧹 Borrar Chat"):
+    st.session_state.messages = []
+    st.session_state.draft = None
+    st.rerun()
