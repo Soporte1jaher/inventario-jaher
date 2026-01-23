@@ -9,5 +9,8 @@
         "estado": "Da\u00f1ado",
         "reporte": "Pantalla trizada y no enciende, sin cargador.",
         "fecha": "2026-01-22 19:42"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
