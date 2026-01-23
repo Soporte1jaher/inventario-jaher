@@ -197,7 +197,8 @@ with t1:
             for i in st.session_state.draft: i["fecha"] = fecha
             
             if enviar_github(FILE_BUZON, st.session_state.draft):
-                st.success("¡Enviado! Tu script local lo procesará en unos segundos.")
+                # Mensaje más claro para el usuario
+                st.success(f"✅ ¡Datos enviados al BUZÓN! Ahora abre el Sincronizador en tu PC para verlos en el Excel.")
                 st.session_state.draft = None
                 st.session_state.messages = []
                 time.sleep(2)
