@@ -304,5 +304,22 @@
         "origen\/agencia":null,
         "accion":"borrar_todo",
         "valor":null
+    },
+    {
+        "marca":null,
+        "equipo":null,
+        "serie":null,
+        "cantidad":null,
+        "estado":null,
+        "estado_fisico":null,
+        "tipo":null,
+        "destino":null,
+        "fecha":null,
+        "reporte":null,
+        "modelo":null,
+        "origen":null,
+        "origen\/agencia":null,
+        "accion":"borrar_todo",
+        "valor":null
     }
 ]
