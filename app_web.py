@@ -157,31 +157,44 @@ def calcular_stock_web(df):
 # --- TAB 1: REGISTRO CON CEREBRO HÍBRIDO (IA + REGLAS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("🧠 IA V26 ULTRA: Clasificación Híbrida (Dañados a Cuarentena / Buenos a Stock).")
+    st.info("🧠 IA SUPREMA: Diferencia Periféricos (Stock) vs Activos (Series) vs Dañados.")
     
     texto_input = st.text_area("Orden Logística:", height=200, 
-        placeholder="Ej: Llegaron 50 mouses genéricos a bodega. / Me llegó una Laptop Lenovo con pantalla trizada...")
+        placeholder="Ej: Me llegaron 20 mouses (Stock). / Recibí una Laptop con pantalla rota...")
 
-    if st.button("🚀 EJECUTAR ANÁLISIS PROFUNDO", type="primary"):
+    if st.button("🚀 EJECUTAR CEREBRO LOGÍSTICO", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA activando redes neuronales..."):
+            with st.spinner("LAIA analizando con precisión militar..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
 
-                    # PROMPT
+                    # LISTA DE COSAS QUE SIEMPRE SON STOCK (Bulto)
+                    COSAS_STOCK = "mouse, teclado, cable, cargador, botella, limpiador, funda, adaptador, ponchadora, rj45, pasta"
+
+                    # ---------------------------------------------------------
+                    # 1. EL PROMPT MÁS INTELIGENTE (INYECCIÓN DE LÓGICA)
+                    # ---------------------------------------------------------
                     prompt = f"""
-                    Analiza: "{texto_input}"
-                    TU MISIÓN: Clasificar cada ítem con precisión.
+                    Analiza esta orden: "{texto_input}"
                     
-                    REGLAS:
-                    1. **CANTIDAD**: "un mouse" -> 1. "10 cables" -> 10.
-                    2. **CATEGORÍA**:
-                       - PERIFÉRICOS (Mouse, Teclado, Cable): SERIE = "N/A".
-                       - ACTIVOS (Laptop, CPU): SERIE = Extraer del texto.
-                    3. **ESTADO**: Busca daños (roto, trizado, falla, no vale). Si hay -> "Dañado". Si no -> "Bueno".
-                    4. **LOGÍSTICA**: 
-                       - "Llegó", "Recibí" -> TIPO: "Recibido".
-                       - "Envié", "Salió" -> TIPO: "Enviado".
+                    TU LÓGICA DEBE SER PERFECTA:
+                    
+                    1. **DETECTA EL TIPO**:
+                       - Si dice "llegó", "recibí", "vino", "compré" -> TIPO: "Recibido".
+                       - Si dice "envié", "salió" -> TIPO: "Enviado".
+
+                    2. **DETECTA EL ESTADO (PRIORIDAD 1)**:
+                       - ¿Dice "trizada", "rota", "no vale", "falla", "golpe"? -> ESTADO: "Dañado".
+                       - Si no dice nada malo -> ESTADO: "Bueno".
+
+                    3. **DETECTA LA CATEGORÍA (PRIORIDAD 2)**:
+                       - ¿Es ({COSAS_STOCK})? -> ENTONCES EL DESTINO ES "Stock" Y LA SERIE ES "N/A".
+                       - ¿Es Laptop, CPU, Monitor? -> EXTRAE LA SERIE REAL.
+
+                    4. **ASIGNA EL DESTINO FINAL**:
+                       - Si es Periférico/Consumible -> DESTINO: "Stock".
+                       - Si es Equipo DAÑADO -> DESTINO: "Bodega Dañados".
+                       - Si es Equipo BUENO -> DESTINO: "Stock" (Disponible).
 
                     FORMATO JSON:
                     [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "reporte": "..." }}]
@@ -193,75 +206,88 @@ with t1:
                     if json_limpio:
                         datos = json.loads(json_limpio)
                         fecha = obtener_fecha_ecuador()
-
-                        # --- CAPA DE INTELIGENCIA PYTHON (EL JUEZ FINAL) ---
-                        PERIFERICOS_BULTO = ['mouse', 'teclado', 'cable', 'cargador', 'limpiador', 'ponchadora', 'funda', 'adaptador']
+                        
+                        # Lista de Periféricos para forzar lógica en Python (Doble Seguridad)
+                        LISTA_PERIFERICOS = ['mouse', 'teclado', 'cable', 'cargador', 'limpiador', 'ponchadora', 'funda', 'adaptador', 'botella']
 
                         for d in datos:
                             d["fecha"] = fecha
                             
-                            # 1. NORMALIZADOR DE TIPO
-                            t_raw = str(d.get("tipo", "")).lower()
-                            d["tipo"] = "Enviado" if ("env" in t_raw or "sal" in t_raw) else "Recibido"
+                            # ====================================================
+                            # FASE 1: ENTENDIMIENTO DEL EQUIPO (¿QUÉ ES?)
+                            # ====================================================
+                            nombre_equipo = str(d.get("equipo", "")).lower()
+                            es_periferico = any(x in nombre_equipo for x in LISTA_PERIFERICOS)
 
-                            # 2. DETECTOR DE DAÑOS (CRÍTICO: Define el Estado)
-                            # Buscamos en estado y reporte
-                            full_text = (str(d.get("estado", "")) + " " + str(d.get("reporte", ""))).lower()
-                            es_danado = any(x in full_text for x in ["dañ", "triz", "rot", "mal", "no enc", "falla", "golpe"])
+                            # ====================================================
+                            # FASE 2: ANÁLISIS DE DAÑOS (¿ESTÁ JODIDO?)
+                            # ====================================================
+                            reporte_full = (str(d.get("estado", "")) + " " + str(d.get("reporte", ""))).lower()
+                            esta_danado = any(x in reporte_full for x in ["dañ", "triz", "rot", "mal", "no enc", "falla", "golpe"])
                             
-                            if es_danado:
-                                d["estado"] = "Dañado"
+                            if esta_danado:
+                                d["estado"] = "Dañado" # ¡MARCA DE FUEGO!
                             else:
                                 if not d.get("estado") or d["estado"] == "No especificada":
                                     d["estado"] = "Bueno"
 
-                            # 3. RUTEADOR DE DESTINO (CORREGIDO)
-                            # Si es Enviado -> Mantiene el destino que dijo la IA (ej: Latacunga)
-                            # Si es Recibido -> Filtramos a dónde va
-                            if d["tipo"] == "Recibido":
-                                if d["estado"] == "Dañado":
-                                    d["destino"] = "Bodega Dañados" # NO SE MEZCLA CON STOCK
-                                else:
-                                    d["destino"] = "Stock" # SOLO LO BUENO VA A STOCK
-
-                            # 4. INTELIGENCIA DE SERIES (PERIFÉRICO vs ACTIVO)
-                            equipo_low = str(d.get("equipo", "")).lower()
-                            es_periferico = any(p in equipo_low for p in PERIFERICOS_BULTO)
+                            # ====================================================
+                            # FASE 3: LÓGICA DE DESTINO (TU REGLA DE ORO)
+                            # ====================================================
+                            # Normalizamos Tipo
+                            if "env" in str(d.get("tipo", "")).lower():
+                                d["tipo"] = "Enviado"
+                            else:
+                                d["tipo"] = "Recibido" # Todo lo demás es entrada
                             
+                            # Si es entrada (Recibido):
+                            if d["tipo"] == "Recibido":
+                                if esta_danado:
+                                    d["destino"] = "Bodega Dañados" # REGLA: Si está dañado, se aparta.
+                                elif es_periferico:
+                                    d["destino"] = "Stock" # REGLA: Si es mouse/cable, va al montón.
+                                else:
+                                    # Si es Laptop buena, también va a Stock (Disponible)
+                                    if not d.get("destino"): d["destino"] = "Stock"
+
+                            # ====================================================
+                            # FASE 4: TRATAMIENTO DE SERIES (ACTIVO vs BULTO)
+                            # ====================================================
                             if es_periferico:
-                                d["serie"] = "N/A" # Forzamos N/A para que tu laptop reste el bulto
-                                # Limpieza de marca para periféricos
-                                if d.get("marca", "").lower() in ["hp", "dell", "lenovo"]: pass
-                                else: 
+                                d["serie"] = "N/A" # Periféricos NO tienen serie para el sistema
+                                # Limpieza marca genérica
+                                if d.get("marca", "").lower() not in ["hp", "dell", "lenovo", "samsung"]:
                                     if d.get("marca") in [None, "", "No especificada"]: d["marca"] = "Genérica"
                             else:
-                                # Es un ACTIVO (Laptop/CPU)
+                                # Es Laptop/CPU -> ¡RESPETAMOS LA SERIE!
                                 s_temp = str(d.get("serie", "")).strip()
                                 if s_temp.lower() in ["", "n/a", "no especificada", "null"]:
-                                    d["serie"] = "No especificada" # Se mantiene alerta
+                                    d["serie"] = "No especificada" # Alerta falta serie
                                 else:
                                     d["serie"] = s_temp.upper()
 
-                            # 5. ASEGURAR CANTIDAD
-                            try: d["cantidad"] = int(d.get("cantidad", 1))
-                            except: d["cantidad"] = 1
-
-                            # 6. LIMPIEZA FINAL DE MARCA
+                            # ====================================================
+                            # FASE 5: LIMPIEZA FINAL
+                            # ====================================================
                             m_raw = str(d.get("marca", "")).lower().strip()
                             if m_raw in ["", "null", "none", "n/a", "no especificada"]:
                                 d["marca"] = "Genérica"
                             else:
                                 d["marca"] = d["marca"].title()
 
+                            try: d["cantidad"] = int(d.get("cantidad", 1))
+                            except: d["cantidad"] = 1
+
+                        # ENVIAR A LA BASE DE DATOS
                         if enviar_buzon(datos):
-                            st.success(f"✅ ANÁLISIS COMPLETADO: {len(datos)} movimientos registrados.")
+                            st.success(f"✅ REGISTRO INTELIGENTE COMPLETADO: {len(datos)} items.")
                             st.table(pd.DataFrame(datos))
                         else:
-                            st.error("Error de conexión neuronal con GitHub.")
+                            st.error("Error al conectar con la base de datos.")
                     else:
-                        st.warning("La IA necesita más contexto.")
+                        st.warning("La IA necesita más detalles.")
                 except Exception as e:
-                    st.error(f"Fallo en el núcleo del sistema: {e}")
+                    st.error(f"Error Crítico: {e}")
 
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
