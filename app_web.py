@@ -160,9 +160,8 @@ with tab1:
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
-        except Exception as e:
-        st.error(f"Error procesando respuesta: {}")
-
+      except Exception as e:
+            st.error(f"Error procesando respuesta: {}")
     # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Registro")
