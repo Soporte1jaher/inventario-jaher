@@ -36,11 +36,11 @@ GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 
-# Corrección de sintaxis a prueba de fallos
+# BLINDAJE 1: Sin f-string
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
 def obtener_github(archivo):
-    # URL construida con sumas para evitar errores de llaves
+    # BLINDAJE 2: Sin llaves {}
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -62,6 +62,7 @@ def enviar_github(archivo, datos, mensaje="Update"):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
+    # BLINDAJE 3: Sin llaves {}
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
@@ -149,7 +150,8 @@ with tab1:
         # Llamada a la IA
         try:
             client = genai.Client(api_key=API_KEY)
-            contexto = f"{SYSTEM_PROMPT}\nHistorial reciente: {st.session_state.messages[-3:]}\nUsuario dice: {prompt}"
+            # Usamos concatenación simple en lugar de f-string complejo
+            contexto = SYSTEM_PROMPT + "\nHistorial reciente: " + str(st.session_state.messages[-3:]) + "\nUsuario dice: " + prompt
             
             response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
             
@@ -173,7 +175,8 @@ with tab1:
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
         except Exception as e:
-            st.error(f"Error procesando respuesta: {}")
+            # BLINDAJE FINAL: Aquí estaba el error. Lo cambiamos por suma de texto.
+            st.error("Error procesando respuesta: " + str(e))
 
     # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
@@ -187,8 +190,7 @@ with tab1:
                 for item in st.session_state.draft:
                     item["fecha"] = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 
-                # Enviar al buzón (que luego tú fusionas al histórico manualmente o automáticamente)
-                # Aquí enviamos directamente al buzon para seguridad
+                # Enviar al buzón
                 if enviar_github(FILE_BUZON, st.session_state.draft):
                     st.success("¡Registro guardado exitosamente!")
                     st.session_state.draft = None
@@ -241,7 +243,6 @@ with tab2:
             st.write("### Inventario Detallado (Series)")
             if not st_detalle.empty:
                 cols_to_show = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'destino']
-                # Filtrar solo columnas que existan
                 cols_existentes = [c for c in cols_to_show if c in st_detalle.columns]
                 st.dataframe(st_detalle[cols_existentes], use_container_width=True, hide_index=True)
 
