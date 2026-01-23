@@ -1,1 +1,15 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "123456",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": "Agencia Azogues",
+        "modelo": "Probook",
+        "fecha": "2026-01-23 12:48"
+    }
+]
