@@ -171,19 +171,22 @@ with t1:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        try:
+          try:
             client = genai.Client(api_key=API_KEY)
-            h_txt = ""
+            
+            # ESTA ES LA CORRECCIÓN: Definir exactamente 'historial_contexto'
+            historial_contexto = ""
             for m in st.session_state.messages[-10:]:
-                h_txt += f"{m['role'].upper()}: {m['content']}\n"
+                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
 
             response = client.models.generate_content(
                 model="gemini-2.0-flash-exp",
                 config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
-                contents=historial_contexto + "\nUSUARIO: " + prompt
+                contents=historial_contexto + "\nUSUARIO ACTUAL: " + prompt
             )
             
             json_txt = extraer_json(response.text)
+            # ... el resto de tu código sigue igual
             
             if not json_txt:
                 resp_laia = response.text
