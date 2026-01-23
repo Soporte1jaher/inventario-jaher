@@ -12,7 +12,7 @@ import time
 # ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
-st.set_page_config(page_title="LAIA NEURAL SYSTEM", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
