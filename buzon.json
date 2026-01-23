@@ -1,1 +1,13 @@
-[]
+[
+    {
+        "destino": "Bodega",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Laptop",
+        "marca": "Lenovo",
+        "serie": "90909090",
+        "estado": "Da\u00f1ado",
+        "reporte": "Pantalla trizada y no enciende, sin cargador de la agencia",
+        "fecha": "2026-01-22 20:04"
+    }
+]
