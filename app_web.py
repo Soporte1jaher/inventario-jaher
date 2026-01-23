@@ -162,27 +162,27 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO CORREGIDO (LÓGICA BLINDADA ANTI-STOCK PARA DAÑADOS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
-    st.info("🧠 IA V100: Dañados a Bodega Dañados | Buenos a Stock.")
+    st.info("🧠 IA V70: Dañados aparecen en lista Recibidos (No Stock).")
     
     texto_input = st.text_area("Orden Logística:", height=200, 
-        placeholder="Ej: Me llegó una Laptop Lenovo trizada... / Recibí 10 mouses...")
+        placeholder="Ej: Me llegó un Monitor AOC serie 888 roto... / Recibí 10 mouses...")
 
     if st.button("🚀 EJECUTAR ANÁLISIS", type="primary"):
         if texto_input.strip():
-            with st.spinner("LAIA clasificando..."):
+            with st.spinner("Procesando lógica de inventario..."):
                 try:
                     client = genai.Client(api_key=API_KEY)
 
-                    # 1. PROMPT CLARO Y DIRECTO
+                    # PROMPT:
                     prompt = f"""
                     Analiza: "{texto_input}"
                     
-                    REGLAS:
-                    1. ESTADO: Si dice "trizada", "rota", "falla", "golpe" -> "Dañado". Si no -> "Bueno".
-                    2. TIPO: "Recibido" (si entra) o "Enviado" (si sale).
-                    3. CATEGORÍA:
-                       - Periféricos (Mouse, Cable, Teclado) -> Serie "N/A".
-                       - Equipos (Laptop, CPU) -> Extrae la Serie.
+                    INSTRUCCIONES:
+                    1. **ESTADO**: Busca "roto", "trizado", "falla", "no vale" -> "Dañado". Si no -> "Bueno".
+                    2. **TIPO**: "Recibido" (Entrada) o "Enviado" (Salida).
+                    3. **CATEGORÍA**:
+                       - Periféricos (Mouse, Cable, Teclado) -> SERIE "N/A".
+                       - Equipos (Laptop, CPU, Monitor) -> EXTRAE LA SERIE REAL.
                     
                     FORMATO: [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "reporte": "..." }}]
                     """
@@ -194,61 +194,60 @@ with t1:
                         datos = json.loads(json_limpio)
                         fecha = obtener_fecha_ecuador()
                         
-                        # Lista de cosas que van al bulto
+                        # Periféricos que van al bulto
                         LISTA_PERIFERICOS = ['mouse', 'teclado', 'cable', 'cargador', 'limpiador', 'ponchadora', 'funda', 'adaptador', 'botella']
 
                         for d in datos:
                             d["fecha"] = fecha
                             
-                            # A) DETECTAR QUÉ ES (Periférico o Equipo)
-                            nom_equipo = str(d.get("equipo", "")).lower()
-                            es_periferico = any(x in nom_equipo for x in LISTA_PERIFERICOS)
-
-                            # B) DETECTAR DAÑO (Búsqueda agresiva)
-                            texto_analisis = (str(d.get("estado", "")) + " " + str(d.get("reporte", ""))).lower()
-                            esta_danado = any(x in texto_analisis for x in ["dañ", "triz", "rot", "mal", "no enc", "falla", "golpe", "faltante"])
-
-                            # C) ASIGNAR ESTADO
-                            if esta_danado:
+                            # 1. ANALIZAR DAÑOS
+                            full_text = (str(d.get("estado", "")) + " " + str(d.get("reporte", ""))).lower()
+                            es_danado = any(x in full_text for x in ["dañ", "triz", "rot", "mal", "no enc", "falla", "golpe"])
+                            
+                            if es_danado:
                                 d["estado"] = "Dañado"
                             else:
-                                if not d.get("estado") or d["estado"] == "No especificada": d["estado"] = "Bueno"
+                                if not d.get("estado") or d["estado"] == "No especificada":
+                                    d["estado"] = "Bueno"
 
-                            # D) ASIGNAR TIPO
+                            # 2. DEFINIR TIPO
                             if "env" in str(d.get("tipo", "")).lower():
                                 d["tipo"] = "Enviado"
                             else:
                                 d["tipo"] = "Recibido"
 
                             # ==========================================================
-                            # E) LA REGLA DE ORO DEL DESTINO (AQUÍ ESTABA EL ERROR)
+                            # 3. LÓGICA DE DESTINO (LA SOLUCIÓN A TU IRA)
                             # ==========================================================
                             if d["tipo"] == "Recibido":
-                                if d["estado"] == "Dañado":
-                                    # SI ESTÁ DAÑADO -> PROHIBIDO IR A STOCK
-                                    d["destino"] = "Bodega Dañados" 
+                                if es_danado:
+                                    # SI ESTÁ DAÑADO: NO ponemos "Stock" para que salga en la lista principal.
+                                    # Ponemos "Bodega" o "Ingreso". Tu Excel lo mostrará en Recibidos.
+                                    d["destino"] = "Bodega" 
                                 else:
-                                    # SI ESTÁ BUENO -> VA A STOCK
+                                    # SI ESTÁ BUENO: Ponemos "Stock" (Se va a saldos).
                                     d["destino"] = "Stock"
-                            
-                            elif d["tipo"] == "Enviado":
-                                if not d.get("destino"): d["destino"] = "Agencia Desconocida"
 
-                            # F) TRATAMIENTO DE SERIES
+                            elif d["tipo"] == "Enviado":
+                                if not d.get("destino"): d["destino"] = "Agencia"
+
+                            # 4. SERIES (Periféricos N/A vs Equipos con Serie)
+                            nom_equipo = str(d.get("equipo", "")).lower()
+                            es_periferico = any(x in nom_equipo for x in LISTA_PERIFERICOS)
+                            
                             if es_periferico:
-                                d["serie"] = "N/A" # Periféricos sin serie para sumar bulto
-                                # Limpieza de marca
-                                if d.get("marca", "").lower() not in ["hp", "dell", "lenovo", "samsung"]:
-                                    if d.get("marca") in [None, "", "No especificada"]: d["marca"] = "Genérica"
+                                d["serie"] = "N/A" # Periférico -> Bulto
+                                if d.get("marca", "").lower() not in ["hp", "dell", "lenovo", "samsung", "lg", "aoc"]:
+                                    d["marca"] = "Genérica"
                             else:
-                                # Es Equipo -> RESPETA LA SERIE
+                                # Equipo -> RESPETA LA SERIE
                                 s_temp = str(d.get("serie", "")).strip()
                                 if s_temp.lower() in ["", "n/a", "no especificada", "null"]:
                                     d["serie"] = "No especificada"
                                 else:
                                     d["serie"] = s_temp.upper()
 
-                            # G) Limpiezas finales
+                            # 5. Limpiezas finales
                             m_raw = str(d.get("marca", "")).lower().strip()
                             if m_raw in ["", "null", "none", "n/a", "no especificada"]: d["marca"] = "Genérica"
                             else: d["marca"] = d["marca"].title()
@@ -257,7 +256,7 @@ with t1:
                             except: d["cantidad"] = 1
 
                         if enviar_buzon(datos):
-                            st.success(f"✅ REGISTRO CORRECTO: {len(datos)} items.")
+                            st.success(f"✅ REGISTRO OK: {len(datos)} items.")
                             st.table(pd.DataFrame(datos))
                         else:
                             st.error("Error al guardar.")
