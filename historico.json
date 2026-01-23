@@ -1,3 +1,86 @@
 [
-
+    {
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":20,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    },
+    {
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":20,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    },
+    {
+        "equipo":"Ponchadora",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    },
+    {
+        "equipo":"Limpiador de pantalla",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":5,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    },
+    {
+        "equipo":"Limpiador de equipos",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":5,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    },
+    {
+        "equipo":"Cable HDMI",
+        "marca":"N\/A",
+        "serie":"N\/A",
+        "cantidad":10,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:48",
+        "modelo":"N\/A",
+        "origen":"N\/A"
+    }
 ]
