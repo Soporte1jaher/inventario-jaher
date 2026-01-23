@@ -178,5 +178,17 @@
         "ubicacion":"Stock",
         "reporte":"Cargador original de la agencia Portete faltante. No se recibi\u00f3 con el equipo.",
         "fecha":"2026-01-22 19:17"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"Stock",
+        "reporte":"Equipo recibido con pantalla trizada y no enciende.  Falta cargador original.",
+        "fecha":"2026-01-22 19:23"
     }
 ]
