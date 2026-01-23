@@ -87,63 +87,37 @@ def extraer_json(texto):
 # 4. MOTOR MATEMÁTICO (CORREGIDO PARA CABLES Y STOCK)
 # ==========================================
 def calcular_stock_web(df):
-    if df.empty: return pd.DataFrame()
-    df_c = df.copy()
+  if df.empty: return pd.DataFrame()
+  df_c = df.copy()
+  
+  # Normalizar columnas
+  df_c.columns = df_c.columns.str.lower().str.strip()
+  df_c = df_c.rename(columns={'cant': 'cantidad', 'equipos': 'equipo'})
+  df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+
+  def flujo(row):
+    tipo = str(row.get('tipo', '')).lower()
+    dest = str(row.get('destino', '')).lower()
+    serie = str(row.get('serie', '')).lower().strip()
+    cant = row['cantidad']
     
-    # 1. Normalizar columnas
-    df_c.columns = df_c.columns.str.lower().str.strip()
-    mapa_cols = {'cant': 'cantidad', 'condición': 'estado', 'condicion': 'estado', 'equipos': 'equipo'}
-    df_c = df_c.rename(columns=mapa_cols)
+    # REGLA: Solo sumamos/restamos lo que NO TIENE SERIE (Periféricos)
+    # Si tiene una serie real (Laptop/CPU), no lo sumamos al bulto masivo
+    es_activo_unico = len(serie) > 4 and "n/a" not in serie
+    if es_activo_unico: return 0 
 
-    # 2. Lista extendida de valores que significan "VACÍO" o "GENÉRICO"
-    palabras_vacias = [
-        'n/a', 'none', 'nan', 'null', '', 'sin marca', 'genérica', 
-        'generica', 'generico', 'genérico', 'no especificada', 
-        'no especificado', 'no aplica', 'desconocido'
-    ]
+    if dest == 'stock': return cant
+    if 'env' in tipo or 'sal' in tipo: return -cant
+    return 0
 
-    # 3. Normalizar Marcas
-    def normalizar_marca(m):
-        m_limpia = str(m).lower().strip()
-        if any(v == m_limpia for v in palabras_vacias) or 'especifica' in m_limpia:
-            return "Genérica"
-        return m.capitalize()
-
-    df_c['marca'] = df_c['marca'].apply(normalizar_marca)
-    df_c['equipo'] = df_c['equipo'].astype(str).str.strip()
-
-    # 4. Lógica de Flujo Matemático
-    df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
-
-    def flujo(row):
-        tipo = str(row.get('tipo', '')).lower()
-        dest = str(row.get('destino', '')).lower()
-        ser = str(row.get('serie', '')).lower().strip()
-        cant = row['cantidad']
-        
-        # CORRECCIÓN DE SERIE: Si la serie es "No especificada", NO es un activo único
-        es_serie_vacia = any(x in ser for x in ['n/a', 'none', 'especifica', 'generi', 'null'])
-        es_activo_unico = len(ser) > 5 and not es_serie_vacia
-        
-        if es_activo_unico: 
-            return 0 # Es una Laptop o CPU con serie real, se maneja aparte
-        
-        # Movimientos de bodega
-        if dest == 'stock': 
-            return cant
-        if 'env' in tipo or 'sal' in tipo: 
-            return -cant
-        return 0
-
-    df_c['val'] = df_c.apply(flujo, axis=1)
-    
-    # 5. Agrupación final
-    stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
-    stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
-    
-    # Solo mostrar lo que tiene saldo positivo
-    return stock[stock['Stock_Disponible'] > 0].sort_values('Equipo')
-
+  df_c['val'] = df_c.apply(flujo, axis=1)
+  
+  # Agrupamos periféricos
+  stock = df_c.groupby(['equipo', 'marca'])['val'].sum().reset_index()
+  stock.columns = ['Equipo', 'Marca', 'Stock_Disponible']
+  
+  # Solo mostramos lo que queda en bodega (los 19 mouses)
+  return stock[stock['Stock_Disponible'] > 0].sort_values('Equipo')
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
@@ -153,23 +127,25 @@ t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "�
 # --- TAB 1: REGISTRO (LÓGICA V16.5: DIRECCIONAMIENTO INTELIGENTE) ---
 with t1:
   st.subheader("📝 Gestión de Movimientos")
-  st.info("💡 IA V11: Forzado de palabra 'Stock' y desgloses automáticos.")
-  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Me llegaron 20 mouses...")
+  st.info("💡 IA V12: Lógica de Activos vs Periféricos + Detección de Daños.")
+  texto_input = st.text_area("Orden Logística:", height=200, placeholder="Ej: Envié un CPU con mouse a Latacunga. / Me llegó una Laptop de Portete con pantalla trizada...")
 
   if st.button("🚀 EJECUTAR ACCIÓN INTELIGENTE", type="primary"):
     if texto_input.strip():
-      with st.spinner("LAIA procesando..."):
+      with st.spinner("LAIA analizando registros..."):
         try:
           client = genai.Client(api_key=API_KEY)
           
           prompt = f"""
           Actúa como Auditor. TEXTO: "{texto_input}"
           REGLAS:
-          1. TIPO: "Recibido" (entrada) o "Enviado" (salida).
-          2. DESTINO: Si es entrada a bodega, usa SIEMPRE la palabra "Stock". 
-          3. DESGLOSE: Separa cada artículo en un objeto JSON diferente.
-          4. SERIE: Si no hay, pon "N/A".
-          FORMATO: [{{ "destino": "Stock/Agencia", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "N/A", "estado": "Nuevo", "ubicacion": "Stock", "reporte": "..." }}]
+          1. **DESGLOSE**: Separa CADA artículo. (Ej: "CPU con mouse" -> 2 objetos JSON).
+          2. **TIPO**: "Enviado" (salida) o "Recibido" (entrada).
+          3. **ESTADO (CRÍTICO)**: Si el texto menciona daños (pantalla trizada, no enciende, roto, mal estado), el estado DEBE ser "Dañado". Si no, "Bueno" o "Nuevo".
+          4. **SERIE**: Si es un mouse/teclado/cable sin serie, pon "N/A". Si tiene serie (Laptop/CPU), pónla.
+          5. **DESTINO**: Si es entrada a sistemas, destino es "Stock".
+
+          FORMATO: [{{ "destino": "...", "tipo": "...", "cantidad": 1, "equipo": "...", "marca": "...", "serie": "...", "estado": "...", "reporte": "..." }}]
           """
 
           resp = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -181,46 +157,30 @@ with t1:
 
             for d in datos:
               d["fecha"] = fecha
-              
-              # 1. Cantidad (Asegurar número)
-              try: d["cantidad"] = int(d.get("cantidad", 1))
-              except: d["cantidad"] = 1
-
-              # 2. Normalizar Tipo
+              # Limpieza de Tipo
               t_raw = str(d.get("tipo", "")).lower()
               d["tipo"] = "Enviado" if ("env" in t_raw or "sal" in t_raw) else "Recibido"
-
-              # 3. FORZADO DE DESTINO "Stock" (FIX CRÍTICO)
-              # Si es recibido y dice "Almacén", "Bodega" o algo parecido, lo cambiamos a "Stock"
-              dest_raw = str(d.get("destino", "")).lower().strip()
-              if d["tipo"] == "Recibido":
-                bodega_keywords = ["almacen", "almacén", "bodega", "oficina", "inventario", "especifica", "pendiente"]
-                if any(k in dest_raw for k in bodega_keywords) or dest_raw == "":
-                  d["destino"] = "Stock"
-
-              # 4. FIX DE SERIE PARA TU LAPTOP (Debe ser N/A)
+              
+              # LÓGICA DE ESTADO DAÑADO (Para tu Excel)
+              est_raw = str(d.get("estado", "")).lower() + " " + str(d.get("reporte", "")).lower()
+              if any(x in est_raw for x in ["dañ", "triz", "rot", "mal", "no enc"]):
+                d["estado"] = "Dañado"
+              
+              # FIX PARA PERIFÉRICOS (Para que tu laptop reste)
               ser_raw = str(d.get("serie", "")).lower().strip()
-              if "especifica" in ser_raw or ser_raw in ["", "none", "null", "no especificada"]:
+              if "especifica" in ser_raw or ser_raw in ["", "none", "null"]:
                 d["serie"] = "N/A"
-              else:
-                d["serie"] = d["serie"].upper()
-
-              # 5. Normalizar Marca
-              m_raw = str(d.get("marca", "")).lower().strip()
-              if any(x == m_raw for x in ["", "none", "null", "n/a", "no especificada", "generico"]):
-                d["marca"] = "Genérica"
-              else:
-                d["marca"] = d["marca"].title()
+              
+              # Forzar Destino Stock en recibidos
+              if d["tipo"] == "Recibido": d["destino"] = "Stock"
 
             if enviar_buzon(datos):
-              st.success(f"✅ LAIA procesó {len(datos)} registros. Destino forzado a 'Stock'.")
+              st.success(f"✅ Procesados {len(datos)} registros.")
               st.table(pd.DataFrame(datos))
             else:
-              st.error("Error al conectar con GitHub.")
-          else:
-            st.warning("La IA no pudo generar los datos.")
+              st.error("Error GitHub.")
         except Exception as e:
-          st.error(f"Error crítico: {e}")
+          st.error(f"Error: {e}")
 # --- TAB 2: CHAT (MATEMÁTICO + RESET) ---
 with t2:
     c1, c2 = st.columns([4, 1])
