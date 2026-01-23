@@ -118,46 +118,55 @@ def calcular_stock_web(df):
 # 4. CEREBRO DE LAIA (CONSTRUCTOR DE JSON)
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, la Auditora Senior de Jaher. Tu inteligencia es masiva y estructuralmente perfecta. 
-Tu salida SIEMPRE debe ser un objeto JSON con las llaves "status", "missing_info" e "items".
+Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es proactiva, analítica y extremadamente eficiente. 
+Tu misión es generar registros perfectos para el script 'sincronizador.py' sin ser redundante ni mecánica.
 
-1. REGLAS DE SINÓNIMOS:
-- "Portátil" = Laptop.
-- "Fierro / Case" = CPU.
-- "Pantalla" = Monitor.
-- "Regulador / Suprimido" = Regulador.
+1. REGLAS DE SINÓNIMOS Y TRADUCCIÓN:
+- "Portátil" = Laptop | "Fierro / Case" = CPU | "Pantalla" = Monitor | "Suprimido / Regulador" = Regulador.
 
-2. REGLA DE MULTI-ORDEN Y DESCUENTO DE STOCK:
-- Si el usuario dice "Mandé una laptop, un mouse y un teclado", registra 3 ítems.
-- Para los periféricos en envíos (tipo: "Enviado"), usa cantidad: 1. Tu script de PC entenderá que debe restar.
+2. REGLA DE MULTI-ORDEN Y PROCESAMIENTO MASIVO:
+- Si el usuario dice "20 mouses, 20 teclados y 2 laptops", genera una lista con TODOS los objetos (20 registros de mouse, 20 de teclado, 2 de laptop).
+- Si es un envío ("Envié un monitor a Portete"), marca tipo: "Enviado" y cantidad: 1. Tu script de PC restará el stock automáticamente.
+- DESGLOSE DE KITS: Si dicen "Llegó un CPU con su mouse", registra el CPU (con serie) y el mouse (sin serie) por separado.
 
-3. LISTA DE VERIFICACIÓN OBLIGATORIA (Antes de dar el READY):
-   - ¿Tengo el tipo (Recibido/Enviado)?
-   - ¿Tengo el origen o destino (Agencia/Proveedor)?
-   - ¿Tengo marca y serie para cada equipo (Laptop, CPU, Monitor)?
-   - ¿Tengo el estado (Bueno/Dañado) y estado_fisico (Nuevo/Usado)?
-   
-   - SI FALTA ALGO: status="QUESTION" y pide lo que falte amablemente.
-   - SI TODO ESTÁ OK: status="READY".
+3. DEDUCCIÓN AGRESIVA (PIENSA POR EL USUARIO):
+- ORIGEN AGENCIA -> Si menciona ciudad o sucursal (Pascuales, Tena, Quito, Portete, etc.):
+  * DEDUCE: estado_fisico: "Usado", tipo: "Recibido", destino: "Stock".
+- ORIGEN PROVEEDOR -> Si menciona "Proveedor", "Compra" o "Matriz":
+  * DEDUCE: estado_fisico: "Nuevo", tipo: "Recibido", destino: "Stock".
+- DAÑOS -> Si menciona "Roto", "Trizado", "Falla", "No enciende":
+  * DEDUCE: estado: "Dañado", destino: "Dañados". (Pon el detalle en 'reporte').
+- ACCIÓN -> "Recibí / Llegó" = Recibido. "Envié / Salió / Mandé" = Enviado.
 
-4. DEDUCCIÓN AUTOMÁTICA (NO PREGUNTES ESTO):
-- Ciudad mencionada = Origen/Destino.
-- De Agencia = Usado.
-- De Proveedor = Nuevo.
-- Roto/Trizado/Falla = Dañado.
+4. EL SABUESO DE SERIES (PRECISIÓN 1:1):
+- EQUIPOS: (Laptop, CPU, Monitor, Impresora, Regulador, UPS, Cámaras, Bocinas, Tablet).
+- REGLA DE ORO: 1 Equipo = 1 Serie Única. Si hay 3 laptops, necesitas 3 series. 
+- Si dan una serie corta (ej: "123") o extraña, ACÉPTALA sin cuestionar ni decir que es corta.
 
-SALIDA JSON REQUERIDA (OBLIGATORIA):
+5. LÓGICA DE OBSOLETOS (INTELIGENCIA TÉCNICA):
+- Si detectas procesadores Intel de 9na Gen o inferior (ej: i5-4570, i7-8700, serie 9xxx para abajo) o tecnologías viejas (Core 2 Duo, Pentium, Celeron):
+  * ACCIÓN: Pregunta: "He detectado tecnología antigua. ¿Quieres registrarlo como Obsoleto para la hoja de obsoletos?".
+- Si el usuario dice "es viejo / chatarra / no vale", marca estado: "Obsoleto" y destino: "Obsoletos".
+
+6. ESPECIFICACIONES TÉCNICAS (MODO INTERACTIVO):
+- Solo para Laptops y CPUs, pregunta UNA SOLA VEZ: "¿Deseas añadir detalles técnicos (RAM, Procesador, Disco)?".
+- Si el usuario ignora la pregunta o dice "NO", no vuelvas a preguntar.
+
+7. MEMORIA CRÍTICA Y RESPETO A NEGACIONES:
+- Si el usuario dice "sin cargador", "sin marca", "sin modelo" -> marca como "N/A" y NUNCA vuelvas a preguntar por ello en esta charla.
+- AUDITORÍA DE HISTORIAL: Antes de preguntar algo, revisa todo el chat arriba. Si el dato ya está, extráelo y cállate.
+
+8. PROTOCOLO DE PREGUNTA EN LOTE (CERO PING-PONG):
+- No preguntes dato por dato. Si faltan 3 cosas, pide las 3 en un solo mensaje amable y fluido.
+
+9. SALIDA JSON REQUERIDA (OBLIGATORIA):
 {
   "status": "READY" o "QUESTION",
-  "missing_info": "Texto amigable",
+  "missing_info": "Texto amigable y humano",
   "items": [
-    {
-      "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1, 
-      "estado": "...", "estado_fisico": "...", "tipo": "...", "destino": "...", "reporte": "..."
-    }
+    { "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1, "estado": "Bueno/Dañado/Obsoleto", "estado_fisico": "Nuevo/Usado", "tipo": "Recibido/Enviado", "destino": "...", "reporte": "..." }
   ]
 }
-"""
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
@@ -168,15 +177,28 @@ if "draft" not in st.session_state: st.session_state.draft = None
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
+¡No te estreses! Los errores de IndentationError (espacios) son un dolor de cabeza, pero se arreglan pegando el bloque completo de una sola vez para que todo quede alineado.
+
+He preparado el código definitivo de la Pestaña 1 (Chat). Este bloque ya incluye:
+
+La solución al error de la lista (el que decía list object has no attribute get).
+La alineación perfecta de los espacios para que no te salga el error de la imagen.
+La inteligencia máxima para procesar muchas órdenes de golpe.
+🛠️ Paso 1: Reemplaza TODO el bloque with t1:
+Busca donde empieza with t1: y borra todo su contenido hasta antes de with t2:. Luego pega esto:
+
 with t1:
+    # Mostrar historial de chat
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
     if prompt := st.chat_input("¿Qué ingresó a bodega hoy?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
-   try:
+
+        try:
             client = genai.Client(api_key=API_KEY)
+            # Construimos la memoria completa
             hist = ""
             for m in st.session_state.messages: hist += m["role"].upper() + ": " + m["content"] + "\n"
             
@@ -184,39 +206,42 @@ with t1:
             response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
             
             raw = response.text
+            # Limpiar marcas de la IA
             if "```json" in raw: raw = raw.split("```json")[1].split("```")[0]
             elif "```" in raw: raw = raw.split("```")[1].split("```")[0]
             
             res_json = json.loads(raw)
             
-            # --- BLINDAJE ANTI-LISTA (LA SOLUCIÓN AL ERROR) ---
-            # Si la IA mandó una lista [...] en lugar de {"status":...}
+            # --- BLINDAJE CONTRA EL ERROR DE LISTA ---
             if isinstance(res_json, list):
                 res_json = {"status": "READY", "items": res_json}
-            # --------------------------------------------------
-
+            
+            # Extraer mensaje de la IA
             raw_missing = res_json.get("missing_info", "Necesito más detalles.")
-            resp_laia = str(raw_missing) if not isinstance(raw_missing, list) else ", ".join(map(str, raw_missing))
+            resp_laia = str(raw_missing) if not isinstance(raw_missing, list) else ". ".join(map(str, raw_missing))
 
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                resp_laia = "✅ ¡Todo capturado! He preparado la tabla con los equipos y periféricos. ¿Confirmas el envío?"
+                resp_laia = "✅ ¡Excelente! He procesado toda la lista. Revisa la tabla y confirma para sincronizar con el Excel."
             else:
                 st.session_state.draft = None
 
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
+            
         except Exception as e: 
             st.error("Error IA: " + str(e))
+
+    # Zona de confirmación
     if st.session_state.draft:
+        st.write("### 📋 Pre-visualización de Movimientos")
         st.table(pd.DataFrame(st.session_state.draft))
         if st.button("🚀 ENVIAR AL BUZÓN PARA SINCRONIZAR"):
             fecha = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
             for i in st.session_state.draft: i["fecha"] = fecha
             
             if enviar_github(FILE_BUZON, st.session_state.draft):
-                # Mensaje más claro para el usuario
-                st.success(f"✅ ¡Datos enviados al BUZÓN! Ahora abre el Sincronizador en tu PC para verlos en el Excel.")
+                st.success("✅ ¡Datos enviados! El Sincronizador de tu PC los procesará en unos segundos.")
                 st.session_state.draft = None
                 st.session_state.messages = []
                 time.sleep(2)
