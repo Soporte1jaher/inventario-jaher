@@ -164,21 +164,24 @@ if "draft" not in st.session_state: st.session_state.draft = None
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
 with t1:
+    # 1. Mostrar historial de chat
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("Ej: Envié un CPU HP serie 123 a Tena"):
+    # 2. Entrada de usuario
+    if prompt := st.chat_input("Ej: Envié 20 mouses y una laptop HP serie aaaaa a Paute"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-          try:
+        try:
             client = genai.Client(api_key=API_KEY)
             
-            # ESTA ES LA CORRECCIÓN: Definir exactamente 'historial_contexto'
+            # 3. Construcción de memoria para que no sea tonta
             historial_contexto = ""
             for m in st.session_state.messages[-10:]:
-                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
+                historial_contexto += m["role"].upper() + ": " + m["content"] + "\n"
 
+            # 4. Llamada a la IA con el Prompt V100.0
             response = client.models.generate_content(
                 model="gemini-2.0-flash-exp",
                 config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
@@ -186,40 +189,50 @@ with t1:
             )
             
             json_txt = extraer_json(response.text)
-            # ... el resto de tu código sigue igual
             
             if not json_txt:
+                # Si la IA solo habla (sin JSON), mostramos su texto
                 resp_laia = response.text
                 st.session_state.draft = None
             else:
                 res_json = json.loads(json_txt)
-                
-                # LAIA V100 ya no bloquea series por su cuenta, confía en el Prompt.
+                # Si la IA manda lista en vez de objeto, lo arreglamos
+                if isinstance(res_json, list): 
+                    res_json = {"status": "READY", "items": res_json}
+
                 if res_json.get("status") == "READY":
                     st.session_state.draft = res_json.get("items", [])
-                    resp_laia = "✅ He procesado la información completa (incluyendo periféricos y series). ¿Confirmas el registro para el Excel?"
+                    resp_laia = "✅ He procesado la información. Revisa la tabla y confirma el registro."
                 else:
                     resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
                     st.session_state.draft = None
 
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
+
         except Exception as e: 
             st.error("Error de Auditoría: " + str(e))
 
+    # 5. Zona de confirmación (Se muestra si el status es READY)
     if st.session_state.draft:
-        st.write("### 📋 Pre-visualización")
-        st.table(pd.DataFrame(st.session_state.draft))
-        if st.button("🚀 ENVIAR AL EXCEL"):
-            fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-            for i in st.session_state.draft: i["fecha"] = fecha_ecu
-            if enviar_github(FILE_BUZON, st.session_state.draft):
-                st.success("✅ ¡Datos enviados al Sincronizador!")
-                st.session_state.draft = None
-                st.session_state.messages = []
-                time.sleep(2)
-                st.rerun()
-
+        st.write("### 📋 Pre-visualización de Movimientos")
+        df_draft = pd.DataFrame(st.session_state.draft)
+        st.table(df_draft)
+        
+        if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
+            with st.spinner("Sincronizando con GitHub..."):
+                fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                for item in st.session_state.draft: 
+                    item["fecha"] = fecha_ecu
+                
+                if enviar_github(FILE_BUZON, st.session_state.draft):
+                    st.success("✅ ¡Datos enviados al Buzón! Tu PC sincronizará esto en segundos.")
+                    st.session_state.draft = None
+                    st.session_state.messages = []
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error("Error al conectar con GitHub.")
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
