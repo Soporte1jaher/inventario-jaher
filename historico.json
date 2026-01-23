@@ -9,7 +9,8 @@
         "tipo":"Recibido",
         "destino":"paute",
         "fecha":"2026-01-23 11:54",
-        "reporte":null
+        "reporte":null,
+        "modelo":null
     },
     {
         "marca":"lenovo",
@@ -21,7 +22,8 @@
         "tipo":"Recibido",
         "destino":"paute",
         "fecha":"2026-01-23 11:54",
-        "reporte":null
+        "reporte":null,
+        "modelo":null
     },
     {
         "marca":"dell",
@@ -33,7 +35,8 @@
         "tipo":"Recibido",
         "destino":"paute",
         "fecha":"2026-01-23 11:54",
-        "reporte":null
+        "reporte":null,
+        "modelo":null
     },
     {
         "marca":"Lenovo",
@@ -45,7 +48,8 @@
         "tipo":"Recibido",
         "destino":"Stock",
         "fecha":"2026-01-23 12:16",
-        "reporte":"Procesador Core i5 de 11va gen, 8GB RAM, 240GB SSD"
+        "reporte":"Procesador Core i5 de 11va gen, 8GB RAM, 240GB SSD",
+        "modelo":null
     },
     {
         "marca":"HP",
@@ -57,7 +61,8 @@
         "tipo":"Recibido",
         "destino":"Stock",
         "fecha":"2026-01-23 12:16",
-        "reporte":"Procesador Core i3 de 10ma gen, 4GB RAM, 120GB SSD"
+        "reporte":"Procesador Core i3 de 10ma gen, 4GB RAM, 120GB SSD",
+        "modelo":null
     },
     {
         "marca":"HP",
@@ -69,7 +74,8 @@
         "tipo":"Recibido",
         "destino":"Stock",
         "fecha":"2026-01-23 12:16",
-        "reporte":"Procesador Core i7 de 8va gen, 16GB RAM, 1TB SSD.  Considerar enviar a obsoletos por procesador desactualizado."
+        "reporte":"Procesador Core i7 de 8va gen, 16GB RAM, 1TB SSD.  Considerar enviar a obsoletos por procesador desactualizado.",
+        "modelo":null
     },
     {
         "marca":"Lenovo",
@@ -81,7 +87,8 @@
         "tipo":"Recibido",
         "destino":"Stock",
         "fecha":"2026-01-23 12:34",
-        "reporte":"Agencia el carmen"
+        "reporte":"Agencia el carmen",
+        "modelo":null
     },
     {
         "marca":"Xtratecjh",
@@ -93,6 +100,20 @@
         "tipo":"Recibido",
         "destino":"Stock",
         "fecha":"2026-01-23 12:34",
-        "reporte":"Agencia el carmen"
+        "reporte":"Agencia el carmen",
+        "modelo":null
+    },
+    {
+        "marca":"HP",
+        "equipo":"Laptop",
+        "serie":"123456",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "fecha":"2026-01-23 12:48",
+        "reporte":"Agencia Azogues",
+        "modelo":"Probook"
     }
 ]
