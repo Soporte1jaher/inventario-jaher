@@ -79,7 +79,7 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
-    cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad']
+    cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
     for col in cols:
         if col not in df_c.columns: df_c[col] = "No especificado"
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
@@ -90,7 +90,7 @@ def calcular_stock_web(df):
         if 'enviado' in t: return -row['cant_n']
         return 0
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
+    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
     return resumen[resumen['val'] > 0], df_c[df_c['val'] != 0]
 
 # ==========================================
@@ -127,6 +127,15 @@ Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superi
 7. MEMORIA Y NEGACIONES:
 - Si dicen "sin cargador" o "sin modelo", anota "N/A" y NO preguntes más.
 - Revisa el historial de la conversación actual antes de preguntar algo que ya se respondió arriba.
+
+8. REGLA DE MARCA Y MODELO (NUEVO):
+- Debes separar la MARCA del MODELO. 
+- Ejemplo: "Laptop HP Probook" -> marca: "HP", modelo: "Probook".
+- SIEMPRE PREGUNTA: Si el usuario no da el modelo, debes pedirlo: "¿Cuál es el modelo del equipo?".
+
+9. PREGUNTA DE ESPECIFICACIONES (NUEVO):
+- Solo para Laptops y CPUs, una vez tengas los datos básicos, PREGUNTA: "¿Deseas añadir especificaciones técnicas (RAM, Procesador, Disco HDD/SSD)?".
+- Si el usuario dice que SÍ, pon esos datos en la columna 'reporte'.
 
 SALIDA JSON (CONTRATO DE DATOS):
 SIEMPRE genera un objeto para CADA ítem mencionado en el mensaje.
