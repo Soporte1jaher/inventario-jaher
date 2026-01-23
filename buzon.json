@@ -1,1 +1,38 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "Lenovo",
+        "serie": "12345",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": "Procesador Core i5 de 11va gen, 8GB RAM, 240GB SSD",
+        "fecha": "2026-01-23 12:16"
+    },
+    {
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "asdfg",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": "Procesador Core i3 de 10ma gen, 4GB RAM, 120GB SSD",
+        "fecha": "2026-01-23 12:16"
+    },
+    {
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "zxcvb",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": "Procesador Core i7 de 8va gen, 16GB RAM, 1TB SSD.  Considerar enviar a obsoletos por procesador desactualizado.",
+        "fecha": "2026-01-23 12:16"
+    }
+]
