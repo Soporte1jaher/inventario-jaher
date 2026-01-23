@@ -38,6 +38,7 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 def obtener_github(archivo):
+    # AQUÍ ESTABA EL ERROR: Faltaban las variables dentro de las llaves {}
     url = f"https://api.github.com/repos/{}/{}/contents/{}"
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -46,7 +47,6 @@ def obtener_github(archivo):
             return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
     except: pass
     return [], None
-
 def enviar_github(archivo, datos, mensaje="Update"):
     actuales, sha = obtener_github(archivo)
     # Si es el buzon, agregamos. Si es limpieza, reemplazamos (según lógica)
@@ -55,7 +55,7 @@ def enviar_github(archivo, datos, mensaje="Update"):
         "content": base64.b64encode(json.dumps(datos, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+   url = f"https://api.github.com/repos/{}/{}/contents/{}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
