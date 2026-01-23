@@ -70,5 +70,29 @@
         "destino":"Stock",
         "fecha":"2026-01-23 12:16",
         "reporte":"Procesador Core i7 de 8va gen, 16GB RAM, 1TB SSD.  Considerar enviar a obsoletos por procesador desactualizado."
+    },
+    {
+        "marca":"Lenovo",
+        "equipo":"Laptop",
+        "serie":"12345",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "fecha":"2026-01-23 12:34",
+        "reporte":"Agencia el carmen"
+    },
+    {
+        "marca":"Xtratecjh",
+        "equipo":"CPU",
+        "serie":"qwert",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"Stock",
+        "fecha":"2026-01-23 12:34",
+        "reporte":"Agencia el carmen"
     }
 ]
