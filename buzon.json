@@ -2,5 +2,8 @@
     {
         "accion": "borrar_contiene",
         "valor": "equipo"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
