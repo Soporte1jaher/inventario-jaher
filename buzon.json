@@ -70,5 +70,77 @@
         "destino": "Stock",
         "reporte": "N/A",
         "fecha": "2026-01-23 17:15"
+    },
+    {
+        "equipo": "Laptop",
+        "marca": "Dell",
+        "serie": "aaaaas",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Portete",
+        "reporte": "con cargador",
+        "fecha": "2026-01-23 17:16"
+    },
+    {
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "838474",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Latacunga",
+        "reporte": null,
+        "fecha": "2026-01-23 17:16"
+    },
+    {
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "serie": "hgbcbcbbc",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Latacunga",
+        "reporte": null,
+        "fecha": "2026-01-23 17:16"
+    },
+    {
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Latacunga",
+        "reporte": null,
+        "fecha": "2026-01-23 17:16"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Latacunga",
+        "reporte": null,
+        "fecha": "2026-01-23 17:16"
+    },
+    {
+        "equipo": "Cable HDMI",
+        "marca": "N/A",
+        "serie": "N/A",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "destino": "Latacunga",
+        "reporte": null,
+        "fecha": "2026-01-23 17:16"
     }
 ]
