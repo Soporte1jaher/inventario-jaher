@@ -11,7 +11,7 @@ import time
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA v22.0 - Agente Logístico", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v23.0 - Super Agente", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
@@ -36,11 +36,10 @@ GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 
-# BLINDAJE 1: Sin f-string
+# BLINDAJE: Sin f-string para evitar errores de sintaxis
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
 def obtener_github(archivo):
-    # BLINDAJE 2: Sin llaves {}
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -62,25 +61,23 @@ def enviar_github(archivo, datos, mensaje="Update"):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
         "sha": sha
     }
-    # BLINDAJE 3: Sin llaves {}
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
-# 3. MOTOR MATEMÁTICO (STOCK NUEVO/USADO)
+# 3. MOTOR MATEMÁTICO
 # ==========================================
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     df_c = df.copy()
     
-    # Normalización dentro de la función de cálculo
     df_c.columns = df_c.columns.str.lower().str.strip()
     df_c['cantidad'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
     
-    # Asegurar columnas críticas para evitar KeyError
-    for col in ['condicion', 'estado_fisico', 'tipo', 'destino']:
+    columnas_necesarias = ['condicion', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca']
+    for col in columnas_necesarias:
         if col not in df_c.columns:
-            df_c[col] = ''
+            df_c[col] = "No especificado"
 
     def procesar_fila(row):
         condicion = str(row.get('condicion', '')).lower()
@@ -88,7 +85,6 @@ def calcular_stock_web(df):
         dest = str(row.get('destino', '')).lower()
         cant = row['cantidad']
         
-        # Lógica de Stock
         if 'dañ' in condicion or 'obs' in condicion: return 0
         if 'stock' in dest or 'recibido' in tipo: return cant
         if 'enviado' in tipo: return -cant
@@ -96,44 +92,53 @@ def calcular_stock_web(df):
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     
-    # Agrupación por Equipo, Marca y ESTADO (Nuevo/Usado)
     stock_resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
     stock_resumen = stock_resumen[stock_resumen['val'] > 0]
-    
-    # Detalle con series
     stock_detalle = df_c[df_c['val'] > 0].copy()
     
     return stock_resumen, stock_detalle
 
 # ==========================================
-# 4. PROMPT DE INTELIGENCIA (EL CEREBRO)
+# 4. CEREBRO MEJORADO (SYSTEM PROMPT V2)
 # ==========================================
 SYSTEM_PROMPT = """
-Actúa como un Auditor de Inventario experto llamado LAIA. Tu objetivo es procesar movimientos de bodega.
+Eres LAIA, una experta en logística.
+Tu trabajo es recolectar datos COMPLETOS. No puedes inventar datos.
 
-REGLAS DE CATEGORÍA:
-1. EQUIPOS (Requieren SERIE): Laptop, CPU, Monitor, Impresora, Camara, Bocina.
-2. PERIFÉRICOS (No requieren serie): Mouse, Teclado, Cables, Cargador.
+INSTRUCCIONES DE MEMORIA:
+- Analiza TODA la conversación anterior para entender el contexto.
+- Si el usuario dice "Nuevas", recuerda que se refiere a las "Laptops" mencionadas antes.
 
-REGLAS DE NEGOCIO:
-- Si el usuario no dice si es NUEVO o USADO, DEBES PREGUNTAR (estado_fisico).
-- Si el usuario no dice si está BUENO o DAÑADO, DEBES PREGUNTAR (condicion).
-- Ignora info irrelevante (dibujitos, suciedad).
-- Captura info de daño (pantalla rota, no prende) y marca condicion="Dañado".
-- Si algo es BUENO pero lo mandan a TALLER, pregunta por qué.
+REGLAS DE ORO:
+1. CLASIFICACIÓN:
+   - EQUIPOS (OBLIGATORIO pedir SERIE): Laptop, CPU, Monitor, Impresora, Tablet, Camara, Bocina.
+     -> Si el usuario NO da la serie, PREGUNTA: "¿Cuál es la serie?". No avances sin ella.
+   - PERIFÉRICOS (NO piden serie): Mouse, Teclado, Cables, Cargador.
 
-ESTRUCTURA DE RESPUESTA JSON:
+2. CAMPOS OBLIGATORIOS PARA TODO:
+   - ESTADO FÍSICO: ¿Nuevo o Usado? (Si falta, PREGUNTA).
+   - CONDICIÓN: ¿Bueno o Dañado? (Si falta, PREGUNTA).
+   
+3. INTELIGENCIA DE CONTEXTO:
+   - Si dice "Agencia X", asume Origen=Agencia X.
+   - Si dice "Pantalla rota", asume Condición=Dañado y Destino=Bodega Dañados.
+   - Si dice "Proveedor", asume Origen=Proveedor.
+
+SALIDA JSON:
+Si falta información (Serie en equipos, o estado/condición en general):
+{ "status": "QUESTION", "missing_info": "Pregunta clara y directa sobre lo que falta" }
+
+Si tienes TODO (Equipo, Marca, Serie(si aplica), Estado, Condición, Cantidad):
 {
-  "status": "READY" o "INCOMPLETE" o "QUESTION",
-  "missing_info": "Texto preguntando qué falta",
-  "items": [{ "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1, "estado_fisico": "Nuevo/Usado", "condicion": "Bueno/Dañado/Obsoleto", "tipo": "Recibido/Enviado", "destino": "Stock/Agencia/Taller", "reporte": "..." }]
+  "status": "READY",
+  "items": [{ "equipo": "...", "marca": "...", "serie": "...", "cantidad": 1, "estado_fisico": "...", "condicion": "...", "tipo": "Recibido/Enviado", "destino": "..." }]
 }
 """
 
 # ==========================================
 # 5. INTERFAZ STREAMLIT
 # ==========================================
-st.title("🤖 LAIA v22.0: Agente Inteligente")
+st.title("🤖 LAIA v23.0: Cerebro Robusto")
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = None
@@ -141,7 +146,6 @@ if "draft" not in st.session_state: st.session_state.draft = None
 tab1, tab2 = st.tabs(["💬 Chat de Gestión", "📊 Dashboard de Stock"])
 
 with tab1:
-    # Mostrar historial de chat
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
@@ -149,15 +153,19 @@ with tab1:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        # Llamada a la IA
         try:
             client = genai.Client(api_key=API_KEY)
-            # Usamos concatenación simple en lugar de f-string complejo
-            contexto = SYSTEM_PROMPT + "\nHistorial reciente: " + str(st.session_state.messages[-3:]) + "\nUsuario dice: " + prompt
+            
+            # TRUCO DE MEMORIA: Convertimos TODO el historial a texto
+            historial_txt = ""
+            for msg in st.session_state.messages:
+                historial_txt += msg["role"].upper() + ": " + msg["content"] + "\n"
+
+            # Concatenación simple (Blindaje anti-errores)
+            contexto = SYSTEM_PROMPT + "\n\n--- HISTORIAL DE CONVERSACIÓN ---\n" + historial_txt + "\n\n--- INSTRUCCIÓN ---\nAnaliza el historial completo y decide si falta información."
             
             response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
             
-            # Extraer JSON de la respuesta
             raw_text = response.text
             if "```json" in raw_text: 
                 raw_text = raw_text.split("```json")[1].split("```")[0]
@@ -168,19 +176,17 @@ with tab1:
             
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                resp_laia = "✅ Tengo la información completa. Revisa la tabla de abajo y confirma el registro."
+                resp_laia = "✅ ¡Perfecto! Tengo todos los datos (Series, Estados, Cantidades). Revisa la tabla y CONFIRMA."
             else:
-                resp_laia = res_json.get("missing_info", "Necesito más detalles.")
+                resp_laia = res_json.get("missing_info", "Dame más detalles, por favor.")
                 st.session_state.draft = None
 
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
         except Exception as e:
-            # BLINDAJE FINAL: Aquí estaba el error. Lo cambiamos por suma de texto.
             st.error("Error procesando respuesta: " + str(e))
 
-    # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Registro")
         df_draft = pd.DataFrame(st.session_state.draft)
@@ -192,10 +198,11 @@ with tab1:
                 for item in st.session_state.draft:
                     item["fecha"] = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 
-                # Enviar al buzón
                 if enviar_github(FILE_BUZON, st.session_state.draft):
                     st.success("¡Registro guardado exitosamente!")
                     st.session_state.draft = None
+                    # Limpiamos chat para empezar proceso nuevo limpio
+                    st.session_state.messages = [] 
                     time.sleep(2)
                     st.rerun()
                 else:
@@ -214,36 +221,25 @@ with tab2:
     if hist:
         df_hist = pd.DataFrame(hist)
         
-        # --- PARCHE DE COMPATIBILIDAD (AQUÍ ESTÁ LA SOLUCIÓN AL KEYERROR) ---
-        # Normalizamos nombres de columnas antes de hacer nada
+        # Parche de compatibilidad
         df_hist.columns = df_hist.columns.str.lower().str.strip()
-        
-        # Si no existen las columnas nuevas, las creamos vacías para que no falle
         columnas_necesarias = ['condicion', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca']
         for col in columnas_necesarias:
-            if col not in df_hist.columns:
-                df_hist[col] = "No especificado"
-        # --------------------------------------------------------------------
+            if col not in df_hist.columns: df_hist[col] = "No especificado"
 
         st_resumen, st_detalle = calcular_stock_web(df_hist)
         
-        # KPIs
         k1, k2, k3 = st.columns(3)
-        if not st_resumen.empty:
-            k1.metric("📦 Total Items", int(st_resumen['val'].sum()))
-        else:
-            k1.metric("📦 Total Items", 0)
-            
-        # Ahora esto ya no fallará porque aseguramos que 'condicion' existe
+        total = int(st_resumen['val'].sum()) if not st_resumen.empty else 0
+        k1.metric("📦 Total Items", total)
         k2.metric("⚠️ Dañados", len(df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ', na=False)]))
         k3.metric("🚚 Movimientos", len(df_hist))
 
-        t_res, t_det, t_dañ = st.tabs(["📦 Resumen de Stock", "🔍 Detalle por Series", "🚨 Dañados/Obsoletos"])
+        t_res, t_det, t_dañ = st.tabs(["📦 Resumen", "🔍 Series", "🚨 Dañados"])
         
         with t_res:
-            st.write("### Resumen Minimalista (Opción B)")
+            st.write("### Resumen Minimalista")
             if not st_resumen.empty:
-                # Pivotar para ver: Equipo | Marca | Nuevo | Usado
                 try:
                     res_pivot = st_resumen.pivot_table(index=['equipo', 'marca'], 
                                                      columns='estado_fisico', 
@@ -252,27 +248,21 @@ with tab2:
                     st.dataframe(res_pivot, use_container_width=True)
                 except:
                     st.dataframe(st_resumen, use_container_width=True)
-            else: st.info("No hay stock disponible.")
+            else: st.info("Bodega Vacía.")
 
         with t_det:
-            st.write("### Inventario Detallado (Series)")
             if not st_detalle.empty:
-                cols_to_show = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'destino']
-                cols_existentes = [c for c in cols_to_show if c in st_detalle.columns]
-                st.dataframe(st_detalle[cols_existentes], use_container_width=True, hide_index=True)
+                cols = ['fecha', 'equipo', 'marca', 'serie', 'estado_fisico', 'destino']
+                existen = [c for c in cols if c in st_detalle.columns]
+                st.dataframe(st_detalle[existen], use_container_width=True, hide_index=True)
 
         with t_dañ:
             df_bad = df_hist[df_hist['condicion'].astype(str).str.lower().str.contains('dañ|obs', na=False)]
-            if not df_bad.empty:
-                st.error("Equipos fuera de servicio")
-                st.dataframe(df_bad, use_container_width=True)
-            else: st.success("No hay equipos dañados reportados.")
+            if not df_bad.empty: st.dataframe(df_bad, use_container_width=True)
+            else: st.success("Todo en orden.")
     else:
-        st.warning("No se encontraron datos en el histórico.")
+        st.warning("Sin datos.")
 
-# ==========================================
-# 6. LIMPIEZA DE CHAT
-# ==========================================
 if st.sidebar.button("🧹 Borrar Chat"):
     st.session_state.messages = []
     st.session_state.draft = None
