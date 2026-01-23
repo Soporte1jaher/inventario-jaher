@@ -39,7 +39,7 @@ FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 def obtener_github(archivo):
     # AQUÍ ESTABA EL ERROR: Faltaban las variables dentro de las llaves {}
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+     url = f"https://api.github.com/repos/{}/{}/contents/{}"
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
