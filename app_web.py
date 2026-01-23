@@ -138,7 +138,7 @@ st.title("🧠 LAIA v25.0 - Enlace a Excel")
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = None
 
-t1, t2 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo"])
+t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
 with t1:
     for m in st.session_state.messages:
