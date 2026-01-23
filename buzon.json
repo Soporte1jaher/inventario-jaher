@@ -1,1 +1,35 @@
-[]
+[
+    {
+        "marca": "hp",
+        "equipo": "CPU",
+        "serie": "1234",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "paute",
+        "fecha": "2026-01-23 11:54"
+    },
+    {
+        "marca": "lenovo",
+        "equipo": "CPU",
+        "serie": "asdf",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "paute",
+        "fecha": "2026-01-23 11:54"
+    },
+    {
+        "marca": "dell",
+        "equipo": "CPU",
+        "serie": "\u00f1lkj",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "destino": "paute",
+        "fecha": "2026-01-23 11:54"
+    }
+]
