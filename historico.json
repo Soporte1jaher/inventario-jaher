@@ -13,7 +13,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"lenovo",
@@ -29,7 +30,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"dell",
@@ -45,7 +47,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"Lenovo",
@@ -61,7 +64,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"HP",
@@ -77,7 +81,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"HP",
@@ -93,7 +98,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"Lenovo",
@@ -109,7 +115,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"Xtratecjh",
@@ -125,7 +132,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"HP",
@@ -141,7 +149,8 @@
         "modelo":"Probook",
         "origen":null,
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"Lenovo",
@@ -157,7 +166,8 @@
         "modelo":null,
         "origen":"Agencia Concordia",
         "origen\/agencia":null,
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":"HP",
@@ -173,7 +183,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":"Concordia",
-        "accion":null
+        "accion":null,
+        "valor":null
     },
     {
         "marca":null,
@@ -189,7 +200,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":"borrar_todo"
+        "accion":"borrar_todo",
+        "valor":null
     },
     {
         "marca":null,
@@ -205,7 +217,8 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":"borrar_todo"
+        "accion":"borrar_todo",
+        "valor":null
     },
     {
         "marca":null,
@@ -221,6 +234,41 @@
         "modelo":null,
         "origen":null,
         "origen\/agencia":null,
-        "accion":"borrar_todo"
+        "accion":"borrar_todo",
+        "valor":null
+    },
+    {
+        "marca":null,
+        "equipo":null,
+        "serie":null,
+        "cantidad":null,
+        "estado":null,
+        "estado_fisico":null,
+        "tipo":null,
+        "destino":null,
+        "fecha":null,
+        "reporte":null,
+        "modelo":null,
+        "origen":null,
+        "origen\/agencia":null,
+        "accion":"borrar_contiene",
+        "valor":"equipo"
+    },
+    {
+        "marca":null,
+        "equipo":null,
+        "serie":null,
+        "cantidad":null,
+        "estado":null,
+        "estado_fisico":null,
+        "tipo":null,
+        "destino":null,
+        "fecha":null,
+        "reporte":null,
+        "modelo":null,
+        "origen":null,
+        "origen\/agencia":null,
+        "accion":"borrar_todo",
+        "valor":null
     }
 ]
