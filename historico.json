@@ -180,5 +180,18 @@
         "fecha":"2026-01-23 11:36",
         "estado_fisico":"Usado",
         "condicion":"Bueno"
+    },
+    {
+        "destino":"Stock",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"HP",
+        "serie":"1234",
+        "estado":null,
+        "reporte":"Viene de Latacunga",
+        "fecha":"2026-01-23 11:45",
+        "estado_fisico":"Usado",
+        "condicion":"Bueno"
     }
 ]
