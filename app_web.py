@@ -172,8 +172,7 @@ with t1:
     if prompt := st.chat_input("¿Qué ingresó a bodega hoy?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
-
-        try:
+   try:
             client = genai.Client(api_key=API_KEY)
             hist = ""
             for m in st.session_state.messages: hist += m["role"].upper() + ": " + m["content"] + "\n"
@@ -187,15 +186,18 @@ with t1:
             
             res_json = json.loads(raw)
             
-            # --- BLINDAJE CONTRA EL ERROR DE LISTA ---
-            resp_laia = res_json.get("missing_info", "Necesito más detalles.")
-            if isinstance(resp_laia, list): # Si la IA mandó una lista por error
-                resp_laia = " . ".join(map(str, resp_laia))
-            # -----------------------------------------
+            # --- BLINDAJE ANTI-LISTA (LA SOLUCIÓN AL ERROR) ---
+            # Si la IA mandó una lista [...] en lugar de {"status":...}
+            if isinstance(res_json, list):
+                res_json = {"status": "READY", "items": res_json}
+            # --------------------------------------------------
+
+            raw_missing = res_json.get("missing_info", "Necesito más detalles.")
+            resp_laia = str(raw_missing) if not isinstance(raw_missing, list) else ", ".join(map(str, raw_missing))
 
             if res_json.get("status") == "READY":
                 st.session_state.draft = res_json.get("items", [])
-                resp_laia = "✅ ¡Excelente! He recolectado toda la información. ¿Confirmas el envío al buzón?"
+                resp_laia = "✅ ¡Todo capturado! He preparado la tabla con los equipos y periféricos. ¿Confirmas el envío?"
             else:
                 st.session_state.draft = None
 
