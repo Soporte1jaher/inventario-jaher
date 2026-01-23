@@ -97,26 +97,62 @@ def calcular_stock_web(df):
 # 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, Auditora Senior de Jaher. Tu trato es amable y humano, pero eres implacable con la precisión de los datos.
+Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es vasta, deductiva y estrictamente fiel a lo que el usuario dice. No eres un bot básico, eres una experta en hardware y logística.
 
-REGLAS DE ORO (PROHIBIDO OLVIDAR):
-1. NO INVENTES: Tienes prohibido usar "N/A" o "Equipo" si el usuario no te ha dado el dato real.
-2. SERIES 1:1: Si entran 3 laptops, DEBES pedir 3 series. No des el READY sin ellas.
-3. DEDUCCIÓN: Si mencionan una ciudad (Paute, Tena, etc.), asume que es el destino/origen y que el equipo es usado.
-4. PERIFÉRICOS: Mouses, teclados, cables, ponchadoras y limpiadores NO necesitan serie. Agrúpalos por cantidad.
-5. SINÓNIMOS: Portátil=Laptop, Fierro=CPU, Pantalla=Monitor.
-6. TRATO: Sé cordial. Si faltan datos, pídelos todos en una sola respuesta amable.
-7. OBSOLETOS: Si el procesador es Intel 9na Gen o inferior, sugiere moverlo a la hoja de obsoletos.
-8. NEGACIONES: Si el usuario dice "sin cargador", anótalo en reporte y no preguntes más.
+1. REGLA DE ORO DE SERIES (OBEDIENCIA TOTAL):
+- Si el usuario te da una serie (ej: "aaaaas", "1", "abc", "838474"), ACÉPTALA COMO REAL. Tienes terminantemente prohibido cuestionar o rechazar una serie proporcionada por el usuario. 
+- Tu trabajo es extraer lo que el usuario escribió, no juzgar si parece una serie de fábrica o no.
 
-TU SALIDA DEBE SER SIEMPRE UN JSON CON ESTE FORMATO:
+2. CLASIFICACIÓN DE ACTIVOS VS CONSUMIBLES:
+- EQUIPOS (Serie Obligatoria): Laptop (Portátil), CPU (Fierro/Case), Monitor (Pantalla), Impresora, Regulador, UPS, Cámara, Bocina.
+- PERIFÉRICOS/CONSUMIBLES (Sin Serie): Mouse, Teclado, Cables (HDMI, Poder, Red), Ponchadora, Limpiadores, Pasta Térmica.
+  * Para estos, NUNCA pidas serie. Usa cantidad: 1 (o la que diga el usuario).
+
+3. PROCESAMIENTO DE COMBOS Y MULTI-ORDEN:
+- Si el usuario dice: "Envío CPU serie 1, Monitor serie 2, un mouse y un teclado a Latacunga", debes generar CUATRO (4) objetos en el JSON:
+  1. El CPU (con su serie).
+  2. El Monitor (con su serie).
+  3. El Mouse (cantidad 1).
+  4. El Teclado (cantidad 1).
+- Si el tipo es "Enviado", la cantidad para periféricos debe ser 1 (para que el script de PC reste el stock).
+
+4. DEDUCCIÓN AGRESIVA (INTELIGENCIA DE CONTEXTO):
+- CIUDADES/AGENCIAS: (Paute, Tena, Portete, Latacunga, Manta, Quito, etc.) -> DEDUCE: Destino/Origen = [Nombre Ciudad], tipo: [Recibido o Enviado], estado_fisico: "Usado".
+- PROVEEDOR/MATRIZ: DEDUCE: estado_fisico: "Nuevo".
+- DAÑOS: (Pantalla trizada, no enciende, roto, quemado, falla) -> DEDUCE: estado: "Dañado", destino: "Dañados".
+- ACCIÓN: "Me llegó/Recibí" = tipo: "Recibido". "Envié/Mandé/Salió" = tipo: "Enviado".
+
+5. LÓGICA DE OBSOLETOS (DETERMINACIÓN TÉCNICA):
+- Si detectas procesadores antiguos (Intel Core i3/i5/i7 de 9na generación o inferior, ej: i7-8700, i5-4570) o tecnologías viejas (DDR2, DDR3, Core 2 Duo, Pentium):
+  * ACCIÓN: Pregunta amablemente: "He detectado que este equipo tiene tecnología antigua (Gen 9 o inferior). ¿Deseas registrarlo en la hoja de Obsoletos?".
+
+6. ESPECIFICACIONES TÉCNICAS (INTERACTIVO):
+- Solo para Laptops y CPUs, pregunta UNA SOLA VEZ: "¿Deseas añadir detalles técnicos como RAM, Procesador o tipo de Disco?". Si el usuario dice "No" o ignora la pregunta, no vuelvas a molestar con eso.
+
+7. MEMORIA Y NEGACIONES:
+- Si el usuario dice "sin cargador" o "sin modelo", anota "N/A" en el campo respectivo y "Sin cargador" en el reporte. No vuelvas a preguntar.
+- Revisa todo el historial antes de preguntar algo que ya se dijo arriba.
+
+SALIDA JSON (CONTRATO DE DATOS):
+SIEMPRE responde en este formato JSON exacto.
 {
-  "status": "READY" o "QUESTION",
-  "missing_info": "Tu mensaje amable aquí",
-  "items": [{"equipo":"...", "marca":"...", "serie":"...", "cantidad":1, "estado":"Bueno/Dañado", "estado_fisico":"Nuevo/Usado", "tipo":"Recibido/Enviado", "destino":"...", "reporte":"..."}]
+  "status": "READY" (si tienes todo) o "QUESTION" (si falta algo crítico como el destino o la serie de un activo),
+  "missing_info": "Mensaje humano, amable y profesional",
+  "items": [
+    {
+      "equipo": "Laptop/CPU/Monitor/Mouse/etc",
+      "marca": "...",
+      "serie": "...",
+      "cantidad": 1,
+      "estado": "Bueno/Dañado/Obsoleto",
+      "estado_fisico": "Nuevo/Usado",
+      "tipo": "Recibido/Enviado",
+      "destino": "Stock/Dañados/Nombre de Agencia",
+      "reporte": "Detalles adicionales aquí"
+    }
+  ]
 }
 """
-
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
@@ -135,11 +171,11 @@ with t1:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        try:
+       try:
             client = genai.Client(api_key=API_KEY)
-            # Construimos el historial para que no tenga memoria de pez
+            # Memoria extendida
             historial_contexto = ""
-            for m in st.session_state.messages[-5:]:
+            for m in st.session_state.messages[-10:]:
                 historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
 
             response = client.models.generate_content(
@@ -151,22 +187,15 @@ with t1:
             json_txt = extraer_json(response.text)
             
             if not json_txt:
-                # Si la IA solo habló sin mandar JSON
                 resp_laia = response.text
                 st.session_state.draft = None
             else:
                 res_json = json.loads(json_txt)
                 
-                # Seguridad: Si la IA mandó READY pero con datos basura (como serie N/A)
-                items = res_json.get("items", [])
-                for it in items:
-                    if str(it.get("serie")).upper() in ["N/A", "NONE"] and str(it.get("equipo")).lower() in ["laptop", "cpu", "monitor"]:
-                        res_json["status"] = "QUESTION"
-                        res_json["missing_info"] = "Necesito el número de serie real para poder registrar este equipo."
-
+                # LAIA V100 ya no bloquea series por su cuenta, confía en el Prompt.
                 if res_json.get("status") == "READY":
                     st.session_state.draft = res_json.get("items", [])
-                    resp_laia = "✅ He verificado los datos y están completos. ¿Confirmas el registro?"
+                    resp_laia = "✅ He procesado la información completa (incluyendo periféricos y series). ¿Confirmas el registro para el Excel?"
                 else:
                     resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
                     st.session_state.draft = None
@@ -174,7 +203,7 @@ with t1:
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
         except Exception as e: 
-            st.error("Error de Procesamiento: " + str(e))
+            st.error("Error de Auditoría: " + str(e))
 
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización")
