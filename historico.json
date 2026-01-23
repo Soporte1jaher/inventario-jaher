@@ -82,5 +82,19 @@
         "fecha":"2026-01-23 17:48",
         "modelo":"N\/A",
         "origen":"N\/A"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"HP",
+        "serie":"12345",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "destino":"N\/A",
+        "reporte":"N\/A",
+        "fecha":"2026-01-23 17:53",
+        "modelo":"Probook GTX",
+        "origen":"Pascuales"
     }
 ]
