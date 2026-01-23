@@ -158,7 +158,7 @@ def calcular_stock_web(df):
 # 5. INTERFAZ
 # ==========================================
 st.title("🤖 LAIA v21.0")
-t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza Quirúrgica", "📊 BI & Historial"])
+t1, t2, t3, t4 = st.tabs(["📝 Registro Inteligente", "💬 Chat Consultor", "🗑️ Limpieza de datos", "📊 BI & Historial"])
 # --- TAB 1: REGISTRO CORREGIDO (LÓGICA BLINDADA ANTI-STOCK PARA DAÑADOS) ---
 with t1:
     st.subheader("📝 Gestión de Movimientos")
