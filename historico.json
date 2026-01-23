@@ -154,5 +154,17 @@
         "ubicacion":"Stock",
         "reporte":"Laptop recibida con pantalla trizada y no enciende.  Sin cargador original de la agencia.",
         "fecha":"2026-01-22 18:56"
+    },
+    {
+        "destino":"Stock\/Agencia",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "serie":"90909090",
+        "estado":"Da\u00f1ado",
+        "ubicacion":"Stock",
+        "reporte":"Equipo recibido con pantalla trizada y no enciende.  No incluye cargador original.",
+        "fecha":"2026-01-22 19:09"
     }
 ]
