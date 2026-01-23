@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 import pandas as pd
 import time
 
-# =========================================
+# ==========================================
 # 1. CONFIGURACIÓN
 # ==========================================
 st.set_page_config(page_title="LAIA v25.0 - Auditora Conectada", page_icon="🧠", layout="wide")
@@ -16,18 +16,18 @@ st.set_page_config(page_title="LAIA v25.0 - Auditora Conectada", page_icon="🧠
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; color: #e0e0e0; }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES
+# 2. CREDENCIALES Y APOYO
 # ==========================================
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
     GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets en Streamlit.")
+    st.error("❌ Configura los Secrets en Streamlit (GOOGLE_API_KEY y GITHUB_TOKEN).")
     st.stop()
 
 GITHUB_USER = "Soporte1jaher"
@@ -36,17 +36,22 @@ FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
 
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
+
 def extraer_json(texto):
     try:
-        # Limpieza de marcas de markdown
+        # Limpieza de marcas de markdown para que la IA no confunda al código
         texto = texto.replace("```json", "").replace("```", "").strip()
-        inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
+        inicio = texto.find("[")
+        if inicio == -1: inicio = texto.find("{")
+        fin = texto.rfind("]") + 1
+        if fin == 0: fin = texto.rfind("}") + 1
+        
         if inicio != -1 and fin > inicio:
             return texto[inicio:fin].strip()
         return texto
     except:
         return ""
+
 def obtener_github(archivo):
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     try:
@@ -57,10 +62,13 @@ def obtener_github(archivo):
     except: pass
     return [], None
 
-def enviar_github(archivo, datos, mensaje="LAIA Input"):
+def enviar_github(archivo, datos, mensaje="LAIA Update"):
     actuales, sha = obtener_github(archivo)
-    if isinstance(datos, list): actuales.extend(datos)
-    else: actuales.append(datos)
+    if isinstance(datos, list): 
+        actuales.extend(datos)
+    else: 
+        actuales.append(datos)
+        
     payload = {
         "message": mensaje,
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode('utf-8')).decode('utf-8'),
@@ -68,20 +76,6 @@ def enviar_github(archivo, datos, mensaje="LAIA Input"):
     }
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
-    def extraer_json(texto):
-    try:
-        if "```" in texto:
-            texto = texto.split("```")[1]
-            if texto.startswith("json"): texto = texto[4:]
-        inicio = texto.find("[")
-        if inicio == -1: inicio = texto.find("{")
-        fin = texto.rfind("]") + 1
-        if fin == 0: fin = texto.rfind("}") + 1
-        if inicio != -1 and fin > inicio:
-            return texto[inicio:fin].strip()
-        return texto.strip()
-    except: return ""
-
 
 # ==========================================
 # 3. MOTOR DE STOCK (ALINEADO CON SINCRONIZADOR)
@@ -91,7 +85,7 @@ def calcular_stock_web(df):
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
     
-    # Asegurar columnas para el cálculo
+    # Asegurar que existan todas las columnas que el Excel usa
     cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad']
     for col in cols:
         if col not in df_c.columns: df_c[col] = "No especificado"
@@ -99,24 +93,29 @@ def calcular_stock_web(df):
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
 
     def procesar_fila(row):
-        # USAMOS 'estado' que es lo que tu script sincronizador usa
         est = str(row.get('estado', '')).lower() 
         tipo = str(row.get('tipo', '')).lower()
         dest = str(row.get('destino', '')).lower()
         cant = row['cant_n']
         
+        # Si está dañado u obsoleto, no cuenta como stock disponible
         if 'dañ' in est or 'obs' in est: return 0
+        # Entradas (Suma)
         if dest == 'stock' or 'recibido' in tipo: return cant
+        # Salidas (Resta)
         if 'enviado' in tipo: return -cant
         return 0
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
+    
+    # Resumen minimalista para el Dashboard
     resumen = df_c.groupby(['equipo', 'marca', 'estado_fisico'])['val'].sum().reset_index()
     resumen = resumen[resumen['val'] > 0]
+    
     return resumen, df_c[df_c['val'] != 0]
 
 # ==========================================
-# 4. CEREBRO DE LAIA (CONSTRUCTOR DE JSON PARA SINCRONIZADOR)
+# 4. CEREBRO DE LAIA (CONSTRUCTOR DE JSON)
 # ==========================================
 SYSTEM_PROMPT = """
 Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es proactiva, NO eres un formulario vacío. Tu meta es procesar el registro con la MENOR cantidad de preguntas posibles.
