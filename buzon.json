@@ -1,1 +1,15 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "HP",
+        "serie": "12345",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "origen/agencia": "Concordia",
+        "tipo": "Recibido",
+        "destino": "Stock",
+        "reporte": null,
+        "fecha": "2026-01-23 14:53"
+    }
+]
