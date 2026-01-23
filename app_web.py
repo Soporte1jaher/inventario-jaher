@@ -132,7 +132,7 @@ with tab1:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("Ej: Llegaron 5 laptops de Pascuales..."):
+   if prompt := st.chat_input("Ej: Llegaron 5 laptops de Pascuales..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
@@ -140,13 +140,15 @@ with tab1:
         client = genai.Client(api_key=API_KEY)
         contexto = f"{SYSTEM_PROMPT}\nHistorial reciente: {st.session_state.messages[-3:]}\nUsuario dice: {prompt}"
         
-        response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
-        
         try:
+            response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=contexto)
+            
             # Extraer JSON de la respuesta
             raw_text = response.text
-            if "```json" in raw_text: raw_text = raw_text.split("```json")[1].split("```")[0]
-            elif "```" in raw_text: raw_text = raw_text.split("```")[1].split("```")[0]
+            if "```json" in raw_text: 
+                raw_text = raw_text.split("```json")[1].split("```")[0]
+            elif "```" in raw_text: 
+                raw_text = raw_text.split("```")[1].split("```")[0]
             
             res_json = json.loads(raw_text)
             
@@ -160,7 +162,7 @@ with tab1:
             with st.chat_message("assistant"): st.markdown(resp_laia)
             st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
-      except Exception as e:
+        except Exception as e:
             st.error(f"Error procesando respuesta: {}")
     # Zona de Confirmación (Si hay un borrador listo)
     if st.session_state.draft:
