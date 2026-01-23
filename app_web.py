@@ -68,6 +68,20 @@ def enviar_github(archivo, datos, mensaje="LAIA Input"):
     }
     url = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPO + "/contents/" + archivo
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
+    def extraer_json(texto):
+    try:
+        if "```" in texto:
+            texto = texto.split("```")[1]
+            if texto.startswith("json"): texto = texto[4:]
+        inicio = texto.find("[")
+        if inicio == -1: inicio = texto.find("{")
+        fin = texto.rfind("]") + 1
+        if fin == 0: fin = texto.rfind("}") + 1
+        if inicio != -1 and fin > inicio:
+            return texto[inicio:fin].strip()
+        return texto.strip()
+    except: return ""
+
 
 # ==========================================
 # 3. MOTOR DE STOCK (ALINEADO CON SINCRONIZADOR)
