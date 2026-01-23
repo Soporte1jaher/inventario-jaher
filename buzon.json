@@ -1,16 +1,1 @@
-[
-    {
-        "equipo": "Laptop",
-        "marca": "HP",
-        "modelo": "Probook GTX",
-        "serie": "12345",
-        "cantidad": 1,
-        "estado": "Bueno",
-        "estado_fisico": "Usado",
-        "tipo": "Recibido",
-        "origen": "Pascuales",
-        "destino": "N/A",
-        "reporte": "N/A",
-        "fecha": "2026-01-23 17:53"
-    }
-]
+[]
