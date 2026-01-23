@@ -1,15 +1,1 @@
-[
-    {
-        "equipo": "CPU",
-        "marca": "Xtratech",
-        "serie": "12345",
-        "cantidad": 1,
-        "estado": "Bueno",
-        "estado_fisico": "Usado",
-        "tipo": "Recibido",
-        "destino": "Stock",
-        "origen/agencia": "Concordia",
-        "reporte": null,
-        "fecha": "2026-01-23 15:26"
-    }
-]
+[]
