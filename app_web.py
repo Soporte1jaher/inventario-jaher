@@ -218,3 +218,65 @@ if st.sidebar.button("🧹 Limpiar Chat"):
     st.session_state.messages = []
     st.session_state.draft = None
     st.rerun()
+
+# --- TAB 3: LIMPIEZA QUIRÚRGICA ---
+with t3:
+    st.subheader("🗑️ Eliminación y Limpieza Inteligente")
+    st.info("💡 Ahora puedes decir: 'Borra todo lo de Dell', 'Elimina los mouses de Pascuales' o 'Quita la serie 123'.")
+    
+    txt_borrar = st.text_input("Orden de eliminación:", placeholder="Ej: 'Borrar mouses usados de California'")
+    
+    if st.button("🔥 EJECUTAR ORDEN DE LIMPIEZA", type="primary"):
+        if txt_borrar:
+            with st.spinner("LAIA analizando bases de datos para borrado..."):
+                try:
+                    # Obtenemos una muestra del histórico para que la IA sepa los nombres de las columnas
+                    hist, _ = obtener_github(FILE_HISTORICO)
+                    muestra = hist[-10:] if hist else []
+                    
+                    client = genai.Client(api_key=API_KEY)
+                    
+                    # Prompt de DBA Avanzado
+                    prompt_b = f"""
+                    Actúa como un Administrador de Bases de Datos (DBA) experto.
+                    Tu objetivo es convertir una orden de usuario en un comando JSON para limpiar un inventario.
+                    
+                    COLUMNAS DISPONIBLES: [fecha, equipo, marca, serie, cantidad, estado, estado_fisico, tipo, destino, reporte]
+                    MUESTRA DE DATOS: {json.dumps(muestra)}
+                    ORDEN DEL USUARIO: "{}"
+                    
+                    REGLAS DE SALIDA (JSON):
+                    1. BORRADO TOTAL: Si pide borrar todo.
+                       {{"accion": "borrar_todo"}}
+                    2. LIMPIEZA DE VACÍOS: Si pide quitar lo que no tiene serie o está vacío.
+                       {{"accion": "borrar_vacios"}}
+                    3. BORRADO POR FILTRO (MÁS LISTO): Si pide borrar algo específico (ej. "borra los dell" o "quita lo de pascuales").
+                       {{"accion": "borrar_filtro", "columna": "nombre_de_la_columna", "valor": "valor_a_buscar"}}
+                    4. BORRADO POR SERIE: Si da un código alfanumérico.
+                       {{"accion": "borrar", "serie": "valor"}}
+                    5. BORRADO GLOBAL: Si pide borrar una palabra que puede estar en cualquier lado (ej. "quita todo lo que diga roto").
+                       {{"accion": "borrar_contiene", "valor": "palabra"}}
+                    
+                    RESPONDE SOLO EL JSON.
+                    """
+                    
+                    response = client.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt_b)
+                    
+                    # Usamos la función extraer_json que ya tienes en tu código
+                    orden_json = extraer_json(response.text)
+                    
+                    if orden_json:
+                        data_borrado = json.loads(orden_json)
+                        # Enviamos la instrucción al buzón para que el sincronizar.py la procese
+                        if enviar_github(FILE_BUZON, data_borrado, mensaje="Orden de Limpieza LAIA"):
+                            st.success("✅ Orden enviada correctamente al buzón.")
+                            st.markdown("### Resumen de la orden:")
+                            st.json(data_borrado)
+                            st.info("La limpieza se reflejará en el Excel cuando el Sincronizador de tu PC procese el buzón.")
+                        else:
+                            st.error("Error al conectar con GitHub.")
+                    else:
+                        st.warning("LAIA no pudo interpretar la orden de borrado. Intenta ser más específico.")
+                        
+                except Exception as e:
+                    st.error(f"Error en el motor de limpieza: {}")
