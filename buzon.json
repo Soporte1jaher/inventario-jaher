@@ -1,1 +1,35 @@
-[]
+[
+    {
+        "destino": "Bodega",
+        "tipo": "Recibido",
+        "cantidad": 5,
+        "equipo": "Laptop",
+        "marca": "Generica",
+        "serie": "No especificada",
+        "estado": "Da\u00f1ado",
+        "reporte": "me legaron 5 laptops series genericas a matriz",
+        "fecha": "2026-01-23 09:24"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "serie": "7373663",
+        "estado": "Bueno",
+        "reporte": "me llego de sanglqui cpu marca xtech serie7373663",
+        "fecha": "2026-01-23 09:24"
+    },
+    {
+        "destino": "Stock",
+        "tipo": "Recibido",
+        "cantidad": 1,
+        "equipo": "Teclado",
+        "marca": "Gen\u00e9rica",
+        "serie": "N/A",
+        "estado": "Bueno",
+        "reporte": "con un teclado",
+        "fecha": "2026-01-23 09:24"
+    }
+]
