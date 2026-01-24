@@ -87,6 +87,7 @@ def calcular_stock_web(df):
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
 
+    # Asegura columnas básicas
     cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
     for col in cols:
         if col not in df_c.columns:
@@ -94,23 +95,42 @@ def calcular_stock_web(df):
 
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
 
+    # Lógica de stock
     def procesar_fila(row):
         est = str(row['estado']).lower()
         t = str(row['tipo']).lower()
         d = str(row['destino']).lower()
+        eq = str(row['equipo']).lower()
+        cant = row['cant_n']
 
+        # Periféricos siempre restan/añaden stock
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
+        if any(p in eq for p in perifericos):
+            if 'recibido' in t:
+                return cant
+            if 'enviado' in t:
+                return -cant
+
+        # Equipos dañados u obsoletos no afectan stock general
         if 'dañ' in est or 'obs' in est:
             return 0
+
+        # Stock normal
         if d == 'stock' or 'recibido' in t:
-            return row['cant_n']
+            return cant
         if 'enviado' in t:
-            return -row['cant_n']
+            return -cant
         return 0
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
-    return resumen[resumen['val'] > 0], df_c[df_c['val'] != 0]
 
+    # Resumen stock normal
+    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
+
+    # Filas con movimientos
+    movimientos = df_c[df_c['val'] != 0]
+
+    return resumen[resumen['val'] > 0], movimientos
 # ==========================================
 # 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
@@ -192,6 +212,61 @@ if "draft" not in st.session_state:
     st.session_state.draft = None
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
+
+# ==========================================
+# 6. GUARDAR EXCEL CON HOJA "DAÑADOS"
+# ==========================================
+def aplicar_formato_zebra(writer, df, nombre_hoja):
+    if df.empty: return
+    df.to_excel(writer, index=False, sheet_name=nombre_hoja)
+    workbook, worksheet = writer.book, writer.sheets[nombre_hoja]
+    header_fmt = workbook.add_format({'bold': True, 'align': 'center', 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1})
+    zebra_fmt = workbook.add_format({'bg_color': '#F2F2F2', 'border': 1})
+    normal_fmt = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1})
+    for col_num, value in enumerate(df.columns.values):
+        worksheet.write(0, col_num, value, header_fmt)
+    for row_num in range(1, len(df)+1):
+        fmt = zebra_fmt if row_num % 2 == 0 else normal_fmt
+        for col_num in range(len(df.columns)):
+            val = df.iloc[row_num-1, col_num]
+            worksheet.write(row_num, col_num, str(val) if pd.notna(val) else "", fmt)
+    worksheet.freeze_panes(1,0)
+    worksheet.set_column(0, len(df.columns)-1, 22)
+
+def guardar_excel_premium(df, ruta):
+    while True:
+        try:
+            writer = pd.ExcelWriter(ruta, engine='xlsxwriter')
+            df_mov = df.copy().fillna("")
+
+            # Orden de columnas
+            columnas = list(df_mov.columns)
+            orden = ['fecha','equipo','marca','modelo','serie','origen','destino','estado','estado_fisico','tipo','cantidad','reporte']
+            columnas_finales = [c for c in orden if c in columnas] + [c for c in columnas if c not in orden]
+
+            # Hoja "Enviados y Recibidos"
+            aplicar_formato_zebra(writer, df_mov[columnas_finales], 'Enviados y Recibidos')
+
+            # Hoja "Stock (Saldos)"
+            df_calc = df.copy()
+            df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
+            df_calc['variacion'] = df_calc.apply(lambda row: row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower() else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0), axis=1)
+            res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
+            aplicar_formato_zebra(writer, res[res['variacion']>0], 'Stock (Saldos)')
+
+            # Hoja "Dañados"
+            df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
+            if not df_danados.empty:
+                aplicar_formato_zebra(writer, df_danados, 'Dañados')
+
+            writer.close()
+            return True
+        except PermissionError:
+            print("⚠️ POR FAVOR, CIERRA EL EXCEL PARA CONTINUAR...")
+            time.sleep(5)
+        except Exception as e:
+            print("❌ Error crítico: " + str(e))
+            return False
 
 with t1:
     for m in st.session_state.messages:
