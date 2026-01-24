@@ -255,9 +255,10 @@ def guardar_excel_premium(df, ruta):
             aplicar_formato_zebra(writer, res[res['variacion']>0], 'Stock (Saldos)')
 
             # Hoja "Dañados"
-            df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
-            if not df_danados.empty:
-                aplicar_formato_zebra(writer, df_danados, 'Dañados')
+        
+df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
+if not df_danados.empty:
+    aplicar_formato_zebra(writer, df_danados, 'Dañados')
 
             writer.close()
             return True
