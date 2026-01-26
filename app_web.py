@@ -61,32 +61,39 @@ def extraer_json(texto):
     return ""
 
 def obtener_github(archivo):
-  # AQUÍ ESTABA EL ERROR: AHORA SÍ TIENE LAS VARIABLES DENTRO DE {}
-  url = f"https://api.github.com/repos/{}/{}/contents/{}"
-  try:
-    resp = requests.get(url, headers=HEADERS)
-    if resp.status_code == 200:
-      d = resp.json()
-      return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
-  except:
-    pass
-  return [], None
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    try:
+        resp = requests.get(url, headers=HEADERS)
+        if resp.status_code == 200:
+            d = resp.json()
+            return json.loads(
+                base64.b64decode(d['content']).decode('utf-8')
+            ), d['sha']
+    except Exception as e:
+        print("Error GitHub GET:", e)
+
+    return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
-  actuales, sha = obtener_github(archivo)
-  if isinstance(datos, list):
-    actuales.extend(datos)
-  else:
-    actuales.append(datos)
+    actuales, sha = obtener_github(archivo)
 
-  payload = {
-    "message": mensaje,
-    "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
-    "sha": sha
-  }
-  # CORRECCIÓN: Aquí también deben ir las variables
-  url = f"https://api.github.com/repos/{}/{}/contents/{}"
-  return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
+    if isinstance(datos, list):
+        actuales.extend(datos)
+    else:
+        actuales.append(datos)
+
+    payload = {
+        "message": mensaje,
+        "content": base64.b64encode(
+            json.dumps(actuales, indent=4).encode()
+        ).decode(),
+        "sha": sha
+    }
+
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    resp = requests.put(url, headers=HEADERS, json=payload)
+    return resp.status_code in (200, 201)
+
 # ==========================================
 # 4. MOTOR DE STOCK (CÁLCULO WEB)
 # ==========================================
