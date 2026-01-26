@@ -3,5 +3,8 @@
         "accion": "borrar_filtro",
         "columna": "equipo",
         "valor": "laptop"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
