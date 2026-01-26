@@ -1,17 +1,1 @@
-[
-    {
-        "equipo": "Laptop",
-        "marca": "Dell",
-        "modelo": "TY657",
-        "serie": "l18736ye",
-        "cantidad": 1,
-        "estado": "Bueno",
-        "estado_fisico": "Usado",
-        "tipo": "Recibido",
-        "origen": "Riobamba",
-        "destino": "Stock",
-        "guia": "010274646344",
-        "reporte": "",
-        "fecha": "2026-01-26 10:03"
-    }
-]
+[]
