@@ -17,5 +17,24 @@
         "procesador":"Core i7 10ma",
         "fecha_llegada":"2026-01-14",
         "fecha":"2026-01-26 10:29"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "modelo":"N\/A",
+        "serie":"HFDJSK",
+        "cantidad":1,
+        "estado":"Da\u00f1ado",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "origen":"Matriz",
+        "destino":"Da\u00f1ados",
+        "guia":"046399394",
+        "reporte":"Requiere cambio de disco HDD",
+        "disco":"1 Tera HDD",
+        "ram":"8 GB",
+        "procesador":"Core i5 10ma generaci\u00f3n",
+        "fecha_llegada":"N\/A",
+        "fecha":"2026-01-26 10:33"
     }
 ]
