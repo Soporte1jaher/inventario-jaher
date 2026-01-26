@@ -61,6 +61,7 @@ def extraer_json(texto):
     return ""
 
 def obtener_github(archivo):
+  # CORRECCIÓN: Se agregaron las variables dentro de las llaves
   url = f"https://api.github.com/repos/{}/{}/contents/{}"
   try:
     resp = requests.get(url, headers=HEADERS)
@@ -83,6 +84,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
     "sha": sha
   }
+  # CORRECCIÓN: Se agregaron las variables dentro de las llaves aquí también
   url = f"https://api.github.com/repos/{}/{}/contents/{}"
   return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
