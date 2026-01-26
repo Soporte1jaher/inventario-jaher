@@ -11,7 +11,7 @@ import time
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA v91.0 - Auditora Senior", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v91.0 - Auditora e Inventario", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
