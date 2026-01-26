@@ -153,7 +153,7 @@ def calcular_stock_web(df):
 # 5. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
+Eres LAIA, la Auditora e Inventario de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
 
 1. REGLA DE ORO: PROHIBIDO ASUMIR (CONFIRMACIÓN OBLIGATORIA)
 - Aunque deduzcas que un equipo es "Usado" (porque viene de agencia), DEBES PREGUNTAR para confirmar.
@@ -242,7 +242,7 @@ SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
 # ==========================================
 # 6. INTERFAZ
 # ==========================================
-st.title("🧠 LAIA v91.0 - Auditoría Senior")
+st.title("🧠 LAIA v91.0 - Auditoría e Inventario")
 
 # --- SELECTOR DE INVENTARIO (NUEVO) ---
 st.sidebar.markdown("### 📂 Configuración")
