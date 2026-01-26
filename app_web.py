@@ -239,29 +239,37 @@ def guardar_excel_premium(df, ruta):
             writer = pd.ExcelWriter(ruta, engine='xlsxwriter')
             df_mov = df.copy().fillna("")
 
-            # Orden de columnas
             columnas = list(df_mov.columns)
-            orden = ['fecha','equipo','marca','modelo','serie','origen','destino','estado','estado_fisico','tipo','cantidad','reporte']
-            columnas_finales = [c for c in orden if c in columnas] + [c for c in columnas if c not in orden]
+            orden = ['fecha','equipo','marca','modelo','serie','origen','destino',
+                     'estado','estado_fisico','tipo','cantidad','reporte']
+            columnas_finales = [c for c in orden if c in columnas] + \
+                               [c for c in columnas if c not in orden]
 
-            # Hoja "Enviados y Recibidos"
-            aplicar_formato_zebra(writer, df_mov[columnas_finales], 'Enviados y Recibidos')
+            # Hoja Enviados y Recibidos
+            aplicar_formato_zebra(
+                writer, df_mov[columnas_finales], 'Enviados y Recibidos'
+            )
 
-            # Hoja "Stock (Saldos)"
+            # Hoja Stock
             df_calc = df.copy()
             df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
-            df_calc['variacion'] = df_calc.apply(lambda row: row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower() else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0), axis=1)
+            df_calc['variacion'] = df_calc.apply(
+                lambda row:
+                    row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower()
+                    else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0),
+                axis=1
+            )
             res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
-            aplicar_formato_zebra(writer, res[res['variacion']>0], 'Stock (Saldos)')
+            aplicar_formato_zebra(writer, res[res['variacion'] > 0], 'Stock (Saldos)')
 
-            # Hoja "Dañados"
-        
-df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
-if not df_danados.empty:
-    aplicar_formato_zebra(writer, df_danados, 'Dañados')
+            # ✅ Hoja Dañados (AQUÍ VA)
+            df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
+            if not df_danados.empty:
+                aplicar_formato_zebra(writer, df_danados, 'Dañados')
 
             writer.close()
             return True
+
         except PermissionError:
             print("⚠️ POR FAVOR, CIERRA EL EXCEL PARA CONTINUAR...")
             time.sleep(5)
