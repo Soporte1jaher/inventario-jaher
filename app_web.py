@@ -248,7 +248,7 @@ st.title("🧠 LAIA v91.0 - Auditoría Senior")
 st.sidebar.markdown("### 📂 Configuración")
 opcion_inventario = st.sidebar.radio(
     "Selecciona el Inventario Destino:",
-    ("SISTEMAS", "BODEGA")
+    ("SISTEMAS", "BODEGA", "CHATARRIZACION")
 )
 st.sidebar.markdown("---")
 
