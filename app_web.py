@@ -211,11 +211,11 @@ SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
    "origen": "...", 
    "destino": "...", 
    "guia": "...",
-   "reporte": "..."
-   "disco": "..."
-   "ram": "..."
-   "procesador": "..."
-   "fecha_llegada": "..."
+   "reporte": "...",
+   "disco": "...",
+   "ram": "...",
+   "procesador": "...",
+   "fecha_llegada": "...",
   }
  ]
 }
