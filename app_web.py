@@ -40,6 +40,15 @@ FILE_HISTORICO = "historico.json"
 
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
+# --- ⚠️ CONFIGURA TUS RUTAS AQUÍ ---
+RUTAS_INVENTARIO = {
+    "SISTEMAS": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_General.xlsx",
+    "BODEGA": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_Bodega.xlsx"
+}
+
+# Ruta por defecto (si la App no especifica nada)
+RUTA_DEFAULT = RUTAS_INVENTARIO["SISTEMAS"]
+
 def extraer_json(texto):
     try:
         texto = texto.replace("```json", "").replace("```", "").strip()
