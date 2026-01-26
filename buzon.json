@@ -1,1 +1,72 @@
-[]
+[
+    {
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "modelo": "N/A",
+        "serie": "zzzcfg",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "No definido",
+        "destino": "Pascuales",
+        "reporte": "",
+        "fecha": "2026-01-26 09:38"
+    },
+    {
+        "equipo": "Monitor",
+        "marca": "AOC",
+        "modelo": "N/A",
+        "serie": "78653gdd",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "No definido",
+        "destino": "Pascuales",
+        "reporte": "",
+        "fecha": "2026-01-26 09:38"
+    },
+    {
+        "equipo": "Cable HDMI",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "",
+        "cantidad": 2,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "No definido",
+        "destino": "Pascuales",
+        "reporte": "",
+        "fecha": "2026-01-26 09:38"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "No definido",
+        "destino": "Pascuales",
+        "reporte": "",
+        "fecha": "2026-01-26 09:38"
+    },
+    {
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "No definido",
+        "destino": "Pascuales",
+        "reporte": "",
+        "fecha": "2026-01-26 09:38"
+    }
+]
