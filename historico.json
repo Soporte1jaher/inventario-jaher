@@ -194,5 +194,61 @@
         "destino":"Da\u00f1ados",
         "reporte":"",
         "fecha":"2026-01-26 09:31"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"HP",
+        "modelo":"Probook 980E",
+        "serie":"GENERIC",
+        "cantidad":3,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "origen":"Proveedor",
+        "destino":"Stock de computadoras",
+        "reporte":"",
+        "fecha":"2026-01-26 09:35"
+    },
+    {
+        "equipo":"Teclado",
+        "marca":"N\/A",
+        "modelo":"N\/A",
+        "serie":"N\/A",
+        "cantidad":10,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "origen":"Proveedor",
+        "destino":"Stock de computadoras",
+        "reporte":"",
+        "fecha":"2026-01-26 09:35"
+    },
+    {
+        "equipo":"Mouse",
+        "marca":"N\/A",
+        "modelo":"N\/A",
+        "serie":"N\/A",
+        "cantidad":10,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "origen":"Proveedor",
+        "destino":"Stock de computadoras",
+        "reporte":"",
+        "fecha":"2026-01-26 09:35"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"Dell",
+        "modelo":"N\/A",
+        "serie":"1234098",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Enviado",
+        "origen":"Stock de computadoras",
+        "destino":"Latacunga",
+        "reporte":"Configurado como punto de venta",
+        "fecha":"2026-01-26 09:35"
     }
 ]
