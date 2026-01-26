@@ -396,7 +396,13 @@ with t1:
         else:
           st.error("Error al conectar con GitHub.")
 with t2:
-  hist, _ = obtener_github(FILE_HISTORICO)
+  # Lógica dinámica para cargar el archivo correcto
+  archivo_a_leer = f"historico_{opcion_inventario.lower()}.json"
+  
+  st.markdown(f"### 📊 Dashboard de: **{opcion_inventario}**")
+  
+  hist, _ = obtener_github(archivo_a_leer)
+  
   if hist:
     df_h = pd.DataFrame(hist)
     df_h.columns = df_h.columns.str.lower().str.strip()
@@ -418,7 +424,8 @@ with t2:
 
     st.dataframe(st_det, use_container_width=True)
   else:
-    st.info("Sincronizando con GitHub...")
+    st.warning(f"⚠️ No encontré datos para {opcion_inventario}. (El archivo '{archivo_a_leer}' no existe aún o está vacío).")
+    st.info("💡 Haz tu primer registro para crear la base de datos.")
 with t3:
   st.subheader("🗑️ Limpieza Inteligente")
 
