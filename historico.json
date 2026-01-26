@@ -11,7 +11,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Teclado",
@@ -25,7 +26,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Ponchadora RJ45",
@@ -39,7 +41,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Limpiador de pantalla",
@@ -53,7 +56,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Limpiador de equipos",
@@ -67,7 +71,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Cable HDMI",
@@ -81,7 +86,8 @@
         "origen":"N\/A",
         "destino":"Stock",
         "reporte":"",
-        "fecha":"2026-01-26 09:17"
+        "fecha":"2026-01-26 09:17",
+        "guia":"N\/A"
     },
     {
         "equipo":"Laptop",
@@ -95,7 +101,8 @@
         "origen":"N\/A",
         "destino":"Portete",
         "reporte":"Con cargador",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"CPU",
@@ -109,7 +116,8 @@
         "origen":"N\/A",
         "destino":"Latacunga",
         "reporte":"",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Monitor",
@@ -123,7 +131,8 @@
         "origen":"N\/A",
         "destino":"Latacunga",
         "reporte":"",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Mouse",
@@ -137,7 +146,8 @@
         "origen":"N\/A",
         "destino":"Latacunga",
         "reporte":"",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Teclado",
@@ -151,7 +161,8 @@
         "origen":"N\/A",
         "destino":"Latacunga",
         "reporte":"",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Cable HDMI",
@@ -165,7 +176,8 @@
         "origen":"N\/A",
         "destino":"Latacunga",
         "reporte":"",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Laptop",
@@ -179,7 +191,8 @@
         "origen":"Agencia Portete",
         "destino":"Da\u00f1ados",
         "reporte":"Pantalla trizada y no enciende, sin cargador",
-        "fecha":"2026-01-26 09:19"
+        "fecha":"2026-01-26 09:19",
+        "guia":"N\/A"
     },
     {
         "equipo":"Laptop",
@@ -193,7 +206,8 @@
         "origen":"Latacunga",
         "destino":"Da\u00f1ados",
         "reporte":"",
-        "fecha":"2026-01-26 09:31"
+        "fecha":"2026-01-26 09:31",
+        "guia":"N\/A"
     },
     {
         "equipo":"Laptop",
@@ -207,7 +221,8 @@
         "origen":"Proveedor",
         "destino":"Stock de computadoras",
         "reporte":"",
-        "fecha":"2026-01-26 09:35"
+        "fecha":"2026-01-26 09:35",
+        "guia":"N\/A"
     },
     {
         "equipo":"Teclado",
@@ -221,7 +236,8 @@
         "origen":"Proveedor",
         "destino":"Stock de computadoras",
         "reporte":"",
-        "fecha":"2026-01-26 09:35"
+        "fecha":"2026-01-26 09:35",
+        "guia":"N\/A"
     },
     {
         "equipo":"Mouse",
@@ -235,7 +251,8 @@
         "origen":"Proveedor",
         "destino":"Stock de computadoras",
         "reporte":"",
-        "fecha":"2026-01-26 09:35"
+        "fecha":"2026-01-26 09:35",
+        "guia":"N\/A"
     },
     {
         "equipo":"Laptop",
@@ -249,7 +266,8 @@
         "origen":"Stock de computadoras",
         "destino":"Latacunga",
         "reporte":"Configurado como punto de venta",
-        "fecha":"2026-01-26 09:35"
+        "fecha":"2026-01-26 09:35",
+        "guia":"N\/A"
     },
     {
         "equipo":"CPU",
@@ -263,7 +281,8 @@
         "origen":"No definido",
         "destino":"Pascuales",
         "reporte":"",
-        "fecha":"2026-01-26 09:38"
+        "fecha":"2026-01-26 09:38",
+        "guia":"N\/A"
     },
     {
         "equipo":"Monitor",
@@ -277,7 +296,8 @@
         "origen":"No definido",
         "destino":"Pascuales",
         "reporte":"",
-        "fecha":"2026-01-26 09:38"
+        "fecha":"2026-01-26 09:38",
+        "guia":"N\/A"
     },
     {
         "equipo":"Cable HDMI",
@@ -291,7 +311,8 @@
         "origen":"No definido",
         "destino":"Pascuales",
         "reporte":"",
-        "fecha":"2026-01-26 09:38"
+        "fecha":"2026-01-26 09:38",
+        "guia":"N\/A"
     },
     {
         "equipo":"Teclado",
@@ -305,7 +326,8 @@
         "origen":"No definido",
         "destino":"Pascuales",
         "reporte":"",
-        "fecha":"2026-01-26 09:38"
+        "fecha":"2026-01-26 09:38",
+        "guia":"N\/A"
     },
     {
         "equipo":"Mouse",
@@ -319,6 +341,22 @@
         "origen":"No definido",
         "destino":"Pascuales",
         "reporte":"",
-        "fecha":"2026-01-26 09:38"
+        "fecha":"2026-01-26 09:38",
+        "guia":"N\/A"
+    },
+    {
+        "equipo":"Laptop",
+        "marca":"Dell",
+        "modelo":"TY657",
+        "serie":"l18736ye",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Recibido",
+        "origen":"Riobamba",
+        "destino":"Stock",
+        "reporte":"",
+        "fecha":"2026-01-26 10:03",
+        "guia":"010274646344"
     }
 ]
