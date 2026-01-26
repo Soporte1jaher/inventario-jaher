@@ -2,5 +2,9 @@
     {
         "accion": "borrar_todo",
         "target_db": "SISTEMAS"
+    },
+    {
+        "accion": "borrar_todo",
+        "target_db": "SISTEMAS"
     }
 ]
