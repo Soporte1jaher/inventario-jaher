@@ -1,1 +1,86 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "Dell",
+        "modelo": "Inspirium32",
+        "serie": "aaaaas",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Portete",
+        "reporte": "Con cargador",
+        "fecha": "2026-01-26 09:19"
+    },
+    {
+        "equipo": "CPU",
+        "marca": "Xtech",
+        "modelo": "Gigabyte",
+        "serie": "838474",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-26 09:19"
+    },
+    {
+        "equipo": "Monitor",
+        "marca": "Samsung",
+        "modelo": "TFGx34",
+        "serie": "hgbcbcbbc",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-26 09:19"
+    },
+    {
+        "equipo": "Mouse",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-26 09:19"
+    },
+    {
+        "equipo": "Teclado",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-26 09:19"
+    },
+    {
+        "equipo": "Cable HDMI",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "",
+        "tipo": "Enviado",
+        "origen": "",
+        "destino": "Latacunga",
+        "reporte": "",
+        "fecha": "2026-01-26 09:19"
+    }
+]
