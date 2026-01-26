@@ -15,9 +15,9 @@ st.set_page_config(page_title="LAIA v91.0 - Auditora Senior", page_icon="🧠", 
 
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
-    .stChatFloatingInputContainer { background-color: #0e1117; }
+  .stApp { background-color: #0e1117; color: #e0e0e0; }
+  .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
+  .stChatFloatingInputContainer { background-color: #0e1117; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -25,11 +25,11 @@ st.markdown("""
 # 2. CREDENCIALES
 # ==========================================
 try:
-    API_KEY = st.secrets["GPT_API_KEY"]
-    GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+  API_KEY = st.secrets["GPT_API_KEY"]
+  GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 except:
-    st.error("❌ Configura los Secrets (GITHUB_TOKEN y GPT_API_KEY).")
-    st.stop()
+  st.error("❌ Configura los Secrets (GITHUB_TOKEN y GPT_API_KEY).")
+  st.stop()
 
 client = OpenAI(api_key=API_KEY)
 
@@ -40,108 +40,109 @@ FILE_HISTORICO = "historico.json"
 
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
-# --- ⚠️ CONFIGURA TUS RUTAS AQUÍ ---
+# --- RUTAS REFERENCIALES (El trabajo real lo hace el PC local) ---
 RUTAS_INVENTARIO = {
-    "SISTEMAS": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_General.xlsx",
-    "BODEGA": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_Bodega.xlsx"
+  "SISTEMAS": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_General.xlsx",
+  "BODEGA": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_Bodega.xlsx"
 }
 
-# Ruta por defecto (si la App no especifica nada)
-RUTA_DEFAULT = RUTAS_INVENTARIO["SISTEMAS"]
-
+# ==========================================
+# 3. FUNCIONES DE CONEXIÓN GITHUB
+# ==========================================
 def extraer_json(texto):
-    try:
-        texto = texto.replace("```json", "").replace("```", "").strip()
-        inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
-        if inicio != -1 and fin > inicio:
-            return texto[inicio:fin].strip()
-        return ""
-    except:
-        return ""
+  try:
+    texto = texto.replace("```json", "").replace("```", "").strip()
+    inicio = texto.find("{")
+    fin = texto.rfind("}") + 1
+    if inicio != -1 and fin > inicio:
+      return texto[inicio:fin].strip()
+    return ""
+  except:
+    return ""
 
 def obtener_github(archivo):
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
-    try:
-        resp = requests.get(url, headers=HEADERS)
-        if resp.status_code == 200:
-            d = resp.json()
-            return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
-    except:
-        pass
-    return [], None
+  url = f"https://api.github.com/repos/{}/{}/contents/{}"
+  try:
+    resp = requests.get(url, headers=HEADERS)
+    if resp.status_code == 200:
+      d = resp.json()
+      return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
+  except:
+    pass
+  return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
-    actuales, sha = obtener_github(archivo)
-    if isinstance(datos, list):
-        actuales.extend(datos)
-    else:
-        actuales.append(datos)
+  actuales, sha = obtener_github(archivo)
+  if isinstance(datos, list):
+    actuales.extend(datos)
+  else:
+    actuales.append(datos)
 
-    payload = {
-        "message": mensaje,
-        "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
-        "sha": sha
-    }
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
-    return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
+  payload = {
+    "message": mensaje,
+    "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
+    "sha": sha
+  }
+  url = f"https://api.github.com/repos/{}/{}/contents/{}"
+  return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
-# 3. MOTOR DE STOCK
+# 4. MOTOR DE STOCK (CÁLCULO WEB)
 # ==========================================
 def calcular_stock_web(df):
-    if df.empty:
-        return pd.DataFrame(), pd.DataFrame()
+  if df.empty:
+    return pd.DataFrame(), pd.DataFrame()
 
-    df_c = df.copy()
-    df_c.columns = df_c.columns.str.lower().str.strip()
+  df_c = df.copy()
+  df_c.columns = df_c.columns.str.lower().str.strip()
 
-    # Asegura columnas básicas
-    cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
-    for col in cols:
-        if col not in df_c.columns:
-            df_c[col] = "No especificado"
+  # Asegura columnas básicas
+  cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
+  for col in cols:
+    if col not in df_c.columns:
+      df_c[col] = "No especificado"
 
-    df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+  df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
 
-    # Lógica de stock
-    def procesar_fila(row):
-        est = str(row['estado']).lower()
-        t = str(row['tipo']).lower()
-        d = str(row['destino']).lower()
-        eq = str(row['equipo']).lower()
-        cant = row['cant_n']
+  # Lógica de stock
+  def procesar_fila(row):
+    est = str(row['estado']).lower()
+    t = str(row['tipo']).lower()
+    d = str(row['destino']).lower()
+    eq = str(row['equipo']).lower()
+    cant = row['cant_n']
 
-        # Periféricos siempre restan/añaden stock
-        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
-        if any(p in eq for p in perifericos):
-            if 'recibido' in t:
-                return cant
-            if 'enviado' in t:
-                return -cant
+    # Periféricos siempre restan/añaden stock
+    perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
+    if any(p in eq for p in perifericos):
+      if 'recibido' in t:
+        return cant
+      if 'enviado' in t:
+        return -cant
 
-        # Equipos dañados u obsoletos no afectan stock general
-        if 'dañ' in est or 'obs' in est:
-            return 0
+    # Equipos dañados u obsoletos no afectan stock general
+    if 'dañ' in est or 'obs' in est:
+      return 0
 
-        # Stock normal
-        if d == 'stock' or 'recibido' in t:
-            return cant
-        if 'enviado' in t:
-            return -cant
-        return 0
+    # Stock normal
+    if d == 'stock' or 'recibido' in t:
+      return cant
+    if 'enviado' in t:
+      return -cant
+    return 0
 
-    df_c['val'] = df_c.apply(procesar_fila, axis=1)
+  df_c['val'] = df_c.apply(procesar_fila, axis=1)
 
-    # Resumen stock normal
-    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
+  # Resumen stock normal
+  resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
 
-    # Filas con movimientos
-    movimientos = df_c[df_c['val'] != 0]
+  # Filas con movimientos
+  movimientos = df_c[df_c['val'] != 0]
 
-    return resumen[resumen['val'] > 0], movimientos
+  return resumen[resumen['val'] > 0], movimientos
+
 # ==========================================
-# 4. CEREBRO SUPREMO LAIA V91.0
+# 5. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
 SYSTEM_PROMPT = """
 Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
@@ -208,230 +209,246 @@ SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
  "status": "READY" o "QUESTION",
  "missing_info": "Mensaje amable pidiendo los datos faltantes",
  "items": [
-  {
-   "equipo": "...", 
-   "marca": "...", 
-   "modelo": "...", 
-   "serie": "...", 
-   "cantidad": 1,
-   "estado": "Bueno/Dañado/Obsoleto", 
-   "estado_fisico": "Nuevo/Usado",
-   "tipo": "Recibido/Enviado", 
-   "origen": "...", 
-   "destino": "...", 
-   "guia": "...",
-   "reporte": "...",
-   "disco": "...",
-   "ram": "...",
-   "procesador": "...",
-   "fecha_llegada": "...",
-  }
+ {
+  "equipo": "...", 
+  "marca": "...", 
+  "modelo": "...", 
+  "serie": "...", 
+  "cantidad": 1,
+  "estado": "Bueno/Dañado/Obsoleto", 
+  "estado_fisico": "Nuevo/Usado",
+  "tipo": "Recibido/Enviado", 
+  "origen": "...", 
+  "destino": "...", 
+  "guia": "...",
+  "reporte": "...",
+  "disco": "...",
+  "ram": "...",
+  "procesador": "...",
+  "fecha_llegada": "...",
+ }
  ]
 }
 """
+
 # ==========================================
-# 5. INTERFAZ
+# 6. INTERFAZ
 # ==========================================
 st.title("🧠 LAIA v91.0 - Auditoría Senior")
 
+# --- SELECTOR DE INVENTARIO (NUEVO) ---
+st.sidebar.markdown("### 📂 Configuración")
+opcion_inventario = st.sidebar.radio(
+    "Selecciona el Inventario Destino:",
+    ("SISTEMAS", "BODEGA")
+)
+st.sidebar.markdown("---")
+
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+  st.session_state.messages = []
 if "draft" not in st.session_state:
-    st.session_state.draft = None
+  st.session_state.draft = None
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
 # ==========================================
-# 6. GUARDAR EXCEL CON HOJA "DAÑADOS"
+# 7. VISUALIZADOR DE EXCEL
 # ==========================================
 def aplicar_formato_zebra(writer, df, nombre_hoja):
-    if df.empty: return
-    df.to_excel(writer, index=False, sheet_name=nombre_hoja)
-    workbook, worksheet = writer.book, writer.sheets[nombre_hoja]
-    header_fmt = workbook.add_format({'bold': True, 'align': 'center', 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1})
-    zebra_fmt = workbook.add_format({'bg_color': '#F2F2F2', 'border': 1})
-    normal_fmt = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1})
-    for col_num, value in enumerate(df.columns.values):
-        worksheet.write(0, col_num, value, header_fmt)
-    for row_num in range(1, len(df)+1):
-        fmt = zebra_fmt if row_num % 2 == 0 else normal_fmt
-        for col_num in range(len(df.columns)):
-            val = df.iloc[row_num-1, col_num]
-            worksheet.write(row_num, col_num, str(val) if pd.notna(val) else "", fmt)
-    worksheet.freeze_panes(1,0)
-    worksheet.set_column(0, len(df.columns)-1, 22)
+  if df.empty: return
+  df.to_excel(writer, index=False, sheet_name=nombre_hoja)
+  workbook, worksheet = writer.book, writer.sheets[nombre_hoja]
+  header_fmt = workbook.add_format({'bold': True, 'align': 'center', 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1})
+  zebra_fmt = workbook.add_format({'bg_color': '#F2F2F2', 'border': 1})
+  normal_fmt = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1})
+  for col_num, value in enumerate(df.columns.values):
+    worksheet.write(0, col_num, value, header_fmt)
+  for row_num in range(1, len(df)+1):
+    fmt = zebra_fmt if row_num % 2 == 0 else normal_fmt
+    for col_num in range(len(df.columns)):
+      val = df.iloc[row_num-1, col_num]
+      worksheet.write(row_num, col_num, str(val) if pd.notna(val) else "", fmt)
+  worksheet.freeze_panes(1,0)
+  worksheet.set_column(0, len(df.columns)-1, 22)
 
 def guardar_excel_premium(df, ruta):
-    while True:
-        try:
-            writer = pd.ExcelWriter(ruta, engine='xlsxwriter')
-            df_mov = df.copy().fillna("")
+  while True:
+    try:
+      writer = pd.ExcelWriter(ruta, engine='xlsxwriter')
+      df_mov = df.copy().fillna("")
 
-            columnas = list(df_mov.columns)
-            orden = ['fecha','equipo','marca','modelo','serie','origen','destino',
-                     'estado','estado_fisico','tipo','cantidad','reporte']
-            columnas_finales = [c for c in orden if c in columnas] + \
-                               [c for c in columnas if c not in orden]
+      columnas = list(df_mov.columns)
+      orden = ['fecha','equipo','marca','modelo','serie','origen','destino',
+           'estado','estado_fisico','tipo','cantidad','reporte', 'guia', 'fecha_llegada']
+      columnas_finales = [c for c in orden if c in columnas] + \
+                [c for c in columnas if c not in orden]
 
-            # Hoja Enviados y Recibidos
-            aplicar_formato_zebra(
-                writer, df_mov[columnas_finales], 'Enviados y Recibidos'
-            )
+      # Hoja Enviados y Recibidos
+      aplicar_formato_zebra(
+        writer, df_mov[columnas_finales], 'Enviados y Recibidos'
+      )
 
-            # Hoja Stock
-            df_calc = df.copy()
-            df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
-            df_calc['variacion'] = df_calc.apply(
-                lambda row:
-                    row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower()
-                    else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0),
-                axis=1
-            )
-            res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
-            aplicar_formato_zebra(writer, res[res['variacion'] > 0], 'Stock (Saldos)')
+      # Hoja Stock
+      df_calc = df.copy()
+      df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
+      df_calc['variacion'] = df_calc.apply(
+        lambda row:
+          row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower()
+          else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0),
+        axis=1
+      )
+      res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
+      aplicar_formato_zebra(writer, res[res['variacion'] > 0], 'Stock (Saldos)')
 
-            # ✅ Hoja Dañados (AQUÍ VA)
-            df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
-            if not df_danados.empty:
-                aplicar_formato_zebra(writer, df_danados, 'Dañados')
+      # ✅ Hoja Dañados
+      df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
+      if not df_danados.empty:
+        aplicar_formato_zebra(writer, df_danados, 'Dañados')
 
-            writer.close()
-            return True
+      writer.close()
+      return True
 
-        except PermissionError:
-            print("⚠️ POR FAVOR, CIERRA EL EXCEL PARA CONTINUAR...")
-            time.sleep(5)
-        except Exception as e:
-            print("❌ Error crítico: " + str(e))
-            return False
+    except PermissionError:
+      print("⚠️ POR FAVOR, CIERRA EL EXCEL PARA CONTINUAR...")
+      time.sleep(5)
+    except Exception as e:
+      print("❌ Error crítico: " + str(e))
+      return False
 
 with t1:
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+  st.info(f"📍 TRABAJANDO EN: INVENTARIO DE {opcion_inventario}")
+  for m in st.session_state.messages:
+    with st.chat_message(m["role"]):
+      st.markdown(m["content"])
 
-    if prompt := st.chat_input("Ej: Envié 20 mouses y una laptop HP serie aaaaa a Paute"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+  if prompt := st.chat_input("Ej: Envié 20 mouses y una laptop HP serie aaaaa a Paute"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+      st.markdown(prompt)
 
-        try:
-            historial_contexto = ""
-            for m in st.session_state.messages[-10:]:
-                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
+    try:
+      historial_contexto = ""
+      for m in st.session_state.messages[-10:]:
+        historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
 
-            response = client.responses.create(
-                model="gpt-4.1-mini",
-                input=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": historial_contexto + "\nUSUARIO ACTUAL: " + prompt}
-                ]
-            )
+      response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "user", "content": historial_contexto + "\nUSUARIO ACTUAL: " + prompt}
+        ]
+      )
 
-            texto = response.output_text
-            json_txt = extraer_json(texto)
+      texto = response.output_text
+      json_txt = extraer_json(texto)
 
-            if not json_txt:
-                resp_laia = texto
-                st.session_state.draft = None
-            else:
-                res_json = json.loads(json_txt)
-                if isinstance(res_json, list):
-                    res_json = {"status": "READY", "items": res_json}
+      if not json_txt:
+        resp_laia = texto
+        st.session_state.draft = None
+      else:
+        res_json = json.loads(json_txt)
+        if isinstance(res_json, list):
+          res_json = {"status": "READY", "items": res_json}
 
-                if res_json.get("status") == "READY":
-                    st.session_state.draft = res_json.get("items", [])
-                    resp_laia = "✅ He procesado la información. Revisa la tabla y confirma el registro."
-                else:
-                    resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
-                    st.session_state.draft = None
+        if res_json.get("status") == "READY":
+          st.session_state.draft = res_json.get("items", [])
+          resp_laia = "✅ He procesado la información. Revisa la tabla y confirma el registro."
+        else:
+          resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
+          st.session_state.draft = None
 
-            with st.chat_message("assistant"):
-                st.markdown(resp_laia)
+      with st.chat_message("assistant"):
+        st.markdown(resp_laia)
 
-            st.session_state.messages.append({"role": "assistant", "content": resp_laia})
+      st.session_state.messages.append({"role": "assistant", "content": resp_laia})
 
-        except Exception as e:
-            st.error("Error de Auditoría: " + str(e))
+    except Exception as e:
+      st.error("Error de Auditoría: " + str(e))
 
-    if st.session_state.draft:
-        st.write("### 📋 Pre-visualización de Movimientos")
-        df_draft = pd.DataFrame(st.session_state.draft)
-        st.table(df_draft)
+  if st.session_state.draft:
+    st.write("### 📋 Pre-visualización de Movimientos")
+    df_draft = pd.DataFrame(st.session_state.draft)
+    st.table(df_draft)
 
-        if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
-            with st.spinner("Sincronizando con GitHub..."):
-                fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                for item in st.session_state.draft:
-                    item["fecha"] = fecha_ecu
+    if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
+      with st.spinner(f"Enviando a {opcion_inventario} vía GitHub..."):
+        fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+        
+        # INYECCIÓN DEL TARGET DB (Sistemas vs Bodega)
+        for item in st.session_state.draft:
+          item["fecha"] = fecha_ecu
+          item["target_db"] = opcion_inventario # <--- ESTO INDICA AL PC DÓNDE GUARDAR
 
-                if enviar_github(FILE_BUZON, st.session_state.draft):
-                    st.success("✅ ¡Datos enviados al Buzón!")
-                    st.session_state.draft = None
-                    st.session_state.messages = []
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error("Error al conectar con GitHub.")
+        if enviar_github(FILE_BUZON, st.session_state.draft):
+          st.success(f"✅ ¡Datos enviados al Buzón de {opcion_inventario}!")
+          st.session_state.draft = None
+          st.session_state.messages = []
+          time.sleep(2)
+          st.rerun()
+        else:
+          st.error("Error al conectar con GitHub.")
 with t2:
-    hist, _ = obtener_github(FILE_HISTORICO)
-    if hist:
-        df_h = pd.DataFrame(hist)
-        df_h.columns = df_h.columns.str.lower().str.strip()
-        st_res, st_det = calcular_stock_web(df_h)
+  hist, _ = obtener_github(FILE_HISTORICO)
+  if hist:
+    df_h = pd.DataFrame(hist)
+    df_h.columns = df_h.columns.str.lower().str.strip()
+    st_res, st_det = calcular_stock_web(df_h)
 
-        k1, k2 = st.columns(2)
-        k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
-        k2.metric("🚚 Movimientos", len(df_h))
+    k1, k2 = st.columns(2)
+    k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
+    k2.metric("🚚 Movimientos", len(df_h))
 
-        if not st_res.empty:
-            st.dataframe(
-                st_res.pivot_table(
-                    index=['equipo', 'marca'],
-                    columns='estado_fisico',
-                    values='val',
-                    aggfunc='sum'
-                ).fillna(0)
-            )
+    if not st_res.empty:
+      st.dataframe(
+        st_res.pivot_table(
+          index=['equipo', 'marca'],
+          columns='estado_fisico',
+          values='val',
+          aggfunc='sum'
+        ).fillna(0)
+      )
 
-        st.dataframe(st_det, use_container_width=True)
-    else:
-        st.info("Sincronizando con GitHub...")
+    st.dataframe(st_det, use_container_width=True)
+  else:
+    st.info("Sincronizando con GitHub...")
 with t3:
-    st.subheader("🗑️ Limpieza Inteligente")
+  st.subheader("🗑️ Limpieza Inteligente")
 
-    txt_borrar = st.text_input("¿Qué deseas eliminar?")
+  txt_borrar = st.text_input("¿Qué deseas eliminar?")
 
-    if st.button("🔥 EJECUTAR BORRADO"):
-        if txt_borrar:
-            try:
-                p_db = (
-                    "Actúa como DBA. "
-                    "COLUMNAS: [equipo, marca, serie, estado, destino]. "
-                    "ORDEN: " + txt_borrar +
-                    "\nRESPONDE SOLO JSON: "
-                    "{\"accion\":\"borrar_todo\"} "
-                    "o "
-                    "{\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
-                )
+  if st.button("🔥 EJECUTAR BORRADO"):
+    if txt_borrar:
+      try:
+        p_db = (
+          "Actúa como DBA. "
+          "COLUMNAS: [equipo, marca, serie, estado, destino]. "
+          "ORDEN: " + txt_borrar +
+          "\nRESPONDE SOLO JSON: "
+          "{\"accion\":\"borrar_todo\"} "
+          "o "
+          "{\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
+        )
 
-                resp = client.responses.create(
-                    model="gpt-4.1-mini",
-                    input=p_db
-                )
+        resp = client.responses.create(
+          model="gpt-4.1-mini",
+          input=p_db
+        )
 
-                texto = resp.output_text
-                order = json.loads(extraer_json(texto))
+        texto = resp.output_text
+        order = json.loads(extraer_json(texto))
 
-                if enviar_github(FILE_BUZON, order):
-                    st.success("✅ Orden enviada.")
-                    st.json(order)
+        # También enviamos el target para saber qué DB borrar
+        order['target_db'] = opcion_inventario
 
-            except Exception as e:
-                st.error("Error: " + str(e))
+        if enviar_github(FILE_BUZON, order):
+          st.success(f"✅ Orden enviada a {opcion_inventario}.")
+          st.json(order)
+
+      except Exception as e:
+        st.error("Error: " + str(e))
 
 
 if st.sidebar.button("🧹 Borrar Chat"):
-    st.session_state.messages = []
-    st.session_state.draft = None
-    st.rerun()
+  st.session_state.messages = []
+  st.session_state.draft = None
+  st.rerun()
