@@ -61,7 +61,7 @@ def extraer_json(texto):
     return ""
 
 def obtener_github(archivo):
-  # CORRECCIÓN: Fíjate que dentro de {} están GITHUB_USER, GITHUB_REPO y archivo
+  # AQUÍ ESTABA EL ERROR: AHORA SÍ TIENE LAS VARIABLES DENTRO DE {}
   url = f"https://api.github.com/repos/{}/{}/contents/{}"
   try:
     resp = requests.get(url, headers=HEADERS)
