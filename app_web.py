@@ -340,7 +340,8 @@ with t1:
                     form_respuestas = {}
                     campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-                    for i, item in enumerate(st.session_state.draft):
+    for i, item in enumerate(st.session_state.draft):
+    # Bloque indentado correctamente (4 espacios)
     st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
     cols = st.columns(4)
     col_idx = 0
