@@ -419,11 +419,13 @@ with t1:
     # 4. TABLA EN VIVO (VISIBILIDAD FORZADA)
     # ------------------------------------------------
     # Cambiamos la condición: Mostramos la tabla si NO ES "None" (incluso si está vacía [])
-    if st.session_state.draft is not None:
+     if st.session_state.draft is not None:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
         
+        # Muestra la advertencia pero NO bloquea
         if st.session_state.status == "QUESTION":
-            st.warning(f"⚠️ FALTAN DATOS: {st.session_state.missing_info}")
+            st.warning(f"⚠️ LAIA DETECTA FALTANTES: {st.session_state.missing_info}")
+            st.info("💡 CONSEJO: Puedes editar las celdas manualmente antes de enviar.")
 
         # Editor
         df_draft = pd.DataFrame(st.session_state.draft)
@@ -442,26 +444,38 @@ with t1:
         col1, col2 = st.columns([1, 4])
         
         with col1:
+            # --- CAMBIO AQUÍ: BOTÓN SIN RESTRICCIONES ---
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                # Validación básica
+                
+                # Solo verificamos que la tabla no esté vacía (0 filas)
                 if not st.session_state.draft:
-                    st.error("❌ La tabla está vacía.")
-                elif st.session_state.status == "QUESTION":
-                    st.error("⚠️ Faltan datos obligatorios.")
+                    st.error("❌ La tabla está vacía, no hay nada que enviar.")
                 else:
-                    datos = st.session_state.draft
-                    fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    for d in datos: d["fecha"] = fecha
+                    # Si hay advertencias, enviamos igual pero avisamos
+                    if st.session_state.status == "QUESTION":
+                        st.toast("⚠️ Enviando con campos pendientes...", icon="⚠️")
                     
-                    if enviar_github(FILE_BUZON, datos):
-                        st.success("✅ ¡Enviado!")
-                        time.sleep(1)
-                        st.session_state.draft = None
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
-                        st.rerun()
-                    else:
-                        st.error("Error GitHub")
+                    with st.spinner("Enviando datos..."):
+                        datos = st.session_state.draft
+                        fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                        
+                        # Ponemos la fecha a todos
+                        for d in datos: 
+                            d["fecha"] = fecha
+                            # Opcional: Rellenar vacíos con "N/A" automáticamente al enviar
+                            for key in d:
+                                if d[key] == "" or d[key] is None:
+                                    d[key] = "N/A"
+                        
+                        if enviar_github(FILE_BUZON, datos):
+                            st.success("✅ ¡Enviado exitosamente!")
+                            time.sleep(1)
+                            st.session_state.draft = None
+                            st.session_state.messages = []
+                            st.session_state.status = "NEW"
+                            st.rerun()
+                        else:
+                            st.error("Error al conectar con GitHub")
 
         with col2:
             if st.button("🗑️ Borrar todo"):
