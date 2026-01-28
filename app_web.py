@@ -42,11 +42,27 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 def extraer_json(texto):
     try:
+        # Limpieza básica de Markdown
         texto = texto.replace("```json", "").replace("```", "").strip()
+        
+        # Buscamos dónde empieza el primer objeto
         inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
-        if inicio != -1 and fin > inicio:
-            return texto[inicio:fin].strip()
+        if inicio == -1: return ""
+        
+        # Algoritmo de "Balance de Llaves" 
+        # (Cuenta cuántas abren y cierran para encontrar el final exacto)
+        balance = 0
+        for i in range(inicio, len(texto)):
+            char = texto[i]
+            if char == '{':
+                balance += 1
+            elif char == '}':
+                balance -= 1
+                # Cuando el balance llega a cero, hemos encontrado el cierre exacto
+                if balance == 0:
+                    json_limpio = texto[inicio:i+1]
+                    return json_limpio
+        
         return ""
     except:
         return ""
