@@ -295,53 +295,61 @@ def guardar_excel_premium(df, ruta):
         except Exception as e:
             print("❌ Error crítico: " + str(e))
             return False
-
 with t1:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # Input de usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.expander("Mensaje enviado"):
             st.markdown(prompt)
 
         try:
-            # 1️⃣ La IA analiza el mensaje y devuelve JSON indicando campos faltantes
+            # 1️⃣ La IA analiza el mensaje y devuelve JSON con status / missing_info / items
             response = client.responses.create(
                 model="gpt-4.1-mini",
                 input=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": "Analiza este mensaje y devuelve solo campos faltantes en JSON: " + prompt}
+                    {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
                 ]
             )
-            
+
             texto = response.output_text
             json_txt = extraer_json(texto)
             res_json = json.loads(json_txt) if json_txt else {}
 
-            # 2️⃣ Si la IA detecta faltantes, renderizamos formulario dinámico
-            missing = res_json.get("missing_fields", [])
-            if missing:
-                st.info("📝 Completa los datos faltantes en el formulario")
+            status = res_json.get("status", "READY")
+            items = res_json.get("items", [])
+
+            if status == "QUESTION":
+                # 2️⃣ Mostrar formulario con campos faltantes
+                st.info(res_json.get("missing_info", "📝 Completa los datos faltantes"))
+
+                # Extraemos campos que faltan de missing_info (solo para visual)
                 form_data = {}
                 with st.form("completar_info"):
-                    for field in missing:
-                        form_data[field] = st.text_input(f"Ingrese {field}")
+                    for i, item in enumerate(items):
+                        st.markdown(f"#### Equipo {i+1}")
+                        for key in ["equipo","marca","modelo","serie","cantidad","estado","estado_fisico","tipo","origen","destino","guia","fecha_llegada","reporte","disco","ram","procesador"]:
+                            if key not in item or item[key] in ["", None]:
+                                form_data[f"{i}_{key}"] = st.text_input(f"{key} del equipo {i+1}")
                     submitted = st.form_submit_button("✅ Completar datos")
+
                 if submitted:
-                    # Combinar los datos ingresados con los datos iniciales
-                    final_items = res_json.get("items", [])
-                    for i, item in enumerate(final_items):
-                        for field, value in form_data.items():
-                            item[field] = value
-                    st.session_state.draft = final_items
+                    # Guardar datos del formulario en items
+                    for key, value in form_data.items():
+                        idx, field = key.split("_", 1)
+                        idx = int(idx)
+                        items[idx][field] = value
+                    st.session_state.draft = items
                     st.success("✅ Datos completos, listos para enviar al Excel/GitHub")
+
             else:
-                # Si no hay campos faltantes, listo para enviar
-                st.session_state.draft = res_json.get("items", [])
+                # READY, listo para enviar
+                st.session_state.draft = items
                 st.success("✅ Todos los datos estaban completos, listos para enviar")
+
         except Exception as e:
             st.error("Error de Auditoría: " + str(e))
 
@@ -365,6 +373,7 @@ with t1:
                     st.rerun()
                 else:
                     st.error("Error al conectar con GitHub.")
+
 
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
