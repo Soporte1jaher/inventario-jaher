@@ -407,8 +407,9 @@ with t1:
         with col_btn1:
             # Botón Enviar al Buzón
  if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+        with col_btn1:
+    if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
         with st.spinner("Enviando..."):
-            # Aquí todo va indentado un nivel más
             fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
             datos_finales = edited_df.to_dict('records')
 
@@ -424,8 +425,6 @@ with t1:
                 st.experimental_rerun()
             else:
                 st.error("Falló la conexión con GitHub")
-
-
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
