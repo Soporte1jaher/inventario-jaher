@@ -249,7 +249,7 @@ for key, default in {
     "status": "NEW",
     "missing_info": "",
     "clear_chat": False,
-    "input_usuario": ""
+    "chat_key": 0
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -334,7 +334,7 @@ with t1:
         st.session_state.input_usuario = ""  # 🔑 borra el text_area
         st.session_state.clear_chat = False
 
-    prompt = st.text_area("📋 Describe tu envío...", key="input_usuario")
+    prompt = st.text_area("📋 Describe tu envío...", key=str(st.session_state.chat_key))
 
     if prompt:
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
@@ -436,37 +436,36 @@ with t1:
                         st.success("✅ Enviado correctamente")
 
                         # 🔥 RESET TOTAL REAL
-                        st.session_state.draft = None
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
-                        st.session_state.missing_info = ""
-                        st.session_state.input_usuario = ""  # 🔴 CLAVE PARA BORRAR text_area
-                        st.session_state.clear_chat = True
-                        st.rerun()
+                       st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
+                       st.session_state.draft = None
+                       st.session_state.messages = []
+                       st.session_state.status = "NEW"
+                       st.session_state.missing_info = ""
+            # st.session_state.input_usuario = ""  <--- BORRA ESTA LINEA, YA NO SIRVE
+            # st.session_state.clear_chat = True   <--- BORRA ESTA LINEA TAMBIÉN
+                       st.rerun()
                     else:
                         st.error("❌ Error enviando al buzón")
 
         # ---- CANCELAR ----
         with col_btn2:
             if st.button("🗑️ Cancelar"):
-                st.session_state.draft = None
-                st.session_state.messages = []
-                st.session_state.status = "NEW"
-                st.session_state.missing_info = ""
-                st.session_state.input_usuario = ""
-                st.session_state.clear_chat = True
-                st.rerun()
+               st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
+               st.session_state.draft = None
+               st.session_state.messages = []
+               st.session_state.status = "NEW"
+               st.session_state.missing_info = ""
+               st.rerun()
 
 # -----------------------------
 # Sidebar: Borrar Chat
 # -----------------------------
 if st.sidebar.button("🧹 Borrar Chat"):
+    st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
     st.session_state.draft = None
     st.session_state.messages = []
     st.session_state.status = "NEW"
     st.session_state.missing_info = ""
-    st.session_state.input_usuario = ""  # 🔴 CLAVE PARA BORRAR text_area
-    st.session_state.clear_chat = True
     st.rerun()
 
 # ==========================================
