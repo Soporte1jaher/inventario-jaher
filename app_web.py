@@ -190,6 +190,7 @@ Tu palabra es ley en auditoría de inventarios.
 
 7. GUIA OBLIGATORIA:
 - Enviado/Recibido → pedir número de guía obligatorio
+- SI EL USUARIO RECALCA NO PONER GUIA, HACER CASO PONIENDO N/A
 - Internos → guía = "N/A"
 - No inventar guía.
 
