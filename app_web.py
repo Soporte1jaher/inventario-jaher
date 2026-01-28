@@ -22,7 +22,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES
+# 2. CREDENCIAL
 # ==========================================
 try:
     API_KEY = st.secrets["GPT_API_KEY"]
@@ -386,7 +386,7 @@ with t1:
                 
                 st.rerun()
             except Exception as e:
-                st.error(f"Error: {}")
+                st.error(f"Error: {e}")
 
     st.divider() # Línea separadora visual
 
