@@ -436,11 +436,11 @@ with t1:
                         st.success("✅ Enviado correctamente")
 
                         # 🔥 RESET TOTAL REAL
-                       st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
-                       st.session_state.draft = None
-                       st.session_state.messages = []
-                       st.session_state.status = "NEW"
-                       st.session_state.missing_info = ""
+                        st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        st.session_state.status = "NEW"
+                        st.session_state.missing_info = ""
             # st.session_state.input_usuario = ""  <--- BORRA ESTA LINEA, YA NO SIRVE
             # st.session_state.clear_chat = True   <--- BORRA ESTA LINEA TAMBIÉN
                        st.rerun()
