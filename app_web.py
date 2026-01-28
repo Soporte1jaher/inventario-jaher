@@ -367,62 +367,54 @@ with t1:
             st.session_state.status = res_json.get("status", "READY")
             st.session_state.missing_info = res_json.get("missing_info", "")
 
-            # Rerun seguro
-            st.rerun()
-
+            # NO forzamos rerun aquí; dejamos que el usuario decida
         except Exception as e:
             st.error("Error procesando solicitud: " + str(e))
 
     # -----------------------------
-    # 4. Formulario para datos faltantes
+    # 4. Formulario opcional para datos faltantes
     # -----------------------------
     if st.session_state.status == "QUESTION" and st.session_state.draft:
         st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
-        with st.form("completar_info"):
-            st.write("### 📝 Rellena solo los campos faltantes:")
+        with st.expander("📝 Rellena los campos faltantes (opcional)"):
+            with st.form("completar_info"):
+                form_respuestas = {}
+                campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-            form_respuestas = {}
-            campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+                for i, item in enumerate(st.session_state.draft):
+                    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+                    cols = st.columns(4)
+                    col_idx = 0
 
-            for i, item in enumerate(st.session_state.draft):
-                st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                cols = st.columns(4)
-                col_idx = 0
+                    for key in campos_clave:
+                        valor_actual = item.get(key, "")
+                        if valor_actual in ["", None, "N/A"]:
+                            with cols[col_idx % 4]:
+                                form_respuestas[f"{i}_{key}"] = st.text_input(
+                                    label=key.capitalize(),
+                                    value=valor_actual,
+                                    key=f"input_{i}_{key}"
+                                )
+                            col_idx += 1
+                    st.divider()
 
-                for key in campos_clave:
-                    valor_actual = item.get(key, "")
-                    if valor_actual in ["", None, "N/A"]:
-                        with cols[col_idx % 4]:
-                            form_respuestas[f"{i}_{key}"] = st.text_input(
-                                label=key.capitalize(),
-                                value=valor_actual,
-                                key=f"input_{i}_{key}"
-                            )
-                        col_idx += 1
+                submitted = st.form_submit_button("✅ Guardar datos opcionales")
 
-                st.divider()
+                if submitted:
+                    for key_compuesta, valor_usuario in form_respuestas.items():
+                        if valor_usuario:
+                            idx_str, campo = key_compuesta.split("_", 1)
+                            st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
-            submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
-
-            if submitted:
-                for key_compuesta, valor_usuario in form_respuestas.items():
-                    if valor_usuario:
-                        idx_str, campo = key_compuesta.split("_", 1)
-                        st.session_state.draft[int(idx_str)][campo] = valor_usuario
-
-                st.session_state.status = "READY"
-                st.success("✅ Datos completados.")
-                time.sleep(1)
-                st.rerun()
+                    st.session_state.status = "READY"
+                    st.success("✅ Datos opcionales guardados.")
 
     # -----------------------------
     # 5. Tabla Final y Envío
     # -----------------------------
-    if st.session_state.status == "READY" and st.session_state.draft:
-        st.success("✅ Todos los datos completos.")
+    if st.session_state.draft:
         st.write("### 📋 Confirmación Final")
-
         df_draft = pd.DataFrame(st.session_state.draft)
         edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
@@ -452,6 +444,7 @@ with t1:
                 st.session_state.draft = None
                 st.session_state.status = "NEW"
                 st.rerun()
+
 
 
 with t2:
