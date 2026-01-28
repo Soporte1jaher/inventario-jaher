@@ -301,49 +301,71 @@ with t1:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    if prompt := st.chat_input("Ej: Envié 20 mouses y una laptop HP serie aaaaa a Paute"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+ if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.expander("Mensaje enviado"):
+        st.markdown(prompt)
 
-        try:
-            historial_contexto = ""
-            for m in st.session_state.messages[-10:]:
-                historial_contexto += f"{m['role'].upper()}: {m['content']}\n"
+    try:
+        # 1️⃣ La IA analiza el mensaje y devuelve JSON indicando campos faltantes
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": "Analiza este mensaje y devuelve solo campos faltantes en JSON: " + prompt}
+            ]
+        )
+        
+        texto = response.output_text
+        json_txt = extraer_json(texto)
+        res_json = json.loads(json_txt) if json_txt else {}
 
-            response = client.responses.create(
-                model="gpt-4.1-mini",
-                input=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": historial_contexto + "\nUSUARIO ACTUAL: " + prompt}
-                ]
-            )
+        # 2️⃣ Si la IA detecta faltantes, renderizamos formulario dinámico
+        missing = res_json.get("missing_fields", [])
+        if missing:
+            st.info("📝 Completa los datos faltantes en el formulario")
+            form_data = {}
+            with st.form("completar_info"):
+                for field in missing:
+                    form_data[field] = st.text_input(f"Ingrese {field}")
+                submitted = st.form_submit_button("✅ Completar datos")
+            if submitted:
+                # Combinar los datos ingresados con los datos iniciales
+                final_items = res_json.get("items", [])
+                for i, item in enumerate(final_items):
+                    for field, value in form_data.items():
+                        item[field] = value
+                st.session_state.draft = final_items
+                st.success("✅ Datos completos, listos para enviar al Excel/GitHub")
+        else:
+            # Si no hay campos faltantes, listo para enviar
+            st.session_state.draft = res_json.get("items", [])
+            st.success("✅ Todos los datos estaban completos, listos para enviar")
+    except Exception as e:
+        st.error("Error de Auditoría: " + str(e))
 
-            texto = response.output_text
-            json_txt = extraer_json(texto)
+# 3️⃣ Mostrar previsualización y botón de confirmación (igual que tu código actual)
+if st.session_state.draft:
+    st.write("### 📋 Pre-visualización de Movimientos")
+    df_draft = pd.DataFrame(st.session_state.draft)
+    st.table(df_draft)
 
-            if not json_txt:
-                resp_laia = texto
+    if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
+        with st.spinner("Sincronizando con GitHub..."):
+            fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+            for item in st.session_state.draft:
+                item["fecha"] = fecha_ecu
+
+            if enviar_github(FILE_BUZON, st.session_state.draft):
+                st.success("✅ ¡Datos enviados al Buzón!")
                 st.session_state.draft = None
+                st.session_state.messages = []
+                time.sleep(2)
+                st.rerun()
             else:
-                res_json = json.loads(json_txt)
-                if isinstance(res_json, list):
-                    res_json = {"status": "READY", "items": res_json}
+                st.error("Error al conectar con GitHub.")
 
-                if res_json.get("status") == "READY":
-                    st.session_state.draft = res_json.get("items", [])
-                    resp_laia = "✅ He procesado la información. Revisa la tabla y confirma el registro."
-                else:
-                    resp_laia = res_json.get("missing_info", "Por favor, dame más detalles.")
-                    st.session_state.draft = None
-
-            with st.chat_message("assistant"):
-                st.markdown(resp_laia)
-
-            st.session_state.messages.append({"role": "assistant", "content": resp_laia})
-
-        except Exception as e:
-            st.error("Error de Auditoría: " + str(e))
+    
 
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Movimientos")
