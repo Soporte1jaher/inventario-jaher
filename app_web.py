@@ -297,22 +297,22 @@ def guardar_excel_premium(df, ruta):
             print("❌ Error crítico: " + str(e))
             return False
 with t1:
-    # Mostrar historial de chat visual
+    # 1. Mostrar historial visual
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # Input del usuario
+    # 2. Input del usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
         try:
-            # 1️⃣ La IA analiza y devuelve la estructura (llena o vacía)
             with st.spinner("Analizando inventario..."):
+                # LLAMADA A LA IA
                 response = client.responses.create(
-                    model="gpt-4.1-mini", # Asegúrate que este modelo sea correcto en tu config
+                    model="gpt-4.1-mini", 
                     input=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
@@ -320,20 +320,21 @@ with t1:
                 )
 
             texto = response.output_text
-            json_txt = extraer_json(texto) # Tu función auxiliar
+            json_txt = extraer_json(texto)
             res_json = json.loads(json_txt) if json_txt else {}
 
             status = res_json.get("status", "READY")
             items = res_json.get("items", [])
-
-            # Guardamos lo que la IA entendió (aunque esté incompleto) en el borrador
+            
+            # Guardamos borrador inicial
             st.session_state.draft = items
 
-            # 2️⃣ Si faltan datos (Status QUESTION), mostramos el FORMULARIO DE HUECOS
+            # LÓGICA DEL FORMULARIO
             if status == "QUESTION":
                 st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
 
-               with st.form("completar_info"):
+                # AQUÍ ESTABA EL ERROR DE INDENTACIÓN
+                with st.form("completar_info"):
                     st.write("### 📝 Rellena los espacios vacíos:")
                     
                     form_respuestas = {}
@@ -347,10 +348,10 @@ with t1:
                         for key in campos_clave:
                             valor_actual = item.get(key, "")
                             
+                            # Si está vacío, mostramos el input
                             if valor_actual in ["", None, "N/A"]:
                                 with cols[col_idx % 4]:
-                                    # --- AQUÍ ESTABA EL ERROR ---
-                                    # Corregido: Agregamos {} y {} dentro de las llaves
+                                    # Corrección del f-string incluida aquí:
                                     form_respuestas[f"{}_{}"] = st.text_input(
                                         label=key.capitalize(), 
                                         key=f"input_{}_{}"
@@ -359,33 +360,28 @@ with t1:
                         st.divider()
 
                     submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
-
+                
                 if submitted:
-                    # Actualizamos el session_state.draft con lo que escribió el usuario
+                    # Guardar lo que escribió el usuario
                     for key_compuesta, valor_usuario in form_respuestas.items():
-                        if valor_usuario: # Solo si escribió algo
-                            indice, campo = key_compuesta.split("_", 1)
-                            indice = int(indice)
-                            st.session_state.draft[indice][campo] = valor_usuario
+                        if valor_usuario:
+                            idx_str, campo = key_compuesta.split("_", 1)
+                            st.session_state.draft[int(idx_str)][campo] = valor_usuario
                     
                     st.success("✅ Datos completados.")
-                    st.rerun() # Recargamos para que salga la tabla final abajo
+                    st.rerun()
 
             else:
-                # Si status es READY (la IA dedujo todo), pasa directo
                 st.success("✅ Todos los datos completos.")
 
         except Exception as e:
             st.error("Error procesando solicitud: " + str(e))
 
-    # 3️⃣ Mostrar tabla final y botón de envío (Solo si hay borrador)
+    # 3. Mostrar Tabla Final y Botón Enviar (Fuera del if prompt)
     if st.session_state.draft:
         st.write("### 📋 Confirmación Final")
         
-        # Convertimos a DataFrame para visualizar
         df_draft = pd.DataFrame(st.session_state.draft)
-        
-        # Permitimos una última edición manual tipo Excel antes de enviar
         edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
         col_btn1, col_btn2 = st.columns([1, 4])
@@ -393,9 +389,8 @@ with t1:
         with col_btn1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 with st.spinner("Enviando..."):
+                    # Ajuste de fecha y envío
                     fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    
-                    # Convertimos el DF editado de vuelta a lista de diccionarios
                     datos_finales = edited_df.to_dict('records')
                     
                     for item in datos_finales:
