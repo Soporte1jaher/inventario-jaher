@@ -335,54 +335,43 @@ def guardar_excel_premium(df, ruta):
 # Pestaña Chat
 # ==========================================
 with t1:
+  # 1. MOSTRAR HISTORIAL (Visual)
+  for m in st.session_state.messages:
+    with st.chat_message(m["role"]):
+      st.markdown(m["content"])
 
-    # -----------------------------
-    # Mostrar historial visual
-    # -----------------------------
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+  # 2. ÁREA DE TEXTO CON "KEY" DINÁMICA (El secreto anti-bucle)
+  # Usamos el contador chat_key para que Streamlit crea que es un input nuevo cada vez
+  prompt = st.text_area("📋 Describe tu envío...", key=str(st.session_state.chat_key))
 
-    # -----------------------------
-    # Input usuario con reset seguro
-    # -----------------------------
-    if st.session_state.clear_chat:
-        st.session_state.input_usuario = ""  # 🔑 borra el text_area
-        st.session_state.clear_chat = False
-
-    prompt = st.text_area("📋 Describe tu envío...", key=str(st.session_state.chat_key))
-
-    if prompt:
-        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.draft = None
-            st.session_state.status = "NEW"
-
-    # -----------------------------
-    # Lógica IA
-    # -----------------------------
-    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+  # 3. DETECTOR DE NUEVO MENSAJE
+  # Si hay texto escrito Y (es el primer mensaje O es diferente al último enviado)
+  if prompt and (not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt):
     
-      ultimo_mensaje = st.session_state.messages[-1]["content"]
+    # A. Guardamos el mensaje del usuario
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # B. 🔥 BORRADO INSTANTÁNEO: Preparamos el key para la próxima recarga
+    st.session_state.chat_key += 1
 
+    # C. PROCESAMIENTO IA
     try:
-      with st.spinner("LAIA está auditando y actualizando..."):
+      with st.spinner("LAIA está trabajando..."):
         
-        # --- AQUÍ ESTÁ LA MAGIA ---
-        # Si ya hay datos, se los pasamos a la IA
+        # Preparamos el Prompt (Contexto)
         if st.session_state.draft:
           inventario_json = json.dumps(st.session_state.draft, indent=2)
           prompt_completo = (
             f"INVENTARIO ACTUAL (JSON):\n{inventario_json}\n\n"
-            f"NUEVA INSTRUCCIÓN DEL USUARIO: {ultimo_mensaje}\n\n"
+            f"NUEVA INSTRUCCIÓN DEL USUARIO: {prompt}\n\n"
             "Actualiza el JSON anterior aplicando todas las Reglas (especialmente la 6 de procesadores y 16 de edición)."
           )
         else:
-          # Primera vez
-          prompt_completo = f"USUARIO: {ultimo_mensaje}"
+          prompt_completo = f"USUARIO: {prompt}"
 
+        # Llamada a OpenAI
         response = client.chat.completions.create(
-          model="gpt-4o-mini", # O gpt-4-turbo si puedes
+          model="gpt-4o-mini", 
           messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt_completo}
@@ -390,29 +379,29 @@ with t1:
           temperature=0
         )
 
-      texto = response.choices[0].message.content
-      json_txt = extraer_json(texto)
+        # Leer respuesta
+        texto = response.choices[0].message.content
+        json_txt = extraer_json(texto)
+        
+        if json_txt:
+          res_json = json.loads(json_txt)
+          
+          # Actualizar Excel (Session State)
+          st.session_state.draft = res_json.get("items", [])
+          st.session_state.status = res_json.get("status", "READY")
+          st.session_state.missing_info = res_json.get("missing_info", "")
+          
+          # Respuesta IA al Chat
+          st.session_state.messages.append({
+            "role": "assistant", 
+            "content": f"✅ He actualizado la tabla. {res_json.get('missing_info', '')}"
+          })
       
-      if json_txt:
-        res_json = json.loads(json_txt)
-        
-        # Actualizamos variables
-        st.session_state.draft = res_json.get("items", [])
-        st.session_state.status = res_json.get("status", "READY")
-        st.session_state.missing_info = res_json.get("missing_info", "")
-        
-        # Feedback visual opcional en el chat
-        if st.session_state.draft:
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": f"✅ He actualizado la tabla. {res_json.get('missing_info', '')}"
-            })
-
-        st.rerun()
+      # D. RECARGA FINAL (Muestra el chat limpio y la tabla nueva)
+      st.rerun()
 
     except Exception as e:
-      st.error(f"❌ Error LAIA: {str(e)}")
-
+      st.error(f"❌ Error: {str(e)}")
     # -----------------------------
     # Datos faltantes
     # -----------------------------
