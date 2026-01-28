@@ -337,115 +337,135 @@ def guardar_excel_premium(df, ruta):
 # ==========================================
 with t1:
     # ------------------------------------------------
-    # 1. HISTORIAL DE CHAT (Arriba del todo)
+    # 1. MOSTRAR HISTORIAL (Arriba)
     # ------------------------------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
     # ------------------------------------------------
-    # 2. INPUT DE USUARIO (El Cerebro)
+    # 2. ÁREA DE TEXTO Y BOTÓN (Dentro de un Formulario Seguro)
     # ------------------------------------------------
-    prompt = st.text_area("📋 Habla con LAIA...", key=str(st.session_state.chat_key), height=100)
-    
-    col_send, col_space = st.columns([1, 5])
-    with col_send:
-        enviar = st.button("📤 Enviar", use_container_width=True)
+    # clear_on_submit=True hace el trabajo sucio de borrar el texto por ti
+    with st.form(key="chat_form", clear_on_submit=True):
+        
+        # El input de texto
+        prompt_usuario = st.text_area("📋 Habla con LAIA...", height=80)
+        
+        # Columnas para alinear el botón a la derecha
+        c_vacia, c_btn = st.columns([5, 1])
+        with c_btn:
+            st.write("") # Espaciado vertical para alinear
+            st.write("") 
+            # El botón de envío (dentro del form)
+            submitted = st.form_submit_button("📤 Enviar")
 
-    # LÓGICA DE PROCESAMIENTO
-    if prompt and (enviar or prompt != ""):
-        # Evitar duplicados
-        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.chat_key += 1 # Limpiar input
+    # ------------------------------------------------
+    # 3. LÓGICA DE PROCESAMIENTO (Solo si se presionó el botón)
+    # ------------------------------------------------
+    if submitted and prompt_usuario:
+        
+        # Guardamos mensaje usuario
+        st.session_state.messages.append({"role": "user", "content": prompt_usuario})
 
-            try:
-                with st.spinner("LAIA está actualizando la tabla..."):
-                    # Preparamos contexto
-                    if st.session_state.draft:
-                        inventario_json = json.dumps(st.session_state.draft, indent=2)
-                        prompt_completo = f"INVENTARIO ACTUAL:\n{inventario_json}\n\nUSUARIO DICE: {prompt}\n\nActualiza la tabla según las reglas."
-                    else:
-                        prompt_completo = f"USUARIO: {prompt}"
-
-                    # Llamada a OpenAI
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_completo}],
-                        temperature=0
+        try:
+            with st.spinner("LAIA está pensando..."):
+                
+                # Preparamos contexto
+                if st.session_state.draft:
+                    inventario_json = json.dumps(st.session_state.draft, indent=2)
+                    prompt_completo = (
+                        f"INVENTARIO ACTUAL:\n{inventario_json}\n\n"
+                        f"USUARIO DICE: {prompt_usuario}\n\n"
+                        "Actualiza la tabla según las reglas."
                     )
+                else:
+                    prompt_completo = f"USUARIO: {prompt_usuario}"
 
-                    # Procesar respuesta
-                    res_json = json.loads(extraer_json(response.choices[0].message.content))
+                # Llamada a OpenAI
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt_completo}
+                    ],
+                    temperature=0
+                )
+
+                # Procesar respuesta
+                texto = response.choices[0].message.content
+                json_txt = extraer_json(texto)
+                
+                if json_txt:
+                    res_json = json.loads(json_txt)
                     
                     st.session_state.draft = res_json.get("items", [])
                     st.session_state.status = res_json.get("status", "READY")
                     st.session_state.missing_info = res_json.get("missing_info", "")
                     
-                    st.session_state.messages.append({"role": "assistant", "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"})
-                
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"
+                    })
+            
+            # Recarga obligatoria para mostrar cambios
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Error: {}")
 
-    st.divider() # Línea separadora visual
+    # Separador visual
+    st.divider()
 
     # ------------------------------------------------
-    # 3. TABLA EN VIVO (VISUALIZACIÓN PERMANENTE)
+    # 4. TABLA EN VIVO (Debajo del chat)
     # ------------------------------------------------
     if st.session_state.draft:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
         
-        # Si falta info, mostramos alerta
+        # Alerta de datos faltantes
         if st.session_state.status == "QUESTION":
             st.warning(f"⚠️ FALTAN DATOS: {st.session_state.missing_info}")
 
-        # LA TABLA EDITABLE
+        # Editor de tabla
         df_draft = pd.DataFrame(st.session_state.draft)
         edited_df = st.data_editor(
             df_draft,
             num_rows="dynamic",
             use_container_width=True,
-            key="editor_tabla" # Clave fija para el editor
+            key="editor_tabla"
         )
 
-        # Actualizar el draft si el usuario edita a mano la tabla
-        # (Esto permite corregir celdas manualmente sin hablar con la IA)
+        # Si el usuario edita manualmente, guardamos cambios
         if not df_draft.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
-            # No hacemos rerun aquí para no interrumpir la edición manual
 
-        # ------------------------------------------------
-        # 4. BOTONES DE ACCIÓN FINAL
-        # ------------------------------------------------
-        st.write("") # Espacio
-        c1, c2 = st.columns([1, 4])
+        # Botones finales
+        st.write("")
+        col1, col2 = st.columns([1, 4])
         
-        with c1:
+        with col1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 if st.session_state.status == "QUESTION":
-                    st.error("⚠️ No puedes enviar si faltan datos obligatorios.")
+                    st.error("⚠️ Faltan datos obligatorios.")
                 else:
-                    # Preparar envío
                     datos = st.session_state.draft
                     fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in datos: d["fecha"] = fecha
                     
                     if enviar_github(FILE_BUZON, datos):
-                        st.success("✅ ¡Enviado exitosamente!")
+                        st.success("✅ ¡Enviado!")
                         time.sleep(1)
                         # Reset total
-                        st.session_state.chat_key += 1
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.rerun()
                     else:
-                        st.error("Error al conectar con GitHub.")
+                        st.error("Error GitHub")
 
-        with c2:
+        with col2:
             if st.button("🗑️ Borrar todo"):
-                st.session_state.chat_key += 1
                 st.session_state.draft = None
                 st.session_state.messages = []
                 st.rerun()
