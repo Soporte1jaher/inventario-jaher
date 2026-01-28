@@ -194,29 +194,30 @@ Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superi
 - SI EL USUARIO DICE ALGUN REPORTE EXTRA QUE NO SE PUEDA AÑADIR AL RESTO DE CELDAS, AÑADELO A LA CELDA "reporte".
 - EJEMPLO: "LAPTOP DELL SERIE 123456 DE LA AGENCIA PORTETE LLEGA SIN CARGADOR Y LA PANTALLA ROTA" EN REPORTE IRIA: "SIN CARGADOR Y CON LA PANTALLA ROTA" O CUALQUIER PARECIDO A REPORTE. 
 
-SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
+14. REGLA DE FORMULARIO DE RELLENO (CRÍTICA):
+- Tu objetivo NO es chatear, es generar filas de Excel.
+- Si faltan datos (como Series, Guías, Marcas), NO redactes una pregunta en texto.
+- En su lugar, devuelve el objeto en "items" con los datos que SÍ tienes, y deja los campos faltantes como cadena vacía "" o null.
+- Usa "status": "QUESTION" solo para indicar al sistema que despliegue el formulario de relleno.
+
+SALIDA JSON OBLIGATORIA:
 {
- "status": "READY" o "QUESTION",
- "missing_info": "Mensaje amable pidiendo los datos faltantes",
+ "status": "READY" (si todo está lleno) o "QUESTION" (si falta CUALQUIER dato obligatorio),
+ "missing_info": "Resumen muy breve (ej: Faltan series y guías)",
  "items": [
-  {
-   "equipo": "...", 
-   "marca": "...", 
-   "modelo": "...", 
-   "serie": "...", 
-   "cantidad": 1,
-   "estado": "Bueno/Dañado/Obsoleto", 
-   "estado_fisico": "Nuevo/Usado",
-   "tipo": "Recibido/Enviado", 
-   "origen": "...", 
-   "destino": "...", 
-   "guia": "...",
-   "reporte": "...",
-   "disco": "...",
-   "ram": "...",
-   "procesador": "...",
-   "fecha_llegada": "...",
-  }
+ {
+  "equipo": "Mouse",
+  "marca": "",  <-- DEJA VACÍO SI NO LO DIJO
+  "modelo": "", <-- DEJA VACÍO SI NO LO DIJO
+  "serie": "",  <-- DEJA VACÍO SI NO LO DIJO
+  "cantidad": 20,
+  "estado": "Bueno",
+  "tipo": "Recibido",
+  "origen": "", 
+  "destino": "Stock", 
+  "guia": "",
+  "fecha_llegada": ""
+ }
  ]
 }
 """
@@ -296,84 +297,129 @@ def guardar_excel_premium(df, ruta):
             print("❌ Error crítico: " + str(e))
             return False
 with t1:
+    # Mostrar historial de chat visual
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
+    # Input del usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.expander("Mensaje enviado"):
+        with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
         try:
-            # 1️⃣ La IA analiza el mensaje y devuelve JSON con status / missing_info / items
-            response = client.responses.create(
-                model="gpt-4.1-mini",
-                input=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
-                ]
-            )
+            # 1️⃣ La IA analiza y devuelve la estructura (llena o vacía)
+            with st.spinner("Analizando inventario..."):
+                response = client.responses.create(
+                    model="gpt-4.1-mini", # Asegúrate que este modelo sea correcto en tu config
+                    input=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
+                    ]
+                )
 
             texto = response.output_text
-            json_txt = extraer_json(texto)
+            json_txt = extraer_json(texto) # Tu función auxiliar
             res_json = json.loads(json_txt) if json_txt else {}
 
             status = res_json.get("status", "READY")
             items = res_json.get("items", [])
 
-            if status == "QUESTION":
-                # 2️⃣ Mostrar formulario con campos faltantes
-                st.info(res_json.get("missing_info", "📝 Completa los datos faltantes"))
+            # Guardamos lo que la IA entendió (aunque esté incompleto) en el borrador
+            st.session_state.draft = items
 
-                # Extraemos campos que faltan de missing_info (solo para visual)
-                form_data = {}
+            # 2️⃣ Si faltan datos (Status QUESTION), mostramos el FORMULARIO DE HUECOS
+            if status == "QUESTION":
+                st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
+
                 with st.form("completar_info"):
-                    for i, item in enumerate(items):
-                        st.markdown(f"#### Equipo {i+1}")
-                        for key in ["equipo","marca","modelo","serie","cantidad","estado","estado_fisico","tipo","origen","destino","guia","fecha_llegada","reporte","disco","ram","procesador"]:
-                            if key not in item or item[key] in ["", None]:
-                                form_data[f"{i}_{key}"] = st.text_input(f"{key} del equipo {i+1}")
-                    submitted = st.form_submit_button("✅ Completar datos")
+                    st.write("### 📝 Rellena los espacios vacíos:")
+                    
+                    # Diccionario temporal para guardar las respuestas del form
+                    form_respuestas = {}
+                    
+                    # Campos que nos interesa validar/llenar
+                    campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+
+                    for i, item in enumerate(st.session_state.draft):
+                        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo desconocido')} (Cant: {item.get('cantidad', 1)})**")
+                        
+                        # Usamos columnas para que no sea una lista infinita hacia abajo
+                        cols = st.columns(4) 
+                        col_idx = 0
+                        
+                        for key in campos_clave:
+                            valor_actual = item.get(key, "")
+                            
+                            # Si el valor está vacío o es None, creamos un input para llenarlo
+                            if valor_actual in ["", None, "N/A"]:
+                                with cols[col_idx % 4]:
+                                    # CLAVE ÚNICA: f"{}_{}" (ej: 0_serie, 1_guia)
+                                    form_respuestas[f"{}_{}"] = st.text_input(
+                                        label=key.capitalize(), 
+                                        key=f"input_{}_{}"
+                                    )
+                                col_idx += 1
+                        st.divider()
+
+                    # Botón para guardar lo rellenado
+                    submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
                 if submitted:
-                    # Guardar datos del formulario en items
-                    for key, value in form_data.items():
-                        idx, field = key.split("_", 1)
-                        idx = int(idx)
-                        items[idx][field] = value
-                    st.session_state.draft = items
-                    st.success("✅ Datos completos, listos para enviar al Excel/GitHub")
+                    # Actualizamos el session_state.draft con lo que escribió el usuario
+                    for key_compuesta, valor_usuario in form_respuestas.items():
+                        if valor_usuario: # Solo si escribió algo
+                            indice, campo = key_compuesta.split("_", 1)
+                            indice = int(indice)
+                            st.session_state.draft[indice][campo] = valor_usuario
+                    
+                    st.success("✅ Datos completados.")
+                    st.rerun() # Recargamos para que salga la tabla final abajo
 
             else:
-                # READY, listo para enviar
-                st.session_state.draft = items
-                st.success("✅ Todos los datos estaban completos, listos para enviar")
+                # Si status es READY (la IA dedujo todo), pasa directo
+                st.success("✅ Todos los datos completos.")
 
         except Exception as e:
-            st.error("Error de Auditoría: " + str(e))
+            st.error("Error procesando solicitud: " + str(e))
 
-    # 3️⃣ Mostrar previsualización y botón de confirmación
+    # 3️⃣ Mostrar tabla final y botón de envío (Solo si hay borrador)
     if st.session_state.draft:
-        st.write("### 📋 Pre-visualización de Movimientos")
+        st.write("### 📋 Confirmación Final")
+        
+        # Convertimos a DataFrame para visualizar
         df_draft = pd.DataFrame(st.session_state.draft)
-        st.table(df_draft)
+        
+        # Permitimos una última edición manual tipo Excel antes de enviar
+        edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
-        if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
-            with st.spinner("Sincronizando con GitHub..."):
-                fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                for item in st.session_state.draft:
-                    item["fecha"] = fecha_ecu
+        col_btn1, col_btn2 = st.columns([1, 4])
+        
+        with col_btn1:
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                with st.spinner("Enviando..."):
+                    fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    
+                    # Convertimos el DF editado de vuelta a lista de diccionarios
+                    datos_finales = edited_df.to_dict('records')
+                    
+                    for item in datos_finales:
+                        item["fecha"] = fecha_ecu
 
-                if enviar_github(FILE_BUZON, st.session_state.draft):
-                    st.success("✅ ¡Datos enviados al Buzón!")
-                    st.session_state.draft = None
-                    st.session_state.messages = []
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error("Error al conectar con GitHub.")
-
+                    if enviar_github(FILE_BUZON, datos_finales):
+                        st.success("✅ ¡Datos enviados correctamente!")
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.error("Falló la conexión con GitHub")
+        
+        with col_btn2:
+            if st.button("🗑️ Cancelar"):
+                st.session_state.draft = None
+                st.rerun()
 
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
