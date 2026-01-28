@@ -398,11 +398,12 @@ with t1:
                     # Si está vacío, nulo o N/A, mostramos input
                     if valor_actual in ["", None, "N/A"]:
                         with cols[col_idx % 4]:
-                            form_respuestas[f"{}_{}"] = st.text_input(
-                                label=key.capitalize(),
-                                key=f"input_{}_{}"
-                            )
-                        col_idx += 1
+                             form_respuestas[f"{i}_{key}"] = st.text_input(
+                label=key.capitalize(),
+                value=valor_actual,  # recordamos lo que haya escrito antes
+                key=f"input_{i}_{key}"
+            )
+        col_idx += 1
                 st.divider()
 
             submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
