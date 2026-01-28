@@ -419,7 +419,7 @@ with t1:
     # 4. TABLA EN VIVO (VISIBILIDAD FORZADA)
     # ------------------------------------------------
     # Cambiamos la condición: Mostramos la tabla si NO ES "None" (incluso si está vacía [])
-     if st.session_state.draft is not None:
+        if st.session_state.draft is not None:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
         
         # Muestra la advertencia pero NO bloquea
