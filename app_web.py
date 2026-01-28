@@ -377,7 +377,7 @@ with t1:
                             with cols[col_idx % 4]:
                                 form_respuestas[f"{i}_{key}"] = st.text_input(
                                     label=key.capitalize(),
-                                    value=valor_actual,  # recuerda lo que ya estaba
+                                    value=valor_actual,
                                     key=f"input_{i}_{key}"
                                 )
                             col_idx += 1
@@ -386,7 +386,7 @@ with t1:
                 submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
             if submitted:
-                # Guardar datos ingresados en session_state
+                # Guardar los datos ingresados
                 for key_compuesta, valor_usuario in form_respuestas.items():
                     if valor_usuario:
                         idx_str, campo = key_compuesta.split("_", 1)
@@ -394,48 +394,44 @@ with t1:
 
                 st.success("✅ Datos completados.")
                 st.session_state.status = "READY"
-                st.experimental_rerun()
 
-        elif st.session_state.status == "READY":
-            st.success("✅ Todos los datos completos.")
+        # 3. Mostrar Tabla Final y Botón Enviar
+        if st.session_state.status == "READY" and st.session_state.draft:
+            st.write("### 📋 Confirmación Final")
+            df_draft = pd.DataFrame(st.session_state.draft)
+            edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
-    # 3. Mostrar Tabla Final y Botón Enviar
-    if st.session_state.draft:
-        st.write("### 📋 Confirmación Final")
+            col_btn1, col_btn2 = st.columns([1, 4])
 
-        df_draft = pd.DataFrame(st.session_state.draft)
-        edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
+            # 🔹 Botón Enviar
+            with col_btn1:
+                if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                    with st.spinner("Enviando..."):
+                        fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                        datos_finales = edited_df.to_dict('records')
 
-        col_btn1, col_btn2 = st.columns([1, 4])
+                        for item in datos_finales:
+                            item["fecha"] = fecha_ecu
 
-        # 🔹 Botón Enviar
-        with col_btn1:
-            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                with st.spinner("Enviando..."):
-                    fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    datos_finales = edited_df.to_dict('records')
+                        # ⚡ Esto asegura que se aplique tu lógica de stock automáticamente
+                        if enviar_github(FILE_BUZON, datos_finales):
+                            st.success("✅ ¡Datos enviados correctamente!")
+                            # Limpiar session_state
+                            st.session_state.draft = None
+                            st.session_state.messages = []
+                            st.session_state.status = "NEW"
+                            st.session_state.missing_info = ""
+                            st.experimental_rerun()
+                        else:
+                            st.error("Falló la conexión con GitHub")
 
-                    for item in datos_finales:
-                        item["fecha"] = fecha_ecu
-
-                    if enviar_github(FILE_BUZON, datos_finales):
-                        st.success("✅ ¡Datos enviados correctamente!")
-                        # Limpiar session_state
-                        st.session_state.draft = None
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
-                        st.session_state.missing_info = ""
-                        st.experimental_rerun()
-                    else:
-                        st.error("Falló la conexión con GitHub")
-
-        # 🔹 Botón Cancelar
-        with col_btn2:
-            if st.button("🗑️ Cancelar"):
-                st.session_state.draft = None
-                st.session_state.status = "NEW"
-                st.session_state.missing_info = ""
-                st.experimental_rerun()
+            # 🔹 Botón Cancelar
+            with col_btn2:
+                if st.button("🗑️ Cancelar"):
+                    st.session_state.draft = None
+                    st.session_state.status = "NEW"
+                    st.session_state.missing_info = ""
+                    st.experimental_rerun()
 
 
 with t2:
