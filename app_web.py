@@ -42,9 +42,9 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 # --- RUTAS REFERENCIALES (El trabajo real lo hace el PC local) ---
 RUTAS_INVENTARIO = {
-  "SISTEMAS": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_General.xlsx",
-  "BODEGA": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_Bodega.xlsx"
+  "SISTEMAS": r"C:\Users\soporte1\OneDrive - JAHER\Sitio_Tecnologia - SOPORTEX\INVENTARIO\RECEPCION DE EQUIPOS A SISTEMAS\IA\Inventario_General.xlsx"
 }
+
 
 # ==========================================
 # 3. FUNCIONES DE CONEXIÓN GITHUB
@@ -248,7 +248,7 @@ st.title("🧠 LAIA v91.0 - Auditoría e Inventario")
 st.sidebar.markdown("### 📂 Configuración")
 opcion_inventario = st.sidebar.radio(
     "Selecciona el Inventario Destino:",
-    ("SISTEMAS", "BODEGA", "CHATARRIZACION")
+    ("SISTEMAS",)
 )
 st.sidebar.markdown("---")
 
@@ -397,7 +397,7 @@ with t1:
           st.error("Error al conectar con GitHub.")
 with t2:
   # Lógica dinámica para cargar el archivo correcto
-  archivo_a_leer = f"historico_{opcion_inventario.lower()}.json"
+  archivo_a_leer = "historico_sistemas.json"
   
   st.markdown(f"### 📊 Dashboard de: **{opcion_inventario}**")
   
@@ -453,7 +453,7 @@ with t3:
         order = json.loads(extraer_json(texto))
 
         # También enviamos el target para saber qué DB borrar
-        order['target_db'] = opcion_inventario
+        order['target_db'] = "SISTEMAS"
 
         if enviar_github(FILE_BUZON, order):
           st.success(f"✅ Orden enviada a {opcion_inventario}.")
