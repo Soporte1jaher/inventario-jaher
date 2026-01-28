@@ -363,7 +363,7 @@ with t1:
     # -----------------------------
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
     
-    ultimo_mensaje = st.session_state.messages[-1]["content"]
+      ultimo_mensaje = st.session_state.messages[-1]["content"]
 
     try:
       with st.spinner("LAIA está auditando y actualizando..."):
