@@ -332,25 +332,27 @@ with t1:
     # -----------------------------
     # 2. Input del usuario
     # -----------------------------
-    prompt = st.text_area("📋 Describe tu envío o movimiento de equipos", key="input_usuario")
+    prompt = st.text_area(
+        "📋 Describe tu envío o movimiento de equipos",
+        key="input_usuario"
+    )
 
     if prompt:
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.messages.append(
+                {"role": "user", "content": prompt}
+            )
             st.session_state.draft = None
             st.session_state.status = "NEW"
 
-    if st.session_state.messages:
-        with st.expander("Ver último mensaje procesado"):
-            st.markdown(st.session_state.messages[-1]["content"])
-
     # -----------------------------
-    # 3. Lógica IA (si draft es None)
+    # 3. Lógica IA
     # -----------------------------
     if st.session_state.messages and st.session_state.draft is None:
         try:
             with st.spinner("Analizando inventario..."):
                 ultimo_prompt = st.session_state.messages[-1]["content"]
+
                 response = client.responses.create(
                     model="gpt-4.1-mini",
                     input=[
@@ -368,87 +370,88 @@ with t1:
             st.session_state.missing_info = res_json.get("missing_info", "")
 
         except Exception as e:
-            st.error("Error procesando solicitud: " + str(e))
+            st.error(f"❌ Error procesando solicitud: {e}")
 
     # -----------------------------
-    # 4. Formulario opcional para datos faltantes
+    # 4. Datos faltantes
     # -----------------------------
     if st.session_state.status == "QUESTION" and st.session_state.draft:
         st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
-        with st.expander("📝 Rellena los campos faltantes (opcional)"):
-            with st.form("completar_info"):
+        with st.expander("📝 Completar datos faltantes"):
+            with st.form("form_faltantes"):
                 form_respuestas = {}
-                campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+                campos = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
                 for i, item in enumerate(st.session_state.draft):
                     st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
                     cols = st.columns(4)
-                    col_idx = 0
+                    idx = 0
 
-                    for key in campos_clave:
-                        valor_actual = item.get(key, "")
-                        if valor_actual in ["", None, "N/A"]:
-                            with cols[col_idx % 4]:
-                                form_respuestas[f"{i}_{key}"] = st.text_input(
-                                    label=key.capitalize(),
-                                    value=valor_actual,
-                                    key=f"input_{i}_{key}"
+                    for campo in campos:
+                        if not item.get(campo):
+                            with cols[idx % 4]:
+                                form_respuestas[f"{i}_{campo}"] = st.text_input(
+                                    campo.capitalize(),
+                                    key=f"{i}_{campo}"
                                 )
-                            col_idx += 1
-                    st.divider()
+                            idx += 1
 
-                submitted = st.form_submit_button("✅ Guardar datos opcionales")
+                submitted = st.form_submit_button("✅ Guardar")
 
                 if submitted:
-                    for key_compuesta, valor_usuario in form_respuestas.items():
-                        if valor_usuario:
-                            idx_str, campo = key_compuesta.split("_", 1)
-                            st.session_state.draft[int(idx_str)][campo] = valor_usuario
+                    for k, v in form_respuestas.items():
+                        if v:
+                            i, campo = k.split("_", 1)
+                            st.session_state.draft[int(i)][campo] = v
 
                     st.session_state.status = "READY"
-                    st.success("✅ Datos opcionales guardados.")
+                    st.success("Datos completados")
 
     # -----------------------------
-    # 5. Tabla Final y Envío
+    # 5. Tabla final y acciones
     # -----------------------------
     if st.session_state.draft:
-        st.write("### 📋 Confirmación Final")
+        st.subheader("📋 Confirmación Final")
+
         df_draft = pd.DataFrame(st.session_state.draft)
-        edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
+        edited_df = st.data_editor(
+            df_draft,
+            num_rows="dynamic",
+            use_container_width=True
+        )
 
         col_btn1, col_btn2 = st.columns([1, 4])
 
-        # ---- Botón Enviar al Buzón ----
-    with col_btn1:
-        if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
-        with st.spinner("Enviando..."):
-            fecha_ecu = (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(hours=5)
-            ).strftime("%Y-%m-%d %H:%M")
+        # ---- ENVIAR ----
+        with col_btn1:
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                with st.spinner("Enviando..."):
+                    fecha_ecu = (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        - datetime.timedelta(hours=5)
+                    ).strftime("%Y-%m-%d %H:%M")
 
-            datos_finales = edited_df.to_dict("records")
+                    datos_finales = edited_df.to_dict("records")
 
-            for item in datos_finales:
-                item["fecha"] = fecha_ecu
+                    for item in datos_finales:
+                        item["fecha"] = fecha_ecu
 
-            if enviar_github(FILE_BUZON, datos_finales):
-                st.success("✅ ¡Datos enviados correctamente!")
+                    if enviar_github(FILE_BUZON, datos_finales):
+                        st.success("✅ Enviado correctamente")
 
-                # 🔥 LIMPIAR TODO (chat + input + estado)
-                st.session_state.draft = None
-                st.session_state.messages = []
-                st.session_state.status = "NEW"
-                st.session_state.missing_info = ""
-                st.session_state["input_usuario"] = ""
+                        # 🔥 RESET TOTAL
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        st.session_state.status = "NEW"
+                        st.session_state.missing_info = ""
+                        st.session_state["input_usuario"] = ""
 
-                st.rerun()
-            else:
-                st.error("Falló la conexión con GitHub")
-        
+                        st.rerun()
+                    else:
+                        st.error("❌ Error enviando al buzón")
 
-        # ---- Botón Cancelar ----
+        # ---- CANCELAR ----
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
