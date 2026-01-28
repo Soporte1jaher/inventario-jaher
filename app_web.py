@@ -308,73 +308,55 @@ with t1:
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
-        try:
-            with st.spinner("Analizando inventario..."):
-                # LLAMADA A LA IA
-                response = client.responses.create(
-                    model="gpt-4.1-mini", 
-                    input=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
-                    ]
-                )
+       try:
+    with st.spinner("Analizando inventario..."):
+        # LLAMADA A LA IA
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
+            ]
+        )
 
-            texto = response.output_text
-            json_txt = extraer_json(texto)
-            res_json = json.loads(json_txt) if json_txt else {}
+    texto = response.output_text
+    json_txt = extraer_json(texto)
+    res_json = json.loads(json_txt) if json_txt else {}
 
-            status = res_json.get("status", "READY")
-            items = res_json.get("items", [])
-            
-            # Guardamos borrador inicial
-            st.session_state.draft = items
+    status = res_json.get("status", "READY")
+    items = res_json.get("items", [])
 
-            # LÓGICA DEL FORMULARIO
-            if status == "QUESTION":
-                st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
+    st.session_state.draft = items
 
-                # AQUÍ ESTABA EL ERROR DE INDENTACIÓN
-                with st.form("completar_info"):
-                    st.write("### 📝 Rellena los espacios vacíos:")
-                    
-                    form_respuestas = {}
-                    campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+    # Ahora el for va **indentado correctamente**
+    if status == "QUESTION":
+        st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
+        
+        with st.form("completar_info"):
+            st.write("### 📝 Rellena los espacios vacíos:")
+            form_respuestas = {}
+            campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-    for i, item in enumerate(st.session_state.draft):
-    # Bloque indentado correctamente (4 espacios)
-    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-    cols = st.columns(4)
-    col_idx = 0
+            for i, item in enumerate(st.session_state.draft):
+                st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+                cols = st.columns(4)
+                col_idx = 0
 
-    for key in campos_clave:
-        valor_actual = item.get(key, "")
-        if valor_actual in ["", None, "N/A"]:
-            with cols[col_idx % 4]:
-                form_respuestas[f"{i}_{key}"] = st.text_input(
-                    label=key.capitalize(),
-                    key=f"input_{i}_{key}"
-                )
-            col_idx += 1
-    st.divider()
+                for key in campos_clave:
+                    valor_actual = item.get(key, "")
+                    if valor_actual in ["", None, "N/A"]:
+                        with cols[col_idx % 4]:
+                            form_respuestas[f"{i}_{key}"] = st.text_input(
+                                label=key.capitalize(),
+                                key=f"input_{i}_{key}"
+                            )
+                        col_idx += 1
+                st.divider()
 
+            submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+except Exception as e:
+    st.error("Error procesando solicitud: " + str(e))
 
-                    submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
-                
-                if submitted:
-                    # Guardar lo que escribió el usuario
-                    for key_compuesta, valor_usuario in form_respuestas.items():
-                        if valor_usuario:
-                            idx_str, campo = key_compuesta.split("_", 1)
-                            st.session_state.draft[int(idx_str)][campo] = valor_usuario
-                    
-                    st.success("✅ Datos completados.")
-                    st.rerun()
-
-            else:
-                st.success("✅ Todos los datos completos.")
-
-        except Exception as e:
-            st.error("Error procesando solicitud: " + str(e))
 
     # 3. Mostrar Tabla Final y Botón Enviar (Fuera del if prompt)
     if st.session_state.draft:
