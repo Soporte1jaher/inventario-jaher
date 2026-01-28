@@ -421,7 +421,7 @@ with t1:
 
         # ---- Botón Enviar al Buzón ----
     with col_btn1:
-    if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
+        if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
         with st.spinner("Enviando..."):
             fecha_ecu = (
                 datetime.datetime.now(datetime.timezone.utc)
