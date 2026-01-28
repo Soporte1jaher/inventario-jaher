@@ -347,17 +347,15 @@ with t1:
 
     for key in campos_clave:
         valor_actual = item.get(key, "")
-
         if valor_actual in ["", None, "N/A"]:
             with cols[col_idx % 4]:
-                # CORREGIDO: ahora usamos i y key
                 form_respuestas[f"{i}_{key}"] = st.text_input(
-                    label=key.capitalize(), 
+                    label=key.capitalize(),
                     key=f"input_{i}_{key}"
                 )
             col_idx += 1
+    st.divider()
 
-                        st.divider()
 
                     submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
                 
