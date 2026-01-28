@@ -412,7 +412,7 @@ with t1:
             st.rerun()
             
         except Exception as e:
-            st.error(f"Error: {}")
+            st.error(f"Error: {e}")
 
     # Separador visual
     st.divider()
