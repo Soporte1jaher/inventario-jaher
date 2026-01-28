@@ -310,6 +310,9 @@ def guardar_excel_premium(df, ruta):
             return False
 
 with t1:
+    if "clear_chat" not in st.session_state:
+    st.session_state.clear_chat = False
+
     # -----------------------------
     # 0. Inicialización session_state
     # -----------------------------
@@ -333,14 +336,20 @@ with t1:
     # 2. Input del usuario
     # -----------------------------
     prompt = st.text_area("📋 Describe tu envío...", key="input_usuario")
+
+# Si venimos de un reset, no procesamos nada
     if st.session_state.clear_chat:
         st.session_state.clear_chat = False
+        prompt = ""
 
-    if prompt and not st.session_state.clear_chat:
-        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.draft = None
-            st.session_state.status = "NEW"
+   if prompt:
+       if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
+           st.session_state.messages.append({
+            "role": "user",
+            "content": prompt
+        })
+        st.session_state.draft = None
+        st.session_state.status = "NEW"
 
     # -----------------------------
     # 3. Lógica IA
