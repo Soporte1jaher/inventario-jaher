@@ -211,6 +211,7 @@ Tu palabra es ley en auditoría de inventarios.
 8. FECHAS MÁXIMO RIGOR:
 - ENVIADO → Fecha llegada vacía
 - RECIBIDO → Fecha llegada obligatoria, NUNCA aceptar vacío
+- RECUERDA SIEMPRE PEDIR FECHA DE LLEGADA SI EL TIPO ES RECIBIDO
 - DAÑADO → FECHA DE LLEGADA VACIA A NO SER QUE SE ENVIE A ALGUN LUGAR.
 
 9. SERIES:
