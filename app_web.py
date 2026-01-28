@@ -301,10 +301,11 @@ with t1:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
- if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.expander("Mensaje enviado"):
-        st.markdown(prompt)
+  if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
+        st.session_state.messages.append({"role": "user", "content": prompt"})
+        with st.expander("Mensaje enviado"):
+            st.markdown(prompt)
+
 
     try:
         # 1️⃣ La IA analiza el mensaje y devuelve JSON indicando campos faltantes
