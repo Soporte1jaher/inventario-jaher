@@ -441,11 +441,9 @@ with t1:
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
-            # st.session_state.input_usuario = ""  <--- BORRA ESTA LINEA, YA NO SIRVE
-            # st.session_state.clear_chat = True   <--- BORRA ESTA LINEA TAMBIÉN
-                       st.rerun()
+                        st.rerun()
                     else:
-                       st.error("❌ Error enviando al buzón")
+                        st.error("❌ Error enviando al buzón")
 
         # ---- CANCELAR ----
         with col_btn2:
