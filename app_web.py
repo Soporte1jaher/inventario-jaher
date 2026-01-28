@@ -341,22 +341,22 @@ with t1:
                     campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
                     for i, item in enumerate(st.session_state.draft):
-                        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                        cols = st.columns(4) 
-                        col_idx = 0
-                        
-                        for key in campos_clave:
-                            valor_actual = item.get(key, "")
-                            
-                            # Si está vacío, mostramos el input
-                            if valor_actual in ["", None, "N/A"]:
-                                with cols[col_idx % 4]:
-                                    # Corrección del f-string incluida aquí:
-                                    form_respuestas[f"{}_{}"] = st.text_input(
-                                        label=key.capitalize(), 
-                                        key=f"input_{}_{}"
-                                    )
-                                col_idx += 1
+    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+    cols = st.columns(4)
+    col_idx = 0
+
+    for key in campos_clave:
+        valor_actual = item.get(key, "")
+
+        if valor_actual in ["", None, "N/A"]:
+            with cols[col_idx % 4]:
+                # CORREGIDO: ahora usamos i y key
+                form_respuestas[f"{i}_{key}"] = st.text_input(
+                    label=key.capitalize(), 
+                    key=f"input_{i}_{key}"
+                )
+            col_idx += 1
+
                         st.divider()
 
                     submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
