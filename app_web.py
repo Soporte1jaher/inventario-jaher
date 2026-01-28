@@ -331,52 +331,44 @@ def guardar_excel_premium(df, ruta):
 # ==========================================
 with t1:
     # ------------------------------------------------
-    # 1. MOSTRAR HISTORIAL (Arriba)
+    # 1. HISTORIAL DE CHAT
     # ------------------------------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
     # ------------------------------------------------
-    # 2. ÁREA DE TEXTO Y BOTÓN (Dentro de un Formulario Seguro)
+    # 2. FORMULARIO DE ENTRADA (Mantiene el chat limpio)
     # ------------------------------------------------
-    # clear_on_submit=True hace el trabajo sucio de borrar el texto por ti
     with st.form(key="chat_form", clear_on_submit=True):
-        
-        # El input de texto
         prompt_usuario = st.text_area("📋 Habla con LAIA...", height=80)
-        
-        # Columnas para alinear el botón a la derecha
         c_vacia, c_btn = st.columns([5, 1])
         with c_btn:
-            st.write("") # Espaciado vertical para alinear
             st.write("") 
-            # El botón de envío (dentro del form)
+            st.write("") 
             submitted = st.form_submit_button("📤 Enviar")
 
     # ------------------------------------------------
-    # 3. LÓGICA DE PROCESAMIENTO (Solo si se presionó el botón)
+    # 3. CEREBRO (LÓGICA DE PROCESAMIENTO)
     # ------------------------------------------------
     if submitted and prompt_usuario:
-        
-        # Guardamos mensaje usuario
         st.session_state.messages.append({"role": "user", "content": prompt_usuario})
 
         try:
-            with st.spinner("LAIA está pensando..."):
+            with st.spinner("LAIA está auditando..."):
                 
-                # Preparamos contexto
+                # Contexto
                 if st.session_state.draft:
                     inventario_json = json.dumps(st.session_state.draft, indent=2)
                     prompt_completo = (
                         f"INVENTARIO ACTUAL:\n{inventario_json}\n\n"
                         f"USUARIO DICE: {prompt_usuario}\n\n"
-                        "Actualiza la tabla según las reglas."
+                        "Actualiza la tabla. NO BORRES NADA a menos que te lo pidan explícitamente."
                     )
                 else:
                     prompt_completo = f"USUARIO: {prompt_usuario}"
 
-                # Llamada a OpenAI
+                # Llamada AI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -387,41 +379,47 @@ with t1:
                 )
 
                 # Procesar respuesta
-                texto = response.choices[0].message.content
-                json_txt = extraer_json(texto)
+                texto_limpio = extraer_json(response.choices[0].message.content)
                 
-                if json_txt:
-                    res_json = json.loads(json_txt)
+                if texto_limpio:
+                    res_json = json.loads(texto_limpio)
+                    nuevos_items = res_json.get("items", [])
                     
-                    st.session_state.draft = res_json.get("items", [])
-                    st.session_state.status = res_json.get("status", "READY")
-                    st.session_state.missing_info = res_json.get("missing_info", "")
+                    # --- SALVAVIDAS ANTI-BORRADO ---
+                    # Si la IA devuelve 0 items pero antes teníamos datos y el usuario NO pidió borrar:
+                    if not nuevos_items and st.session_state.draft and "borra" not in prompt_usuario.lower():
+                         st.warning("⚠️ LAIA intentó borrar la tabla por error. Se han restaurado los datos anteriores.")
+                         # No actualizamos el draft, mantenemos el anterior
+                    else:
+                         st.session_state.draft = nuevos_items
+                         st.session_state.status = res_json.get("status", "READY")
+                         st.session_state.missing_info = res_json.get("missing_info", "")
                     
                     st.session_state.messages.append({
                         "role": "assistant", 
                         "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"
                     })
-            
-            # Recarga obligatoria para mostrar cambios
+                else:
+                    st.error("⚠️ La IA respondió algo incoherente. Intenta de nuevo.")
+
             st.rerun()
             
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error crítico: {}")
 
-    # Separador visual
     st.divider()
 
     # ------------------------------------------------
-    # 4. TABLA EN VIVO (Debajo del chat)
+    # 4. TABLA EN VIVO (VISIBILIDAD FORZADA)
     # ------------------------------------------------
-    if st.session_state.draft:
+    # Cambiamos la condición: Mostramos la tabla si NO ES "None" (incluso si está vacía [])
+    if st.session_state.draft is not None:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
         
-        # Alerta de datos faltantes
         if st.session_state.status == "QUESTION":
             st.warning(f"⚠️ FALTAN DATOS: {st.session_state.missing_info}")
 
-        # Editor de tabla
+        # Editor
         df_draft = pd.DataFrame(st.session_state.draft)
         edited_df = st.data_editor(
             df_draft,
@@ -430,17 +428,19 @@ with t1:
             key="editor_tabla"
         )
 
-        # Si el usuario edita manualmente, guardamos cambios
         if not df_draft.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # Botones finales
+        # Botones
         st.write("")
         col1, col2 = st.columns([1, 4])
         
         with col1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                if st.session_state.status == "QUESTION":
+                # Validación básica
+                if not st.session_state.draft:
+                    st.error("❌ La tabla está vacía.")
+                elif st.session_state.status == "QUESTION":
                     st.error("⚠️ Faltan datos obligatorios.")
                 else:
                     datos = st.session_state.draft
@@ -450,7 +450,6 @@ with t1:
                     if enviar_github(FILE_BUZON, datos):
                         st.success("✅ ¡Enviado!")
                         time.sleep(1)
-                        # Reset total
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
@@ -463,7 +462,6 @@ with t1:
                 st.session_state.draft = None
                 st.session_state.messages = []
                 st.rerun()
-
 # ==========================================
 # Pestaña Dashboard
 # ==========================================
