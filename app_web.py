@@ -308,7 +308,9 @@ def guardar_excel_premium(df, ruta):
         except Exception as e:
             print("❌ Error crítico: " + str(e))
             return False
+
 with t1:
+    # 🔹 Inicialización de session_state
     if "draft" not in st.session_state:
         st.session_state.draft = None
     if "status" not in st.session_state:
@@ -317,6 +319,7 @@ with t1:
         st.session_state.missing_info = ""
     if "messages" not in st.session_state:
         st.session_state.messages = []
+
     # 1. Mostrar historial visual
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
@@ -325,15 +328,15 @@ with t1:
     # 2. Input del usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
 
-        # Guardar mensaje
+        # Guardar mensaje si es nuevo
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
 
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
-        # ⚡ SOLO llamamos a la IA si no existe draft
-        if "draft" not in st.session_state or st.session_state.draft is None:
+        # ⚡ Solo llamamos a la IA si draft no existe
+        if st.session_state.draft is None:
             try:
                 with st.spinner("Analizando inventario..."):
                     response = client.responses.create(
@@ -350,6 +353,7 @@ with t1:
                 st.session_state.draft = res_json.get("items", [])
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
+
             except Exception as e:
                 st.error("Error procesando solicitud: " + str(e))
 
@@ -373,7 +377,7 @@ with t1:
                             with cols[col_idx % 4]:
                                 form_respuestas[f"{i}_{key}"] = st.text_input(
                                     label=key.capitalize(),
-                                    value=valor_actual,  # recordamos lo que haya escrito antes
+                                    value=valor_actual,  # recuerda lo que ya estaba
                                     key=f"input_{i}_{key}"
                                 )
                             col_idx += 1
@@ -382,15 +386,15 @@ with t1:
                 submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
             if submitted:
-                # Guardamos los datos ingresados en session_state
+                # Guardar datos ingresados en session_state
                 for key_compuesta, valor_usuario in form_respuestas.items():
                     if valor_usuario:
                         idx_str, campo = key_compuesta.split("_", 1)
                         st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
                 st.success("✅ Datos completados.")
-                st.session_state.status = "READY"  # marcamos como listo
-                st.experimental_rerun()  # rerun después de guardar
+                st.session_state.status = "READY"
+                st.experimental_rerun()
 
         elif st.session_state.status == "READY":
             st.success("✅ Todos los datos completos.")
@@ -404,30 +408,33 @@ with t1:
 
         col_btn1, col_btn2 = st.columns([1, 4])
 
+        # 🔹 Botón Enviar
         with col_btn1:
-            # Botón Enviar al Buzón
- if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-        with col_btn1:
-    if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-        with st.spinner("Enviando..."):
-            fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-            datos_finales = edited_df.to_dict('records')
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                with st.spinner("Enviando..."):
+                    fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    datos_finales = edited_df.to_dict('records')
 
-            for item in datos_finales:
-                item["fecha"] = fecha_ecu
+                    for item in datos_finales:
+                        item["fecha"] = fecha_ecu
 
-            if enviar_github(FILE_BUZON, datos_finales):
-                st.success("✅ ¡Datos enviados correctamente!")
-                st.session_state.draft = None
-                st.session_state.messages = []
-                st.session_state.status = "NEW"
-                st.session_state.missing_info = ""
-                st.experimental_rerun()
-            else:
-                st.error("Falló la conexión con GitHub")
+                    if enviar_github(FILE_BUZON, datos_finales):
+                        st.success("✅ ¡Datos enviados correctamente!")
+                        # Limpiar session_state
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        st.session_state.status = "NEW"
+                        st.session_state.missing_info = ""
+                        st.experimental_rerun()
+                    else:
+                        st.error("Falló la conexión con GitHub")
+
+        # 🔹 Botón Cancelar
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
+                st.session_state.status = "NEW"
+                st.session_state.missing_info = ""
                 st.experimental_rerun()
 
 
