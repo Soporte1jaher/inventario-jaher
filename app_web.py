@@ -428,14 +428,15 @@ with t1:
                     for item in datos_finales:
                         item["fecha"] = fecha_ecu
 
-                    if enviar_github(FILE_BUZON, datos_finales):
-                        st.success("✅ ¡Datos enviados correctamente!")
-                        st.session_state.draft = None
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
-                        st.session_state.missing_info = ""
-                        time.sleep(2)
-                        st.rerun()
+                   if enviar_github(FILE_BUZON, datos_finales):
+    st.success("✅ ¡Datos enviados correctamente!")
+    # 🔹 Limpiar todo para iniciar un nuevo chat
+    st.session_state.draft = None
+    st.session_state.messages = []  # <-- esto borra el historial de chat
+    st.session_state.status = "NEW"
+    st.session_state.missing_info = ""
+    time.sleep(1)  # opcional, pausa visual
+    st.rerun()  # recarga la app para mostrar todo vacío
                     else:
                         st.error("Falló la conexión con GitHub")
 
