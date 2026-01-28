@@ -316,75 +316,78 @@ with t1:
 
     # 2. Input del usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # Guardar mensaje
+        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
-        try:
-            with st.spinner("Analizando inventario..."):
-                # LLAMADA A LA IA
-                response = client.responses.create(
-                    model="gpt-4.1-mini",
-                    input=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
-                    ]
-                )
+        # ⚡ SOLO llamamos a la IA si no existe draft
+        if "draft" not in st.session_state or st.session_state.draft is None:
+            try:
+                with st.spinner("Analizando inventario..."):
+                    response = client.responses.create(
+                        model="gpt-4.1-mini",
+                        input=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": "\nUSUARIO ACTUAL: " + prompt}
+                        ]
+                    )
+                texto = response.output_text
+                json_txt = extraer_json(texto)
+                res_json = json.loads(json_txt) if json_txt else {}
 
-            texto = response.output_text
-            json_txt = extraer_json(texto)
-            res_json = json.loads(json_txt) if json_txt else {}
+                st.session_state.draft = res_json.get("items", [])
+                st.session_state.status = res_json.get("status", "READY")
+                st.session_state.missing_info = res_json.get("missing_info", "")
+            except Exception as e:
+                st.error("Error procesando solicitud: " + str(e))
 
-            status = res_json.get("status", "READY")
-            items = res_json.get("items", [])
+        # 2a. Lógica para completar información faltante
+        if st.session_state.status == "QUESTION":
+            st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
-            # Guardamos borrador inicial
-            st.session_state.draft = items
+            with st.form("completar_info"):
+                st.write("### 📝 Rellena solo los campos faltantes:")
+                form_respuestas = {}
+                campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-            # 2a. Lógica para completar información faltante
-            if status == "QUESTION":
-                st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
+                for i, item in enumerate(st.session_state.draft):
+                    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+                    cols = st.columns(4)
+                    col_idx = 0
 
-                with st.form("completar_info"):
-                    st.write("### 📝 Rellena los espacios vacíos:")
-                    form_respuestas = {}
-                    campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+                    for key in campos_clave:
+                        valor_actual = item.get(key, "")
+                        if valor_actual in ["", None, "N/A"]:
+                            with cols[col_idx % 4]:
+                                form_respuestas[f"{i}_{key}"] = st.text_input(
+                                    label=key.capitalize(),
+                                    value=valor_actual,  # recordamos lo que haya escrito antes
+                                    key=f"input_{i}_{key}"
+                                )
+                            col_idx += 1
+                    st.divider()
 
-                    for i, item in enumerate(st.session_state.draft):
-                        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                        cols = st.columns(4)
-                        col_idx = 0
+                submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
-                        for key in campos_clave:
-                            valor_actual = item.get(key, "")
-                            if valor_actual in ["", None, "N/A"]:
-                                with cols[col_idx % 4]:
-                                    form_respuestas[f"{i}_{key}"] = st.text_input(
-                                        label=key.capitalize(),
-                                        key=f"input_{i}_{key}"
-                                    )
-                                col_idx += 1
-                        st.divider()
+            if submitted:
+                # Guardamos los datos ingresados en session_state
+                for key_compuesta, valor_usuario in form_respuestas.items():
+                    if valor_usuario:
+                        idx_str, campo = key_compuesta.split("_", 1)
+                        st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
-                    submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+                st.success("✅ Datos completados.")
+                st.session_state.status = "READY"  # marcamos como listo
+                st.experimental_rerun()  # rerun después de guardar
 
-                if submitted:
-                    # Guardar los datos ingresados
-                    for key_compuesta, valor_usuario in form_respuestas.items():
-                        if valor_usuario:
-                            idx_str, campo = key_compuesta.split("_", 1)
-                            st.session_state.draft[int(idx_str)][campo] = valor_usuario
+        elif st.session_state.status == "READY":
+            st.success("✅ Todos los datos completos.")
 
-                    st.success("✅ Datos completados.")
-                    st.rerun()
-
-            else:
-                st.success("✅ Todos los datos completos.")
-
-        except Exception as e:
-            st.error("Error procesando solicitud: " + str(e))
-
-    # 3. Mostrar Tabla Final y Botón Enviar (fuera del if prompt)
+    # 3. Mostrar Tabla Final y Botón Enviar
     if st.session_state.draft:
         st.write("### 📋 Confirmación Final")
 
@@ -396,7 +399,6 @@ with t1:
         with col_btn1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 with st.spinner("Enviando..."):
-                    # Ajuste de fecha y envío
                     fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     datos_finales = edited_df.to_dict('records')
 
@@ -408,14 +410,14 @@ with t1:
                         st.session_state.draft = None
                         st.session_state.messages = []
                         time.sleep(2)
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
                         st.error("Falló la conexión con GitHub")
 
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
-                st.rerun()
+                st.experimental_rerun()
 
 
 with t2:
