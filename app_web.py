@@ -367,7 +367,6 @@ with t1:
             st.session_state.status = res_json.get("status", "READY")
             st.session_state.missing_info = res_json.get("missing_info", "")
 
-            # NO forzamos rerun aquí; dejamos que el usuario decida
         except Exception as e:
             st.error("Error procesando solicitud: " + str(e))
 
@@ -420,6 +419,7 @@ with t1:
 
         col_btn1, col_btn2 = st.columns([1, 4])
 
+        # ---- Botón Enviar al Buzón ----
         with col_btn1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 with st.spinner("Enviando..."):
@@ -428,24 +428,25 @@ with t1:
                     for item in datos_finales:
                         item["fecha"] = fecha_ecu
 
-                   if enviar_github(FILE_BUZON, datos_finales):
-    st.success("✅ ¡Datos enviados correctamente!")
-    # 🔹 Limpiar todo para iniciar un nuevo chat
-    st.session_state.draft = None
-    st.session_state.messages = []  # <-- esto borra el historial de chat
-    st.session_state.status = "NEW"
-    st.session_state.missing_info = ""
-    time.sleep(1)  # opcional, pausa visual
-    st.rerun()  # recarga la app para mostrar todo vacío
+                    # 🔹 Enviar a GitHub
+                    if enviar_github(FILE_BUZON, datos_finales):
+                        st.success("✅ ¡Datos enviados correctamente!")
+                        # 🔹 Limpiar todo para iniciar un nuevo chat
+                        st.session_state.draft = None
+                        st.session_state.messages = []  # borra historial
+                        st.session_state.status = "NEW"
+                        st.session_state.missing_info = ""
+                        time.sleep(1)
+                        st.rerun()
                     else:
                         st.error("Falló la conexión con GitHub")
 
+        # ---- Botón Cancelar ----
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
                 st.session_state.status = "NEW"
                 st.rerun()
-
 
 
 with t2:
