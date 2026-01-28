@@ -382,9 +382,9 @@ with t1:
     if st.session_state.status == "QUESTION" and st.session_state.draft:
         st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
-        with st.form("completar_info"):
+with st.form("completar_info"):
     st.write("### 📝 Rellena solo los campos faltantes:")
-    
+
     form_respuestas = {}
     campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
@@ -404,10 +404,11 @@ with t1:
                     )
                 col_idx += 1
 
-        st.divider()  # <-- nivel correcto: al mismo nivel que el for key, no más adentro
+        st.divider()  # <-- nivel del for i, item
 
-    # Botón submit debe estar al **final del with st.form**, no más adentro
+    # Botón submit siempre al mismo nivel que el for i, item, dentro del with
     submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+
 
 
         if submitted:
