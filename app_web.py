@@ -101,6 +101,7 @@ def calcular_stock_web(df):
         return pd.DataFrame(), pd.DataFrame()
 
     df_c = df.copy()
+    # Normalizamos columnas a minúsculas
     df_c.columns = df_c.columns.str.lower().str.strip()
 
     # Asegura columnas básicas
@@ -109,33 +110,46 @@ def calcular_stock_web(df):
         if col not in df_c.columns:
             df_c[col] = "No especificado"
 
+    # Convertir cantidad a número (si falla pone 1)
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
 
-    # Lógica de stock
+    # --- LÓGICA DE STOCK ---
     def procesar_fila(row):
+        # Convertimos todo a minúsculas para comparar fácil
         est = str(row['estado']).lower()
         t = str(row['tipo']).lower()
         d = str(row['destino']).lower()
         eq = str(row['equipo']).lower()
         cant = row['cant_n']
 
-        # Periféricos siempre restan/añaden stock
-        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
-        if any(p in eq for p in perifericos):
-            if 'recibido' in t:
-                return cant
-            if 'enviado' in t:
-                return -cant
+        # 1. PALABRAS CLAVE PARA SUMAR (Entradas)
+        # Si dice "recibido", "ingreso", "compra", "stock" (como destino) -> SUMA
+        if any(x in t for x in ['recib', 'ingreso', 'entrad', 'compra']):
+            return cant
+        
+        # 2. PALABRAS CLAVE PARA RESTAR (Salidas)
+        # Si dice "enviado", "envío", "salida", "baja", "despacho" -> RESTA
+        if any(x in t for x in ['env', 'salida', 'baja', 'despacho']):
+            return -cant
 
-        # Equipos dañados u obsoletos no afectan stock general
-        if 'dañ' in est or 'obs' in est:
+        # 3. Logica de Periféricos (Doble seguridad)
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador', 'limpiador']
+        if any(p in eq for p in perifericos):
+            # Si el destino NO es stock, asumimos que se fue -> RESTA
+            if d != 'stock' and 'stock' not in d:
+                return -cant
+            # Si el destino ES stock, asumimos que llegó -> SUMA
+            else:
+                return cant
+
+        # 4. Equipos dañados (Usualmente no suman al stock operativo)
+        if 'dañ' in est or 'obs' in est or 'malo' in est:
             return 0
 
-        # Stock normal
-        if d == 'stock' or 'recibido' in t:
+        # 5. Default: Si el destino es Stock, suma.
+        if d == 'stock':
             return cant
-        if 'enviado' in t:
-            return -cant
+            
         return 0
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
@@ -143,7 +157,7 @@ def calcular_stock_web(df):
     # Resumen stock normal
     resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
 
-    # Filas con movimientos
+    # Filas con movimientos (Historia)
     movimientos = df_c[df_c['val'] != 0]
 
     return resumen[resumen['val'] > 0], movimientos
