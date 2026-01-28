@@ -420,28 +420,33 @@ with t1:
         col_btn1, col_btn2 = st.columns([1, 4])
 
         # ---- Botón Enviar al Buzón ----
-        with col_btn1:
-        if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
+    with col_btn1:
+    if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
         with st.spinner("Enviando..."):
-            fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-            datos_finales = edited_df.to_dict('records')
+            fecha_ecu = (
+                datetime.datetime.now(datetime.timezone.utc)
+                - datetime.timedelta(hours=5)
+            ).strftime("%Y-%m-%d %H:%M")
+
+            datos_finales = edited_df.to_dict("records")
+
             for item in datos_finales:
                 item["fecha"] = fecha_ecu
 
             if enviar_github(FILE_BUZON, datos_finales):
                 st.success("✅ ¡Datos enviados correctamente!")
 
-                # Limpiar todo para iniciar un nuevo chat
+                # 🔥 LIMPIAR TODO (chat + input + estado)
                 st.session_state.draft = None
                 st.session_state.messages = []
                 st.session_state.status = "NEW"
                 st.session_state.missing_info = ""
-                st.session_state["input_usuario"] = ""  # limpiar text_area
+                st.session_state["input_usuario"] = ""
 
                 st.rerun()
             else:
                 st.error("Falló la conexión con GitHub")
-
+        
 
         # ---- Botón Cancelar ----
         with col_btn2:
