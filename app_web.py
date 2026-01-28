@@ -336,169 +336,119 @@ def guardar_excel_premium(df, ruta):
 # Pestaña Chat
 # ==========================================
 with t1:
-  # 1. MOSTRAR HISTORIAL (Visual)
-  for m in st.session_state.messages:
-    with st.chat_message(m["role"]):
-      st.markdown(m["content"])
+    # ------------------------------------------------
+    # 1. HISTORIAL DE CHAT (Arriba del todo)
+    # ------------------------------------------------
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
-  # 2. ÁREA DE TEXTO CON "KEY" DINÁMICA (El secreto anti-bucle)
-  # Usamos el contador chat_key para que Streamlit crea que es un input nuevo cada vez
-  prompt = st.text_area("📋 Describe tu envío...", key=str(st.session_state.chat_key))
-
-  # 3. DETECTOR DE NUEVO MENSAJE
-  # Si hay texto escrito Y (es el primer mensaje O es diferente al último enviado)
-  if prompt and (not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt):
+    # ------------------------------------------------
+    # 2. INPUT DE USUARIO (El Cerebro)
+    # ------------------------------------------------
+    prompt = st.text_area("📋 Habla con LAIA...", key=str(st.session_state.chat_key), height=100)
     
-    # A. Guardamos el mensaje del usuario
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    # B. 🔥 BORRADO INSTANTÁNEO: Preparamos el key para la próxima recarga
-    st.session_state.chat_key += 1
+    col_send, col_space = st.columns([1, 5])
+    with col_send:
+        enviar = st.button("📤 Enviar", use_container_width=True)
 
-    # C. PROCESAMIENTO IA
-    try:
-      with st.spinner("LAIA está trabajando..."):
-        
-        # Preparamos el Prompt (Contexto)
-        if st.session_state.draft:
-          inventario_json = json.dumps(st.session_state.draft, indent=2)
-          prompt_completo = (
-            f"INVENTARIO ACTUAL (JSON):\n{inventario_json}\n\n"
-            f"NUEVA INSTRUCCIÓN DEL USUARIO: {prompt}\n\n"
-            "Actualiza el JSON anterior aplicando todas las Reglas (especialmente la 6 de procesadores y 16 de edición)."
-          )
-        else:
-          prompt_completo = f"USUARIO: {prompt}"
+    # LÓGICA DE PROCESAMIENTO
+    if prompt and (enviar or prompt != ""):
+        # Evitar duplicados
+        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.chat_key += 1 # Limpiar input
 
-        # Llamada a OpenAI
-        response = client.chat.completions.create(
-          model="gpt-4o-mini", 
-          messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt_completo}
-          ],
-          temperature=0
-        )
+            try:
+                with st.spinner("LAIA está actualizando la tabla..."):
+                    # Preparamos contexto
+                    if st.session_state.draft:
+                        inventario_json = json.dumps(st.session_state.draft, indent=2)
+                        prompt_completo = f"INVENTARIO ACTUAL:\n{inventario_json}\n\nUSUARIO DICE: {prompt}\n\nActualiza la tabla según las reglas."
+                    else:
+                        prompt_completo = f"USUARIO: {prompt}"
 
-        # Leer respuesta
-        texto = response.choices[0].message.content
-        json_txt = extraer_json(texto)
-        
-        if json_txt:
-          res_json = json.loads(json_txt)
-          
-          # Actualizar Excel (Session State)
-          st.session_state.draft = res_json.get("items", [])
-          st.session_state.status = res_json.get("status", "READY")
-          st.session_state.missing_info = res_json.get("missing_info", "")
-          
-          # Respuesta IA al Chat
-          st.session_state.messages.append({
-            "role": "assistant", 
-            "content": f"✅ He actualizado la tabla. {res_json.get('missing_info', '')}"
-          })
-      
-      # D. RECARGA FINAL (Muestra el chat limpio y la tabla nueva)
-      st.rerun()
+                    # Llamada a OpenAI
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_completo}],
+                        temperature=0
+                    )
 
-    except Exception as e:
-      st.error(f"❌ Error: {str(e)}")
-    # -----------------------------
-    # Datos faltantes
-    # -----------------------------
-    if st.session_state.status == "QUESTION" and st.session_state.draft:
-        st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
+                    # Procesar respuesta
+                    res_json = json.loads(extraer_json(response.choices[0].message.content))
+                    
+                    st.session_state.draft = res_json.get("items", [])
+                    st.session_state.status = res_json.get("status", "READY")
+                    st.session_state.missing_info = res_json.get("missing_info", "")
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"})
+                
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {}")
 
-        with st.expander("📝 Completar datos faltantes"):
-            with st.form("form_faltantes"):
-                form_respuestas = {}
-                campos = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+    st.divider() # Línea separadora visual
 
-                for i, item in enumerate(st.session_state.draft):
-                    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                    cols = st.columns(4)
-                    idx = 0
-
-                    for campo in campos:
-                        if not item.get(campo):
-                            with cols[idx % 4]:
-                                form_respuestas[f"{i}_{campo}"] = st.text_input(
-                                    campo.capitalize(),
-                                    key=f"{i}_{campo}"
-                                )
-                            idx += 1
-
-                submitted = st.form_submit_button("✅ Guardar")
-
-                if submitted:
-                    for k, v in form_respuestas.items():
-                        if v:
-                            i, campo = k.split("_", 1)
-                            st.session_state.draft[int(i)][campo] = v
-
-                    st.session_state.status = "READY"
-                    st.success("Datos completados")
-
-    # -----------------------------
-    # Tabla final y acciones
-    # -----------------------------
+    # ------------------------------------------------
+    # 3. TABLA EN VIVO (VISUALIZACIÓN PERMANENTE)
+    # ------------------------------------------------
     if st.session_state.draft:
+        st.subheader("📊 Tabla de Inventario (En Vivo)")
+        
+        # Si falta info, mostramos alerta
+        if st.session_state.status == "QUESTION":
+            st.warning(f"⚠️ FALTAN DATOS: {st.session_state.missing_info}")
+
+        # LA TABLA EDITABLE
         df_draft = pd.DataFrame(st.session_state.draft)
         edited_df = st.data_editor(
             df_draft,
             num_rows="dynamic",
-            use_container_width=True
+            use_container_width=True,
+            key="editor_tabla" # Clave fija para el editor
         )
 
-        col_btn1, col_btn2 = st.columns([1, 4])
+        # Actualizar el draft si el usuario edita a mano la tabla
+        # (Esto permite corregir celdas manualmente sin hablar con la IA)
+        if not df_draft.equals(edited_df):
+            st.session_state.draft = edited_df.to_dict("records")
+            # No hacemos rerun aquí para no interrumpir la edición manual
 
-        # ---- ENVIAR ----
-        with col_btn1:
+        # ------------------------------------------------
+        # 4. BOTONES DE ACCIÓN FINAL
+        # ------------------------------------------------
+        st.write("") # Espacio
+        c1, c2 = st.columns([1, 4])
+        
+        with c1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                with st.spinner("Enviando..."):
-                    fecha_ecu = (
-                        datetime.datetime.now(datetime.timezone.utc)
-                        - datetime.timedelta(hours=5)
-                    ).strftime("%Y-%m-%d %H:%M")
-
-                    datos_finales = edited_df.to_dict("records")
-
-                    for item in datos_finales:
-                        item["fecha"] = fecha_ecu
-
-                    if enviar_github(FILE_BUZON, datos_finales):
-                        st.success("✅ Enviado correctamente")
-
-                        # 🔥 RESET TOTAL REAL
-                        st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
+                if st.session_state.status == "QUESTION":
+                    st.error("⚠️ No puedes enviar si faltan datos obligatorios.")
+                else:
+                    # Preparar envío
+                    datos = st.session_state.draft
+                    fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    for d in datos: d["fecha"] = fecha
+                    
+                    if enviar_github(FILE_BUZON, datos):
+                        st.success("✅ ¡Enviado exitosamente!")
+                        time.sleep(1)
+                        # Reset total
+                        st.session_state.chat_key += 1
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
-                        st.session_state.missing_info = ""
                         st.rerun()
                     else:
-                        st.error("❌ Error enviando al buzón")
+                        st.error("Error al conectar con GitHub.")
 
-        # ---- CANCELAR ----
-        with col_btn2:
-            if st.button("🗑️ Cancelar"):
-               st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
-               st.session_state.draft = None
-               st.session_state.messages = []
-               st.session_state.status = "NEW"
-               st.session_state.missing_info = ""
-               st.rerun()
-
-# -----------------------------
-# Sidebar: Borrar Chat
-# -----------------------------
-if st.sidebar.button("🧹 Borrar Chat"):
-    st.session_state.chat_key += 1  # <--- ESTO LIMPIA EL INPUT
-    st.session_state.draft = None
-    st.session_state.messages = []
-    st.session_state.status = "NEW"
-    st.session_state.missing_info = ""
-    st.rerun()
+        with c2:
+            if st.button("🗑️ Borrar todo"):
+                st.session_state.chat_key += 1
+                st.session_state.draft = None
+                st.session_state.messages = []
+                st.rerun()
 
 # ==========================================
 # Pestaña Dashboard
