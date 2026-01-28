@@ -321,8 +321,6 @@ with t1:
         st.session_state.missing_info = ""
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "rerun_flag" not in st.session_state:
-        st.session_state.rerun_flag = False
 
     # -----------------------------
     # 1. Mostrar historial visual
@@ -336,9 +334,11 @@ with t1:
     # -----------------------------
     prompt = st.text_area("📋 Describe tu envío o movimiento de equipos", key="input_usuario")
 
+    # Si hay texto y es diferente al último procesado, lo guardamos
     if prompt:
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
+            # Reseteamos estado para obligar a la IA a procesar de nuevo
             st.session_state.draft = None
             st.session_state.status = "NEW"
 
@@ -347,12 +347,13 @@ with t1:
             st.markdown(st.session_state.messages[-1]["content"])
 
     # -----------------------------
-    # 3. Lógica IA
+    # 3. Lógica IA (Se ejecuta si status es NEW o no hay draft)
     # -----------------------------
     if st.session_state.messages and st.session_state.draft is None:
         try:
             with st.spinner("Analizando inventario..."):
                 ultimo_prompt = st.session_state.messages[-1]["content"]
+                
                 response = client.responses.create(
                     model="gpt-4.1-mini",
                     input=[
@@ -360,6 +361,7 @@ with t1:
                         {"role": "user", "content": "\nUSUARIO ACTUAL: " + ultimo_prompt}
                     ]
                 )
+            
             texto = response.output_text
             json_txt = extraer_json(texto)
             res_json = json.loads(json_txt) if json_txt else {}
@@ -367,7 +369,10 @@ with t1:
             st.session_state.draft = res_json.get("items", [])
             st.session_state.status = res_json.get("status", "READY")
             st.session_state.missing_info = res_json.get("missing_info", "")
-            st.session_state.rerun_flag = True  # ✅ activamos rerun seguro
+            
+            # 🛑 AQUÍ EL CAMBIO: Rerun directo
+            st.rerun()
+
         except Exception as e:
             st.error("Error procesando solicitud: " + str(e))
 
@@ -379,6 +384,7 @@ with t1:
 
         with st.form("completar_info"):
             st.write("### 📝 Rellena solo los campos faltantes:")
+            
             form_respuestas = {}
             campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
@@ -389,12 +395,12 @@ with t1:
 
                 for key in campos_clave:
                     valor_actual = item.get(key, "")
+                    # Si está vacío, nulo o N/A, mostramos input
                     if valor_actual in ["", None, "N/A"]:
                         with cols[col_idx % 4]:
-                            form_respuestas[f"{i}_{key}"] = st.text_input(
+                            form_respuestas[f"{}_{}"] = st.text_input(
                                 label=key.capitalize(),
-                                value=valor_actual,
-                                key=f"input_{i}_{key}"
+                                key=f"input_{}_{}"
                             )
                         col_idx += 1
                 st.divider()
@@ -402,21 +408,26 @@ with t1:
             submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
         if submitted:
+            # Guardamos los datos nuevos
             for key_compuesta, valor_usuario in form_respuestas.items():
                 if valor_usuario:
                     idx_str, campo = key_compuesta.split("_", 1)
                     st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
+            # Cambiamos estado
             st.session_state.status = "READY"
-            st.session_state.rerun_flag = True  # ✅ rerun seguro
             st.success("✅ Datos completados.")
+            time.sleep(1)
+            # 🛑 AQUÍ EL CAMBIO: Rerun directo
+            st.rerun()
 
     # -----------------------------
     # 5. Tabla Final y Envío
     # -----------------------------
-    if st.session_state.status == "READY" and st.session_state.draft:
+    elif st.session_state.status == "READY" and st.session_state.draft:
         st.success("✅ Todos los datos completos.")
         st.write("### 📋 Confirmación Final")
+        
         df_draft = pd.DataFrame(st.session_state.draft)
         edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
@@ -425,18 +436,23 @@ with t1:
         with col_btn1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 with st.spinner("Enviando..."):
+                    # Hora Ecuador
                     fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     datos_finales = edited_df.to_dict('records')
+
                     for item in datos_finales:
                         item["fecha"] = fecha_ecu
 
                     if enviar_github(FILE_BUZON, datos_finales):
                         st.success("✅ ¡Datos enviados correctamente!")
+                        # Limpieza total
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
-                        st.session_state.rerun_flag = True  # ✅ rerun seguro
+                        time.sleep(2)
+                        # 🛑 AQUÍ EL CAMBIO: Rerun directo
+                        st.rerun()
                     else:
                         st.error("Falló la conexión con GitHub")
 
@@ -444,14 +460,7 @@ with t1:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
                 st.session_state.status = "NEW"
-                st.session_state.rerun_flag = True
-
-    # -----------------------------
-    # 6. Rerun seguro al final
-    # -----------------------------
-    if st.session_state.rerun_flag:
-        st.session_state.rerun_flag = False
-        st.experimental_rerun()
+                st.rerun()
 
 
 with t2:
