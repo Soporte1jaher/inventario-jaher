@@ -348,7 +348,7 @@ with t1:
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
-        # ⚡ SOLO llamamos a la IA si no existe draft
+        # ⚡ Solo llamamos a la IA si draft no existe
         if st.session_state.draft is None:
             try:
                 with st.spinner("Analizando inventario..."):
@@ -369,49 +369,48 @@ with t1:
             except Exception as e:
                 st.error("Error procesando solicitud: " + str(e))
 
-        # -----------------------------
-        # 2a. Formulario para completar info faltante
-        # -----------------------------
-        if st.session_state.status == "QUESTION":
-            st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
+    # -----------------------------
+    # 2a. Formulario para completar info faltante
+    # -----------------------------
+    if st.session_state.status == "QUESTION":
+        st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
-            with st.form("completar_info"):
-                st.write("### 📝 Rellena solo los campos faltantes:")
-                form_respuestas = {}
-                campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+        with st.form("completar_info"):
+            st.write("### 📝 Rellena solo los campos faltantes:")
+            form_respuestas = {}
+            campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-                for i, item in enumerate(st.session_state.draft):
-                    st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                    cols = st.columns(4)
-                    col_idx = 0
+            for i, item in enumerate(st.session_state.draft):
+                st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+                cols = st.columns(4)
+                col_idx = 0
 
-                    for key in campos_clave:
-                        valor_actual = item.get(key, "")
-                        if valor_actual in ["", None, "N/A"]:
-                            with cols[col_idx % 4]:
-                                form_respuestas[f"{i}_{key}"] = st.text_input(
-                                    label=key.capitalize(),
-                                    value=valor_actual,  # recordamos lo que haya escrito antes
-                                    key=f"input_{i}_{key}"
-                                )
-                            col_idx += 1
-                    st.divider()
+                for key in campos_clave:
+                    valor_actual = item.get(key, "")
+                    if valor_actual in ["", None, "N/A"]:
+                        with cols[col_idx % 4]:
+                            form_respuestas[f"{i}_{key}"] = st.text_input(
+                                label=key.capitalize(),
+                                value=valor_actual,
+                                key=f"input_{i}_{key}"
+                            )
+                        col_idx += 1
+                st.divider()
 
-                submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+            submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
-            if submitted:
-                # Guardamos los datos ingresados
-                for key_compuesta, valor_usuario in form_respuestas.items():
-                    if valor_usuario:
-                        idx_str, campo = key_compuesta.split("_", 1)
-                        st.session_state.draft[int(idx_str)][campo] = valor_usuario
+        if submitted:
+            for key_compuesta, valor_usuario in form_respuestas.items():
+                if valor_usuario:
+                    idx_str, campo = key_compuesta.split("_", 1)
+                    st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
-                st.session_state.status = "READY"  # marcamos como listo
-                st.session_state.rerun_flag = True    # activamos rerun seguro
-                st.success("✅ Datos completados.")
+            st.session_state.status = "READY"
+            st.session_state.rerun_flag = True
+            st.success("✅ Datos completados.")
 
-        elif st.session_state.status == "READY":
-            st.success("✅ Todos los datos completos.")
+    elif st.session_state.status == "READY":
+        st.success("✅ Todos los datos completos.")
 
     # -----------------------------
     # 3. Mostrar Tabla Final y Botones
@@ -435,7 +434,6 @@ with t1:
 
                     if enviar_github(FILE_BUZON, datos_finales):
                         st.success("✅ ¡Datos enviados correctamente!")
-                        # Limpiar session_state
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
