@@ -348,8 +348,8 @@ with t1:
             "role": "user",
             "content": prompt
         })
-        st.session_state.draft = None
-        st.session_state.status = "NEW"
+           st.session_state.draft = None
+           st.session_state.status = "NEW"
 
     # -----------------------------
     # 3. Lógica IA
