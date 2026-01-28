@@ -301,73 +301,51 @@ with t1:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
+    # Input de usuario
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "user", "content": prompt})
         with st.expander("Mensaje enviado"):
             st.markdown(prompt)
 
+        try:
+            # 1️⃣ La IA analiza el mensaje y devuelve JSON indicando campos faltantes
+            response = client.responses.create(
+                model="gpt-4.1-mini",
+                input=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": "Analiza este mensaje y devuelve solo campos faltantes en JSON: " + prompt}
+                ]
+            )
+            
+            texto = response.output_text
+            json_txt = extraer_json(texto)
+            res_json = json.loads(json_txt) if json_txt else {}
 
-    try:
-        # 1️⃣ La IA analiza el mensaje y devuelve JSON indicando campos faltantes
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": "Analiza este mensaje y devuelve solo campos faltantes en JSON: " + prompt}
-            ]
-        )
-        
-        texto = response.output_text
-        json_txt = extraer_json(texto)
-        res_json = json.loads(json_txt) if json_txt else {}
-
-        # 2️⃣ Si la IA detecta faltantes, renderizamos formulario dinámico
-        missing = res_json.get("missing_fields", [])
-        if missing:
-            st.info("📝 Completa los datos faltantes en el formulario")
-            form_data = {}
-            with st.form("completar_info"):
-                for field in missing:
-                    form_data[field] = st.text_input(f"Ingrese {field}")
-                submitted = st.form_submit_button("✅ Completar datos")
-            if submitted:
-                # Combinar los datos ingresados con los datos iniciales
-                final_items = res_json.get("items", [])
-                for i, item in enumerate(final_items):
-                    for field, value in form_data.items():
-                        item[field] = value
-                st.session_state.draft = final_items
-                st.success("✅ Datos completos, listos para enviar al Excel/GitHub")
-        else:
-            # Si no hay campos faltantes, listo para enviar
-            st.session_state.draft = res_json.get("items", [])
-            st.success("✅ Todos los datos estaban completos, listos para enviar")
-    except Exception as e:
-        st.error("Error de Auditoría: " + str(e))
-
-# 3️⃣ Mostrar previsualización y botón de confirmación (igual que tu código actual)
-if st.session_state.draft:
-    st.write("### 📋 Pre-visualización de Movimientos")
-    df_draft = pd.DataFrame(st.session_state.draft)
-    st.table(df_draft)
-
-    if st.button("🚀 CONFIRMAR Y ENVIAR AL EXCEL"):
-        with st.spinner("Sincronizando con GitHub..."):
-            fecha_ecu = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-            for item in st.session_state.draft:
-                item["fecha"] = fecha_ecu
-
-            if enviar_github(FILE_BUZON, st.session_state.draft):
-                st.success("✅ ¡Datos enviados al Buzón!")
-                st.session_state.draft = None
-                st.session_state.messages = []
-                time.sleep(2)
-                st.rerun()
+            # 2️⃣ Si la IA detecta faltantes, renderizamos formulario dinámico
+            missing = res_json.get("missing_fields", [])
+            if missing:
+                st.info("📝 Completa los datos faltantes en el formulario")
+                form_data = {}
+                with st.form("completar_info"):
+                    for field in missing:
+                        form_data[field] = st.text_input(f"Ingrese {field}")
+                    submitted = st.form_submit_button("✅ Completar datos")
+                if submitted:
+                    # Combinar los datos ingresados con los datos iniciales
+                    final_items = res_json.get("items", [])
+                    for i, item in enumerate(final_items):
+                        for field, value in form_data.items():
+                            item[field] = value
+                    st.session_state.draft = final_items
+                    st.success("✅ Datos completos, listos para enviar al Excel/GitHub")
             else:
-                st.error("Error al conectar con GitHub.")
+                # Si no hay campos faltantes, listo para enviar
+                st.session_state.draft = res_json.get("items", [])
+                st.success("✅ Todos los datos estaban completos, listos para enviar")
+        except Exception as e:
+            st.error("Error de Auditoría: " + str(e))
 
-    
-
+    # 3️⃣ Mostrar previsualización y botón de confirmación
     if st.session_state.draft:
         st.write("### 📋 Pre-visualización de Movimientos")
         df_draft = pd.DataFrame(st.session_state.draft)
@@ -387,6 +365,7 @@ if st.session_state.draft:
                     st.rerun()
                 else:
                     st.error("Error al conectar con GitHub.")
+
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
