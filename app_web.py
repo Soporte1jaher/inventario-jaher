@@ -324,11 +324,6 @@ with t1:
     if "rerun_flag" not in st.session_state:
         st.session_state.rerun_flag = False
 
-    # Ejecutar rerun seguro
-    if st.session_state.rerun_flag:
-        st.session_state.rerun_flag = False
-        st.experimental_rerun()
-
     # -----------------------------
     # 1. Mostrar historial visual
     # -----------------------------
@@ -372,7 +367,7 @@ with t1:
             st.session_state.draft = res_json.get("items", [])
             st.session_state.status = res_json.get("status", "READY")
             st.session_state.missing_info = res_json.get("missing_info", "")
-            st.session_state.rerun_flag = True  # rerun seguro
+            st.session_state.rerun_flag = True  # ✅ activamos rerun seguro
         except Exception as e:
             st.error("Error procesando solicitud: " + str(e))
 
@@ -413,11 +408,11 @@ with t1:
                     st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
             st.session_state.status = "READY"
-            st.session_state.rerun_flag = True
+            st.session_state.rerun_flag = True  # ✅ rerun seguro
             st.success("✅ Datos completados.")
 
     # -----------------------------
-    # 5. Tabla Final y Botones
+    # 5. Tabla Final y Envío
     # -----------------------------
     if st.session_state.status == "READY" and st.session_state.draft:
         st.success("✅ Todos los datos completos.")
@@ -441,7 +436,7 @@ with t1:
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
-                        st.session_state.rerun_flag = True
+                        st.session_state.rerun_flag = True  # ✅ rerun seguro
                     else:
                         st.error("Falló la conexión con GitHub")
 
@@ -451,6 +446,12 @@ with t1:
                 st.session_state.status = "NEW"
                 st.session_state.rerun_flag = True
 
+    # -----------------------------
+    # 6. Rerun seguro al final
+    # -----------------------------
+    if st.session_state.rerun_flag:
+        st.session_state.rerun_flag = False
+        st.experimental_rerun()
 
 
 with t2:
