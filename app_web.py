@@ -421,25 +421,31 @@ with t1:
 
         # ---- Botón Enviar al Buzón ----
         with col_btn1:
-            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                with st.spinner("Enviando..."):
-                    fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    datos_finales = edited_df.to_dict('records')
-                    for item in datos_finales:
-                        item["fecha"] = fecha_ecu
+    if st.button("🚀 ENVIAR AL BUZÓN", key="btn_enviar", type="primary"):
+        with st.spinner("Enviando..."):
+            fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+            datos_finales = edited_df.to_dict('records')
+            for item in datos_finales:
+                item["fecha"] = fecha_ecu
 
-                    # 🔹 Enviar a GitHub
-                    if enviar_github(FILE_BUZON, datos_finales):
-                        st.success("✅ ¡Datos enviados correctamente!")
-                        # 🔹 Limpiar todo para iniciar un nuevo chat
-                        st.session_state.draft = None
-                        st.session_state.messages = []  # borra historial
-                        st.session_state.status = "NEW"
-                        st.session_state.missing_info = ""
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("Falló la conexión con GitHub")
+            # Intentamos enviar a GitHub
+            if enviar_github(FILE_BUZON, datos_finales):
+                st.success("✅ ¡Datos enviados correctamente!")
+
+                # 🔹 Limpiar todo para iniciar un nuevo chat
+                st.session_state.draft = None
+                st.session_state.messages = []
+                st.session_state.status = "NEW"
+                st.session_state.missing_info = ""
+
+                # 🔹 Limpiar input de usuario también
+                st.session_state["input_usuario"] = ""
+
+                # Rerun para que todo se reinicie visualmente
+                st.rerun()
+            else:
+                st.error("Falló la conexión con GitHub")
+
 
         # ---- Botón Cancelar ----
         with col_btn2:
