@@ -383,32 +383,32 @@ with t1:
         st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
         with st.form("completar_info"):
-            st.write("### 📝 Rellena solo los campos faltantes:")
-            
-            form_respuestas = {}
-            campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
+    st.write("### 📝 Rellena solo los campos faltantes:")
+    
+    form_respuestas = {}
+    campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
-            for i, item in enumerate(st.session_state.draft):
-                st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
-                cols = st.columns(4)
-                col_idx = 0
-for key in campos_clave:
-    valor_actual = item.get(key, "")
-    # Si está vacío, nulo o N/A, mostramos input
-    if valor_actual in ["", None, "N/A"]:
-        with cols[col_idx % 4]:
-            # F-string completo con índice i y key
-            form_respuestas[f"{i}_{key}"] = st.text_input(
-                label=key.capitalize(),
-                value=valor_actual,  # recordamos lo que haya escrito antes
-                key=f"input_{i}_{key}"
-            )
-        col_idx += 1
-st.divider()  # <-- este está al mismo nivel que el for que recorre campos_clave
+    for i, item in enumerate(st.session_state.draft):
+        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
+        cols = st.columns(4)
+        col_idx = 0
 
+        for key in campos_clave:
+            valor_actual = item.get(key, "")
+            if valor_actual in ["", None, "N/A"]:
+                with cols[col_idx % 4]:
+                    form_respuestas[f"{i}_{key}"] = st.text_input(
+                        label=key.capitalize(),
+                        value=valor_actual,
+                        key=f"input_{i}_{key}"
+                    )
+                col_idx += 1
 
+        st.divider()  # <-- nivel correcto: al mismo nivel que el for key, no más adentro
 
-            submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+    # Botón submit debe estar al **final del with st.form**, no más adentro
+    submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
+
 
         if submitted:
             # Guardamos los datos nuevos
