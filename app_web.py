@@ -445,7 +445,7 @@ with t1:
             # st.session_state.clear_chat = True   <--- BORRA ESTA LINEA TAMBIÉN
                        st.rerun()
                     else:
-                        st.error("❌ Error enviando al buzón")
+                       st.error("❌ Error enviando al buzón")
 
         # ---- CANCELAR ----
         with col_btn2:
