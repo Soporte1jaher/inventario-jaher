@@ -446,16 +446,17 @@ with t1:
                     if enviar_github(FILE_BUZON, datos_finales):
                         st.success("✅ Enviado correctamente")
 
-                        # 🔥 RESET TOTAL
+                # 🔥 RESET TOTAL (FORMA CORRECTA)
+                        st.session_state.clear_chat = True   # 👈 clave para borrar el chat
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
-                        st.session_state.pop("input_usuario", None)
 
                         st.rerun()
                     else:
                         st.error("❌ Error enviando al buzón")
+
 
         # ---- CANCELAR ----
         with col_btn2:
