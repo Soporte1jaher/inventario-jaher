@@ -136,7 +136,20 @@ def calcular_stock_web(df):
 # 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
+Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa.
+No eres una secretaria que anota; eres una auditora que VERIFICA y ACTUALIZA datos en tiempo real.
+
+=== MODO DE OPERACIÓN: EDICIÓN VS CREACIÓN ===
+1. Si recibes un JSON llamado "INVENTARIO ACTUAL":
+   - NO crees una lista nueva desde cero.
+   - Tu trabajo es BUSCAR en esa lista el equipo al que se refiere el usuario y MODIFICAR sus datos (RAM, procesador, serie, corrección de cantidad).
+   - Mantén intactos los items que el usuario no mencionó.
+   - Devuelve la lista COMPLETA actualizada.
+
+2. Si NO recibes inventario previo:
+   - Crea la lista desde cero extrayendo los datos del mensaje.
+
+=== REGLAS DE AUDITORÍA ===
 
 1. REGLA DE ORO: PROHIBIDO ASUMIR (CONFIRMACIÓN OBLIGATORIA)
 - Aunque deduzcas que un equipo es "Usado" (porque viene de agencia), DEBES PREGUNTAR para confirmar.
@@ -208,29 +221,32 @@ Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superi
 - El formulario debe mostrar únicamente los campos vacíos críticos, no todos los campos.
 - Respeta las respuestas "N/A", "no", "sin X", y no vuelvas a preguntar.
 
+16. REGLA DE CONTINUIDAD (INTEGRACIÓN):
+- Si el usuario te da especificaciones técnicas sueltas (ej: "es core i5"), asígnalas al equipo correspondiente del inventario actual.
+- Si hay ambigüedad (ej: 2 laptops y dice "la laptop es i5"), asigna a la que tenga más sentido o pregunta, pero intenta deducirlo.
 
 SALIDA JSON OBLIGATORIA:
 {
  "status": "QUESTION",
  "missing_info": "Faltan series y guías",
  "items": [
-  {
-   "equipo": "Laptop",
-   "marca": "Dell",
-   "modelo": "",
-   "serie": "",
-   "cantidad": 2,
-   "estado": "",
-   "tipo": "Enviado",
-   "origen": "Portete",
-   "destino": "Latacunga",
-   "guia": "",
-   "fecha_llegada": "",
-   "ram": "",
-   "procesador": "",
-   "disco": "",
-   "reporte": ""
-  }
+ {
+  "equipo": "Laptop",
+  "marca": "Dell",
+  "modelo": "",
+  "serie": "",
+  "cantidad": 2,
+  "estado": "",
+  "tipo": "Enviado",
+  "origen": "Portete",
+  "destino": "Latacunga",
+  "guia": "",
+  "fecha_llegada": "",
+  "ram": "",
+  "procesador": "",
+  "disco": "",
+  "reporte": ""
+ }
  ]
 }
 """
@@ -345,29 +361,57 @@ with t1:
     # -----------------------------
     # Lógica IA
     # -----------------------------
-    if st.session_state.messages and st.session_state.draft is None:
-        try:
-            with st.spinner("Analizando inventario..."):
-                ultimo_prompt = st.session_state.messages[-1]["content"]
+    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    
+    ultimo_mensaje = st.session_state.messages[-1]["content"]
 
-                response = client.responses.create(
-                    model="gpt-4.1-mini",
-                    input=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": "\nUSUARIO ACTUAL: " + ultimo_prompt}
-                    ]
-                )
+    try:
+      with st.spinner("LAIA está auditando y actualizando..."):
+        
+        # --- AQUÍ ESTÁ LA MAGIA ---
+        # Si ya hay datos, se los pasamos a la IA
+        if st.session_state.draft:
+          inventario_json = json.dumps(st.session_state.draft, indent=2)
+          prompt_completo = (
+            f"INVENTARIO ACTUAL (JSON):\n{inventario_json}\n\n"
+            f"NUEVA INSTRUCCIÓN DEL USUARIO: {ultimo_mensaje}\n\n"
+            "Actualiza el JSON anterior aplicando todas las Reglas (especialmente la 6 de procesadores y 16 de edición)."
+          )
+        else:
+          # Primera vez
+          prompt_completo = f"USUARIO: {ultimo_mensaje}"
 
-            texto = response.output_text
-            json_txt = extraer_json(texto)
-            res_json = json.loads(json_txt) if json_txt else {}
+        response = client.responses.create(
+          model="gpt-4o-mini", # O gpt-4-turbo si puedes
+          messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_completo}
+          ],
+          temperature=0
+        )
 
-            st.session_state.draft = res_json.get("items", [])
-            st.session_state.status = res_json.get("status", "READY")
-            st.session_state.missing_info = res_json.get("missing_info", "")
+      texto = response.output_text
+      json_txt = extraer_json(texto)
+      
+      if json_txt:
+        res_json = json.loads(json_txt)
+        
+        # Actualizamos variables
+        st.session_state.draft = res_json.get("items", [])
+        st.session_state.status = res_json.get("status", "READY")
+        st.session_state.missing_info = res_json.get("missing_info", "")
+        
+        # Feedback visual opcional en el chat
+        if st.session_state.draft:
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": f"✅ He actualizado la tabla. {res_json.get('missing_info', '')}"
+            })
 
-        except Exception as e:
-            st.error(f"❌ Error procesando solicitud: {e}")
+        st.rerun()
+
+    except Exception as e:
+      st.error(f"❌ Error LAIA: {str(e)}")
 
     # -----------------------------
     # Datos faltantes
