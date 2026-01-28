@@ -311,7 +311,7 @@ def guardar_excel_premium(df, ruta):
 
 with t1:
     if "clear_chat" not in st.session_state:
-    st.session_state.clear_chat = False
+        st.session_state.clear_chat = False
 
     # -----------------------------
     # 0. Inicialización session_state
