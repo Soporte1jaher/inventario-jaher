@@ -309,6 +309,14 @@ def guardar_excel_premium(df, ruta):
             print("❌ Error crítico: " + str(e))
             return False
 with t1:
+    if "draft" not in st.session_state:
+        st.session_state.draft = None
+    if "status" not in st.session_state:
+        st.session_state.status = "NEW"
+    if "missing_info" not in st.session_state:
+        st.session_state.missing_info = ""
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
     # 1. Mostrar historial visual
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
