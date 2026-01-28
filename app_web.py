@@ -332,16 +332,11 @@ with t1:
     # -----------------------------
     # 2. Input del usuario
     # -----------------------------
-    prompt = st.text_area(
-        "📋 Describe tu envío o movimiento de equipos",
-        key="input_usuario"
-    )
+    prompt = st.text_area("📋 Describe tu envío...", key="input_usuario")
 
     if prompt:
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-            st.session_state.messages.append(
-                {"role": "user", "content": prompt}
-            )
+            st.session_state.messages.append({"role": "user", "content": prompt})
             st.session_state.draft = None
             st.session_state.status = "NEW"
 
