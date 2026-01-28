@@ -333,29 +333,24 @@ with t1:
             if status == "QUESTION":
                 st.warning(f"⚠️ Faltan datos: {res_json.get('missing_info', 'Complete los espacios')}")
 
-                with st.form("completar_info"):
+               with st.form("completar_info"):
                     st.write("### 📝 Rellena los espacios vacíos:")
                     
-                    # Diccionario temporal para guardar las respuestas del form
                     form_respuestas = {}
-                    
-                    # Campos que nos interesa validar/llenar
                     campos_clave = ["marca", "modelo", "serie", "estado", "origen", "destino", "guia", "fecha_llegada"]
 
                     for i, item in enumerate(st.session_state.draft):
-                        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo desconocido')} (Cant: {item.get('cantidad', 1)})**")
-                        
-                        # Usamos columnas para que no sea una lista infinita hacia abajo
+                        st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
                         cols = st.columns(4) 
                         col_idx = 0
                         
                         for key in campos_clave:
                             valor_actual = item.get(key, "")
                             
-                            # Si el valor está vacío o es None, creamos un input para llenarlo
                             if valor_actual in ["", None, "N/A"]:
                                 with cols[col_idx % 4]:
-                                    # CLAVE ÚNICA: f"{}_{}" (ej: 0_serie, 1_guia)
+                                    # --- AQUÍ ESTABA EL ERROR ---
+                                    # Corregido: Agregamos {} y {} dentro de las llaves
                                     form_respuestas[f"{}_{}"] = st.text_input(
                                         label=key.capitalize(), 
                                         key=f"input_{}_{}"
@@ -363,7 +358,6 @@ with t1:
                                 col_idx += 1
                         st.divider()
 
-                    # Botón para guardar lo rellenado
                     submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
                 if submitted:
