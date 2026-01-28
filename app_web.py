@@ -445,7 +445,7 @@ with t1:
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
-                        st.session_state["input_usuario"] = ""
+                        st.session_state.pop("input_usuario", None)
 
                         st.rerun()
                     else:
