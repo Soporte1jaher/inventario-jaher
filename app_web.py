@@ -406,30 +406,24 @@ with t1:
 
         with col_btn1:
             # Botón Enviar al Buzón
-if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-    with st.spinner("Enviando..."):
-        fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-        datos_finales = edited_df.to_dict('records')
+ if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+        with st.spinner("Enviando..."):
+            # Aquí todo va indentado un nivel más
+            fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+            datos_finales = edited_df.to_dict('records')
 
-        for item in datos_finales:
-            item["fecha"] = fecha_ecu
+            for item in datos_finales:
+                item["fecha"] = fecha_ecu
 
-        if enviar_github(FILE_BUZON, datos_finales):
-            st.success("✅ ¡Datos enviados correctamente!")
-
-            # Limpiar session_state
-            st.session_state.draft = None
-            st.session_state.messages = []
-
-            # Inicializamos para evitar errores en rerun
-            st.session_state.setdefault("draft", None)
-            st.session_state.setdefault("messages", [])
-            st.session_state.setdefault("status", "NEW")
-            st.session_state.setdefault("missing_info", "")
-
-            st.experimental_rerun()
-        else:
-            st.error("Falló la conexión con GitHub")
+            if enviar_github(FILE_BUZON, datos_finales):
+                st.success("✅ ¡Datos enviados correctamente!")
+                st.session_state.draft = None
+                st.session_state.messages = []
+                st.session_state.status = "NEW"
+                st.session_state.missing_info = ""
+                st.experimental_rerun()
+            else:
+                st.error("Falló la conexión con GitHub")
 
 
         with col_btn2:
