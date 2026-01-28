@@ -447,7 +447,6 @@ with t1:
                         st.success("✅ Enviado correctamente")
 
                 # 🔥 RESET TOTAL (FORMA CORRECTA)
-                        st.session_state.clear_chat = True   # 👈 clave para borrar el chat
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
@@ -462,7 +461,9 @@ with t1:
         with col_btn2:
             if st.button("🗑️ Cancelar"):
                 st.session_state.draft = None
+                st.session_state.messages = []
                 st.session_state.status = "NEW"
+                st.session_state.missing_info = ""
                 st.rerun()
 
 
