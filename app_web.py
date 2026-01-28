@@ -392,19 +392,21 @@ with t1:
                 st.markdown(f"**Item {i+1}: {item.get('equipo', 'Equipo')}**")
                 cols = st.columns(4)
                 col_idx = 0
-
-                for key in campos_clave:
-                    valor_actual = item.get(key, "")
-                    # Si está vacío, nulo o N/A, mostramos input
-                    if valor_actual in ["", None, "N/A"]:
-                        with cols[col_idx % 4]:
-                             form_respuestas[f"{i}_{key}"] = st.text_input(
+for key in campos_clave:
+    valor_actual = item.get(key, "")
+    # Si está vacío, nulo o N/A, mostramos input
+    if valor_actual in ["", None, "N/A"]:
+        with cols[col_idx % 4]:
+            # F-string completo con índice i y key
+            form_respuestas[f"{i}_{key}"] = st.text_input(
                 label=key.capitalize(),
                 value=valor_actual,  # recordamos lo que haya escrito antes
                 key=f"input_{i}_{key}"
             )
         col_idx += 1
-                st.divider()
+st.divider()  # <-- este está al mismo nivel que el for que recorre campos_clave
+
+
 
             submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
