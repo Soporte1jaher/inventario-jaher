@@ -333,8 +333,10 @@ with t1:
     # 2. Input del usuario
     # -----------------------------
     prompt = st.text_area("📋 Describe tu envío...", key="input_usuario")
+    if st.session_state.clear_chat:
+        st.session_state.clear_chat = False
 
-    if prompt:
+    if prompt and not st.session_state.clear_chat:
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.session_state.draft = None
