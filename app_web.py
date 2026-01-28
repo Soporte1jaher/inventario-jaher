@@ -428,20 +428,16 @@ with t1:
             for item in datos_finales:
                 item["fecha"] = fecha_ecu
 
-            # Intentamos enviar a GitHub
             if enviar_github(FILE_BUZON, datos_finales):
                 st.success("✅ ¡Datos enviados correctamente!")
 
-                # 🔹 Limpiar todo para iniciar un nuevo chat
+                # Limpiar todo para iniciar un nuevo chat
                 st.session_state.draft = None
                 st.session_state.messages = []
                 st.session_state.status = "NEW"
                 st.session_state.missing_info = ""
+                st.session_state["input_usuario"] = ""  # limpiar text_area
 
-                # 🔹 Limpiar input de usuario también
-                st.session_state["input_usuario"] = ""
-
-                # Rerun para que todo se reinicie visualmente
                 st.rerun()
             else:
                 st.error("Falló la conexión con GitHub")
