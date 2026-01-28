@@ -310,7 +310,9 @@ def guardar_excel_premium(df, ruta):
             return False
 
 with t1:
-    # 🔹 Inicialización de session_state
+    # -----------------------------
+    # 0. Inicialización session_state
+    # -----------------------------
     if "draft" not in st.session_state:
         st.session_state.draft = None
     if "status" not in st.session_state:
@@ -319,13 +321,24 @@ with t1:
         st.session_state.missing_info = ""
     if "messages" not in st.session_state:
         st.session_state.messages = []
+    if "rerun_flag" not in st.session_state:
+        st.session_state.rerun_flag = False
 
+    # Ejecutar rerun seguro si se marcó
+    if st.session_state.rerun_flag:
+        st.session_state.rerun_flag = False
+        st.experimental_rerun()
+
+    # -----------------------------
     # 1. Mostrar historial visual
+    # -----------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
+    # -----------------------------
     # 2. Input del usuario
+    # -----------------------------
     if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
 
         # Guardar mensaje si es nuevo
@@ -335,7 +348,7 @@ with t1:
         with st.expander("Ver mensaje original"):
             st.markdown(prompt)
 
-        # ⚡ Solo llamamos a la IA si draft no existe
+        # ⚡ SOLO llamamos a la IA si no existe draft
         if st.session_state.draft is None:
             try:
                 with st.spinner("Analizando inventario..."):
@@ -353,11 +366,12 @@ with t1:
                 st.session_state.draft = res_json.get("items", [])
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
-
             except Exception as e:
                 st.error("Error procesando solicitud: " + str(e))
 
-        # 2a. Lógica para completar información faltante
+        # -----------------------------
+        # 2a. Formulario para completar info faltante
+        # -----------------------------
         if st.session_state.status == "QUESTION":
             st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
 
@@ -377,7 +391,7 @@ with t1:
                             with cols[col_idx % 4]:
                                 form_respuestas[f"{i}_{key}"] = st.text_input(
                                     label=key.capitalize(),
-                                    value=valor_actual,
+                                    value=valor_actual,  # recordamos lo que haya escrito antes
                                     key=f"input_{i}_{key}"
                                 )
                             col_idx += 1
@@ -386,52 +400,54 @@ with t1:
                 submitted = st.form_submit_button("✅ Actualizar y Generar Tabla")
 
             if submitted:
-                # Guardar los datos ingresados
+                # Guardamos los datos ingresados
                 for key_compuesta, valor_usuario in form_respuestas.items():
                     if valor_usuario:
                         idx_str, campo = key_compuesta.split("_", 1)
                         st.session_state.draft[int(idx_str)][campo] = valor_usuario
 
+                st.session_state.status = "READY"  # marcamos como listo
+                st.session_state.rerun_flag = True    # activamos rerun seguro
                 st.success("✅ Datos completados.")
-                st.session_state.status = "READY"
 
-        # 3. Mostrar Tabla Final y Botón Enviar
-        if st.session_state.status == "READY" and st.session_state.draft:
-            st.write("### 📋 Confirmación Final")
-            df_draft = pd.DataFrame(st.session_state.draft)
-            edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
+        elif st.session_state.status == "READY":
+            st.success("✅ Todos los datos completos.")
 
-            col_btn1, col_btn2 = st.columns([1, 4])
+    # -----------------------------
+    # 3. Mostrar Tabla Final y Botones
+    # -----------------------------
+    if st.session_state.draft:
+        st.write("### 📋 Confirmación Final")
 
-            # 🔹 Botón Enviar
-            with col_btn1:
-                if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                    with st.spinner("Enviando..."):
-                        fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                        datos_finales = edited_df.to_dict('records')
+        df_draft = pd.DataFrame(st.session_state.draft)
+        edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True)
 
-                        for item in datos_finales:
-                            item["fecha"] = fecha_ecu
+        col_btn1, col_btn2 = st.columns([1, 4])
 
-                        # ⚡ Esto asegura que se aplique tu lógica de stock automáticamente
-                        if enviar_github(FILE_BUZON, datos_finales):
-                            st.success("✅ ¡Datos enviados correctamente!")
-                            # Limpiar session_state
-                            st.session_state.draft = None
-                            st.session_state.messages = []
-                            st.session_state.status = "NEW"
-                            st.session_state.missing_info = ""
-                            st.experimental_rerun()
-                        else:
-                            st.error("Falló la conexión con GitHub")
+        with col_btn1:
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                with st.spinner("Enviando..."):
+                    fecha_ecu = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    datos_finales = edited_df.to_dict('records')
 
-            # 🔹 Botón Cancelar
-            with col_btn2:
-                if st.button("🗑️ Cancelar"):
-                    st.session_state.draft = None
-                    st.session_state.status = "NEW"
-                    st.session_state.missing_info = ""
-                    st.experimental_rerun()
+                    for item in datos_finales:
+                        item["fecha"] = fecha_ecu
+
+                    if enviar_github(FILE_BUZON, datos_finales):
+                        st.success("✅ ¡Datos enviados correctamente!")
+                        # Limpiar session_state
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        st.session_state.status = "NEW"
+                        st.session_state.missing_info = ""
+                        st.session_state.rerun_flag = True  # rerun seguro después de enviar
+                    else:
+                        st.error("Falló la conexión con GitHub")
+
+        with col_btn2:
+            if st.button("🗑️ Cancelar"):
+                st.session_state.draft = None
+                st.session_state.rerun_flag = True  # rerun seguro después de cancelar
 
 
 with t2:
