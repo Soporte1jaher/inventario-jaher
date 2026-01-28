@@ -462,7 +462,6 @@ with t1:
                 st.session_state.status = "NEW"
                 st.rerun()
 
-
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
