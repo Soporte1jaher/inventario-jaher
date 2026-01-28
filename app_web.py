@@ -342,7 +342,7 @@ with t1:
         st.session_state.clear_chat = False
         prompt = ""
 
-   if prompt:
+    if prompt:
        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
            st.session_state.messages.append({
             "role": "user",
