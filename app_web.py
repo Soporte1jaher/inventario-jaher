@@ -381,7 +381,7 @@ with t1:
           # Primera vez
           prompt_completo = f"USUARIO: {ultimo_mensaje}"
 
-        response = client.responses.create(
+        response = client.chat.completions.create(
           model="gpt-4o-mini", # O gpt-4-turbo si puedes
           messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -390,7 +390,7 @@ with t1:
           temperature=0
         )
 
-      texto = response.output_text
+      texto = response.choices[0].message.content
       json_txt = extraer_json(texto)
       
       if json_txt:
