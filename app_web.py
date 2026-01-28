@@ -301,7 +301,7 @@ with t1:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-  if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
+    if prompt := st.text_area("📋 Describe tu envío o movimiento de equipos"):
         st.session_state.messages.append({"role": "user", "content": prompt"})
         with st.expander("Mensaje enviado"):
             st.markdown(prompt)
