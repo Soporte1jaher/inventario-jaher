@@ -131,6 +131,7 @@ def calcular_stock_web(df):
     movimientos = df_c[df_c['val'] != 0]
 
     return resumen[resumen['val'] > 0], movimientos
+
 # ==========================================
 # 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
@@ -233,15 +234,27 @@ SALIDA JSON OBLIGATORIA:
  ]
 }
 """
+
 # ==========================================
 # 5. INTERFAZ
 # ==========================================
 st.title("🧠 LAIA v91.0 - Auditoría Senior")
 
+# -----------------------------
+# Inicialización session_state
+# -----------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "draft" not in st.session_state:
     st.session_state.draft = None
+if "status" not in st.session_state:
+    st.session_state.status = "NEW"
+if "missing_info" not in st.session_state:
+    st.session_state.missing_info = ""
+if "clear_chat" not in st.session_state:
+    st.session_state.clear_chat = False
+if "input_usuario" not in st.session_state:
+    st.session_state.input_usuario = ""
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
@@ -277,12 +290,8 @@ def guardar_excel_premium(df, ruta):
             columnas_finales = [c for c in orden if c in columnas] + \
                                [c for c in columnas if c not in orden]
 
-            # Hoja Enviados y Recibidos
-            aplicar_formato_zebra(
-                writer, df_mov[columnas_finales], 'Enviados y Recibidos'
-            )
+            aplicar_formato_zebra(writer, df_mov[columnas_finales], 'Enviados y Recibidos')
 
-            # Hoja Stock
             df_calc = df.copy()
             df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
             df_calc['variacion'] = df_calc.apply(
@@ -294,7 +303,6 @@ def guardar_excel_premium(df, ruta):
             res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
             aplicar_formato_zebra(writer, res[res['variacion'] > 0], 'Stock (Saldos)')
 
-            # ✅ Hoja Dañados (AQUÍ VA)
             df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
             if not df_danados.empty:
                 aplicar_formato_zebra(writer, df_danados, 'Dañados')
@@ -309,50 +317,36 @@ def guardar_excel_premium(df, ruta):
             print("❌ Error crítico: " + str(e))
             return False
 
+# ==========================================
+# Pestaña Chat
+# ==========================================
 with t1:
-    if "clear_chat" not in st.session_state:
-        st.session_state.clear_chat = False
-
     # -----------------------------
-    # 0. Inicialización session_state
-    # -----------------------------
-    if "draft" not in st.session_state:
-        st.session_state.draft = None
-    if "status" not in st.session_state:
-        st.session_state.status = "NEW"
-    if "missing_info" not in st.session_state:
-        st.session_state.missing_info = ""
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # -----------------------------
-    # 1. Mostrar historial visual
+    # Mostrar historial visual
     # -----------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
     # -----------------------------
-    # 2. Input del usuario
+    # Input usuario
     # -----------------------------
     prompt = st.text_area("📋 Describe tu envío...", key="input_usuario")
 
-# Si venimos de un reset, no procesamos nada
+    # Si venimos de un reset, limpiamos
     if st.session_state.clear_chat:
         st.session_state.clear_chat = False
+        st.session_state.input_usuario = ""
         prompt = ""
 
     if prompt:
-       if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
-           st.session_state.messages.append({
-            "role": "user",
-            "content": prompt
-        })
-           st.session_state.draft = None
-           st.session_state.status = "NEW"
+        if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.draft = None
+            st.session_state.status = "NEW"
 
     # -----------------------------
-    # 3. Lógica IA
+    # Lógica IA
     # -----------------------------
     if st.session_state.messages and st.session_state.draft is None:
         try:
@@ -379,7 +373,7 @@ with t1:
             st.error(f"❌ Error procesando solicitud: {e}")
 
     # -----------------------------
-    # 4. Datos faltantes
+    # Datos faltantes
     # -----------------------------
     if st.session_state.status == "QUESTION" and st.session_state.draft:
         st.warning(f"⚠️ Faltan datos: {st.session_state.missing_info}")
@@ -415,7 +409,7 @@ with t1:
                     st.success("Datos completados")
 
     # -----------------------------
-    # 5. Tabla final y acciones
+    # Tabla final y acciones
     # -----------------------------
     if st.session_state.draft:
         st.subheader("📋 Confirmación Final")
@@ -446,16 +440,16 @@ with t1:
                     if enviar_github(FILE_BUZON, datos_finales):
                         st.success("✅ Enviado correctamente")
 
-                # 🔥 RESET TOTAL (FORMA CORRECTA)
+                        # 🔥 RESET TOTAL REAL
                         st.session_state.draft = None
                         st.session_state.messages = []
                         st.session_state.status = "NEW"
                         st.session_state.missing_info = ""
+                        st.session_state.input_usuario = ""  # 🔴 ESTA ES LA CLAVE
 
                         st.rerun()
                     else:
                         st.error("❌ Error enviando al buzón")
-
 
         # ---- CANCELAR ----
         with col_btn2:
@@ -464,9 +458,12 @@ with t1:
                 st.session_state.messages = []
                 st.session_state.status = "NEW"
                 st.session_state.missing_info = ""
+                st.session_state.input_usuario = ""
                 st.rerun()
 
-
+# ==========================================
+# Pestaña Dashboard
+# ==========================================
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
@@ -491,6 +488,10 @@ with t2:
         st.dataframe(st_det, use_container_width=True)
     else:
         st.info("Sincronizando con GitHub...")
+
+# ==========================================
+# Pestaña Limpieza
+# ==========================================
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
 
@@ -524,8 +525,14 @@ with t3:
             except Exception as e:
                 st.error("Error: " + str(e))
 
-
+# ==========================================
+# Botón Sidebar Borrar Chat
+# ==========================================
 if st.sidebar.button("🧹 Borrar Chat"):
     st.session_state.messages = []
     st.session_state.draft = None
+    st.session_state.status = "NEW"
+    st.session_state.missing_info = ""
+    st.session_state.input_usuario = ""  # 🔴 CLAVE PARA RESET
+    st.session_state.clear_chat = True
     st.rerun()
