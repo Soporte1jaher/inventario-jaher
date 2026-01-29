@@ -71,7 +71,7 @@ def obtener_github(archivo):
                 return json.loads(contenido_decodificado), d['sha']
             except json.JSONDecodeError:
                 # Si el archivo está roto, avisamos pero no detenemos la app
-                st.warning(f"⚠️ El archivo {} en GitHub tiene un error de formato. Se iniciará vacío para poder repararlo.")
+                st.warning(f"⚠️ El archivo {archivo} en GitHub tiene un error de formato. Se iniciará vacío para poder repararlo.")
                 return [], d['sha']
                 
         return [], None
