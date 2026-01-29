@@ -264,7 +264,8 @@ JSON debe tener esta estructura exacta:
 }
 
 No cambies valores existentes. Solo agrega lo que falta.  
-No preguntes nada, no hagas resúmenes, no uses lenguaje natural, no digas “tabla actualizada” ni nada.  
+No preguntes nada, no hagas resúmenes, no uses lenguaje natural, no digas “tabla actualizada” ni nada.
+"""
 # ==========================================
 # 5. INICIALIZACIÓN SESSION STATE
 # ==========================================
