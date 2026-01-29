@@ -58,7 +58,7 @@ def extraer_json(texto):
 def obtener_github(archivo):
     # Añadimos un número de tiempo al final para evitar el caché de GitHub
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{}/{}/contents/{}?t={timestamp}"
+url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
     try:
         # Usamos un timeout para que no se quede colgado
         resp = requests.get(url, headers=HEADERS, timeout=10)
