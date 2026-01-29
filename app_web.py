@@ -245,21 +245,26 @@ Antes de generar cualquier salida final debes validar:
 CPUs o Laptops sin especificaciones válidas implican QUESTION.
 Si cualquiera falla, queda estrictamente prohibido marcar READY, incluso si acabas de recibir otro dato.
 
-SALIDA JSON OBLIGATORIA:
+IMPORTANTE: Solo devuelve JSON. No escribas nada más. No hagas comentarios. Nada de lenguaje natural.  
+Usa los datos que te doy. Si un campo falta y no hay información, pon "N/A".  
+JSON debe tener esta estructura exacta:
+
 {
- "status": "QUESTION/READY",
+ "status": "QUESTION" o "READY",
  "missing_info": "Resumen de faltantes",
  "items": [
- {
-  "equipo": "Laptop", "marca": "Dell", "modelo": "", "serie": "",
-  "cantidad": 1, "estado": "", "tipo": "Enviado",
-  "origen": "Stock", "destino": "Portete",
-  "guia": "", "fecha_llegada": "",
-  "ram": "", "procesador": "", "disco": "", "reporte": ""
- }
+   {
+     "equipo": "", "marca": "", "modelo": "", "serie": "",
+     "cantidad": 1, "estado": "", "tipo": "",
+     "origen": "", "destino": "",
+     "guia": "", "fecha_llegada": "",
+     "ram": "", "procesador": "", "disco": "", "reporte": ""
+   }
  ]
 }
-"""
+
+No cambies valores existentes. Solo agrega lo que falta.  
+No preguntes nada, no hagas resúmenes, no uses lenguaje natural, no digas “tabla actualizada” ni nada.  
 # ==========================================
 # 5. INICIALIZACIÓN SESSION STATE
 # ==========================================
