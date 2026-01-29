@@ -33,6 +33,7 @@ except:
     st.stop()
 
 client = OpenAI(api_key=API_KEY)
+
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
@@ -54,7 +55,7 @@ def extraer_json(texto):
         return ""
 
 def obtener_github(archivo):
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
@@ -73,15 +74,44 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
 # ==========================================
-# 4. CEREBRO SUPREMO LAIA (POLÍTICAS INTEGRADAS)
+# 4. MOTOR DE STOCK
+# ==========================================
+def calcular_stock_web(df):
+    if df.empty: return pd.DataFrame(), pd.DataFrame()
+    df_c = df.copy()
+    df_c.columns = df_c.columns.str.lower().str.strip()
+    for col in ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']:
+        if col not in df_c.columns: df_c[col] = "No especificado"
+    df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+
+    def procesar_fila(row):
+        est = str(row['estado']).lower()
+        t = str(row['tipo']).lower()
+        d = str(row['destino']).lower()
+        eq = str(row['equipo']).lower()
+        cant = row['cant_n']
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
+        if any(p in eq for p in perifericos):
+            return cant if 'recibido' in t else -cant
+        if 'dañ' in est or 'obs' in est: return 0
+        if d == 'stock' or 'recibido' in t: return cant
+        if 'enviado' in t: return -cant
+        return 0
+
+    df_c['val'] = df_c.apply(procesar_fila, axis=1)
+    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
+    movimientos = df_c[df_c['val'] != 0]
+    return resumen[resumen['val'] > 0], movimientos
+
+# ==========================================
+# 5. PROMPT CEREBRO LAIA
 # ==========================================
 SYSTEM_PROMPT = """
-Eres LAIA, Auditora Senior de Inventarios. Tu prioridad es la integridad del dato y la auditoría proactiva.
-TU MISIÓN: Recibir lenguaje natural y devolver SIEMPRE un JSON con la tabla actualizada.
+Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
 
 1. Modo de operación obligatorio:
 - Si existe inventario previo, debes buscar y modificar únicamente los campos afectados, sin alterar información válida existente.
@@ -173,101 +203,68 @@ SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
 }
 """
 
+
 # ==========================================
-# 5. INICIALIZACIÓN
+# 6. INTERFAZ PRINCIPAL
 # ==========================================
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = []
 if "status" not in st.session_state: st.session_state.status = "NEW"
 if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 
-# ==========================================
-# 6. INTERFAZ
-# ==========================================
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # Mostrar historial
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # Entrada de chat
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        try:
-            with st.spinner("LAIA Auditando..."):
-                # Enviamos el borrador actual para que LAIA trabaje sobre él (Memoria viva)
-                contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
-                
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
-                    ],
-                    temperature=0
-                )
-                
-                res_txt = extraer_json(response.choices[0].message.content)
-                if res_txt:
-                    res_json = json.loads(res_txt)
-                    st.session_state.draft = res_json.get("items", [])
-                    st.session_state.status = res_json.get("status", "READY")
-                    st.session_state.missing_info = res_json.get("missing_info", "")
-                    
-                    # Respuesta de LAIA
-                    msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}"
-                    with st.chat_message("assistant"): st.markdown(msg_laia)
-                    st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-                    st.rerun()
+        with st.spinner("LAIA Auditando..."):
+            contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
+                ],
+                temperature=0
+            )
+            res_txt = extraer_json(response.choices[0].message.content)
+            if res_txt:
+                res_json = json.loads(res_txt)
+                st.session_state.draft = res_json.get("items", [])
+                st.session_state.status = res_json.get("status", "READY")
+                st.session_state.missing_info = res_json.get("missing_info", "")
 
-        except Exception as e:
-            st.error(f"Error: {}")
+                msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}" if st.session_state.status=="QUESTION" else "✅ Tabla lista para enviar."
+                with st.chat_message("assistant"): st.markdown(msg_laia)
+                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                st.rerun()
 
-    # --- TABLA EN VIVO ---
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
-        
-        if st.session_state.status == "QUESTION":
-            st.warning(f"⚠️ PENDIENTE: {st.session_state.missing_info}")
-        else:
-            st.success("✅ Todo listo para enviar.")
-
-        # EDITOR INTERACTIVO
         df_editor = pd.DataFrame(st.session_state.draft)
-        # Forzar columnas en orden
-        columnas_orden = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino", "guia", "fecha_llegada", "ram", "procesador", "disco", "reporte"]
+        columnas_orden = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","procesador","disco","reporte"]
         df_editor = df_editor.reindex(columns=columnas_orden).fillna("")
-        
-        edited_df = st.data_editor(
-            df_editor, 
-            num_rows="dynamic", 
-            use_container_width=True,
-            key="auditoria_editor"
-        )
-        
-        # Guardar cambios manuales en el session_state
+        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="auditoria_editor")
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # BOTONES DE ACCIÓN
-        c1, c2 = st.columns([1, 4])
+        c1, c2 = st.columns([1,4])
         with c1:
-            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+            if st.button("🚀 ENVIAR AL BUZÓN"):
                 if st.session_state.status == "QUESTION":
-                    st.error("⛔ LAIA bloqueó el envío: Faltan datos obligatorios (Guía o Fecha).")
+                    st.error("⛔ Faltan datos obligatorios.")
                 else:
                     with st.spinner("Sincronizando..."):
-                        # Añadir fecha de registro automática
-                        final_data = st.session_state.draft
                         fecha_now = (datetime.datetime.now(timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                        for d in final_data: d["fecha_registro"] = fecha_now
-                        
-                        if enviar_github(FILE_BUZON, final_data):
-                            st.success("¡Enviado con éxito!")
+                        for d in st.session_state.draft: d["fecha_registro"] = fecha_now
+                        if enviar_github(FILE_BUZON, st.session_state.draft):
+                            st.success("✅ Enviado con éxito!")
                             st.session_state.draft = []
                             st.session_state.messages = []
                             time.sleep(1)
@@ -278,7 +275,7 @@ with t1:
                 st.session_state.messages = []
                 st.rerun()
 
-# --- Pestañas de Dashboard y Limpieza permanecen similares pero con limpieza de código ---
+# --- Pestañas Stock y Limpieza quedan igual, integrando el cálculo de stock y generación de Excel del segundo código ---
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
