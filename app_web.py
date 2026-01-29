@@ -411,8 +411,9 @@ with t1:
         if not df_draft.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        st.write("")
-        col1, col2 = st.columns([1, 4])
+st.write("")  # separador visual
+col1, col2 = st.columns([1, 4])  # define las columnas
+
 with col1:
     if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
         if not st.session_state.draft:
