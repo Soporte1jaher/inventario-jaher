@@ -278,6 +278,32 @@ Aplicar todas las reglas de propagación de datos faltantes
 
 Validar deducciones de estado y vida útil
 
+SALIDA JSON (CONTRATO DE DATOS OBLIGATORIO):
+{
+ "status": "READY" o "QUESTION",
+ "missing_info": "Mensaje amable pidiendo los datos faltantes",
+ "items": [
+  {
+   "equipo": "...", 
+   "marca": "...", 
+   "modelo": "...", 
+   "serie": "...", 
+   "cantidad": 1,
+   "estado": "Bueno/Dañado/Obsoleto", 
+   "estado_fisico": "Nuevo/Usado",
+   "tipo": "Recibido/Enviado", 
+   "origen": "...", 
+   "destino": "...", 
+   "guia": "...",
+   "reporte": "...",
+   "disco": "...",
+   "ram": "...",
+   "procesador": "...",
+   "fecha_llegada": "...",
+  }
+ ]
+}
+"""
 # ==========================================
 # 6. INTERFAZ PRINCIPAL
 # ==========================================
