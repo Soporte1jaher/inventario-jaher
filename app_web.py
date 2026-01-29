@@ -89,7 +89,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
     resp = requests.put(url, headers=HEADERS, json=payload)
     
     if resp.status_code in [200, 201]:
