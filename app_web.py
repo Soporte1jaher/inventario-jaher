@@ -437,7 +437,7 @@ with t1:
                       {"role": "assistant", "content": f"INVENTARIO ACTUAL:\n{inventario_json}"},
                       {"role": "user", "content": prompt_usuario}
                     ]
-
+                    prompt_completo = prompt_usuario
                 else:
                     prompt_completo = f"USUARIO: {prompt_usuario}"
 
