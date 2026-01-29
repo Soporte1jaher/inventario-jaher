@@ -414,34 +414,50 @@ with t1:
         st.write("")
         col1, col2 = st.columns([1, 4])
         
-        with col1:
-            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-                if not st.session_state.draft:
-                    st.error("❌ Tabla vacía.")
+           # -------------------
+# Botón ENVIAR AL BUZÓN
+# -------------------
+with col1:
+    if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+        if not st.session_state.draft:
+            st.error("❌ Tabla vacía.")
+        else:
+            # ⚠️ Cambio: Permitir enviar si LAIA aplicó comando supremo
+            enviar = True
+            if st.session_state.status == "QUESTION":
+                # Verificamos si todos los missing_info son "rellenados con N/A"
+                all_na = all(
+                    item.get("serie") == "N/A" or item.get("ram") == "N/A" 
+                    for item in st.session_state.draft
+                )
+                if not all_na:
+                    st.error("⛔ Faltan datos obligatorios.")
+                    enviar = False
                 else:
-                    if st.session_state.status == "QUESTION":
-                        st.error("⛔ Faltan datos obligatorios.")
-                        st.stop()
+                    st.warning("⚠️ Se aplicaron valores N/A según instrucciones del usuario.")
+                    st.session_state.status = "READY"
+
+            if enviar:
+                with st.spinner("Enviando datos..."):
+                    datos = st.session_state.draft
+                    fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     
-                    with st.spinner("Enviando datos..."):
-                        datos = st.session_state.draft
-                        fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                        
-                        for d in datos: 
-                            d["fecha"] = fecha
-                            for key in d:
-                                if d[key] == "" or d[key] is None:
-                                    d[key] = ""
-                        
-                        if enviar_github(FILE_BUZON, datos):
-                            st.success("✅ ¡Enviado!")
-                            time.sleep(1)
-                            st.session_state.draft = None
-                            st.session_state.messages = []
-                            st.session_state.status = "NEW"
-                            st.rerun()
-                        else:
-                            st.error("Error GitHub")
+                    for d in datos: 
+                        d["fecha"] = fecha
+                        for key in d:
+                            if d[key] is None:
+                                d[key] = ""  # Asegurar que no queden Nones
+
+                    if enviar_github(FILE_BUZON, datos):
+                        st.success("✅ ¡Enviado!")
+                        time.sleep(1)
+                        st.session_state.draft = None
+                        st.session_state.messages = []
+                        st.session_state.status = "NEW"
+                        st.rerun()
+                    else:
+                        st.error("Error GitHub")
+
 
         with col2:
             if st.button("🗑️ Borrar todo"):
