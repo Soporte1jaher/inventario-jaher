@@ -1,12 +1,3 @@
-El código que pegaste tiene DOS problemas graves que hacen que no funcione:
-
-"Espacios Fantasma" (Caracteres invisibles): Al copiar y pegar, se han metido "espacios de no separación" (non-breaking spaces) en lugar de espacios normales. Python odia esto y dará error de sintaxis en todas las líneas.
-Error en la Pestaña Limpieza: En la parte final (Tab 3), estás usando client.responses.create. Esa función no existe en la librería moderna de OpenAI. Debe ser client.chat.completions.create.
-Aquí tienes el CÓDIGO COMPLETO Y CORREGIDO.
-He limpiado todos los espacios raros y arreglado la función de limpieza.
-
-👉 Copia TODO esto, borra tu archivo actual y pega este nuevo:
-
 import streamlit as st
 from openai import OpenAI
 import json
