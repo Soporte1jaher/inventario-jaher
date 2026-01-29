@@ -181,66 +181,65 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+  for m in st.session_state.messages:
+    with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"): st.markdown(prompt)
 
-        with st.spinner("LAIA Auditando..."):
-            contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
-                ],
-                temperature=0
-            )
-            res_txt = extraer_json(response.choices[0].message.content)
-            if res_txt:
-                res_json = json.loads(res_txt)
-                st.session_state.draft = res_json.get("items", [])
-                st.session_state.status = res_json.get("status", "READY")
-                st.session_state.missing_info = res_json.get("missing_info", "")
+    with st.spinner("LAIA Auditando..."):
+      contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
+      response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
+        ],
+        temperature=0
+      )
+      res_txt = extraer_json(response.choices[0].message.content)
+      if res_txt:
+        res_json = json.loads(res_txt)
+        st.session_state.draft = res_json.get("items", [])
+        st.session_state.status = res_json.get("status", "READY")
+        st.session_state.missing_info = res_json.get("missing_info", "")
 
-                msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}" if st.session_state.status=="QUESTION" else "✅ Tabla lista para enviar."
-                with st.chat_message("assistant"): st.markdown(msg_laia)
-                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-                st.rerun()
+        msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}" if st.session_state.status=="QUESTION" else "✅ Tabla lista para enviar."
+        with st.chat_message("assistant"): st.markdown(msg_laia)
+        st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+        st.rerun()
 
-    if st.session_state.draft:
-        st.divider()
-        st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
-        df_editor = pd.DataFrame(st.session_state.draft)
-        columnas_orden = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","procesador","disco","reporte"]
-        df_editor = df_editor.reindex(columns=columnas_orden).fillna("")
-        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="auditoria_editor")
-        if not df_editor.equals(edited_df):
-            st.session_state.draft = edited_df.to_dict("records")
+  if st.session_state.draft:
+    st.divider()
+    st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
+    df_editor = pd.DataFrame(st.session_state.draft)
+    columnas_orden = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","procesador","disco","reporte"]
+    df_editor = df_editor.reindex(columns=columnas_orden).fillna("")
+    edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="auditoria_editor")
+    if not df_editor.equals(edited_df):
+      st.session_state.draft = edited_df.to_dict("records")
 
-        c1, c2 = st.columns([1,4])
-        with c1:
-            if st.button("🚀 ENVIAR AL BUZÓN"):
-                if st.session_state.status == "QUESTION":
-                    st.error("⛔ Faltan datos obligatorios.")
-                else:
-                    with st.spinner("Sincronizando..."):
-                        fecha_now = (datetime.datetime.now(timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                        for d in st.session_state.draft: d["fecha_registro"] = fecha_now
-                        if enviar_github(FILE_BUZON, st.session_state.draft):
-                            st.success("✅ Enviado con éxito!")
-                            st.session_state.draft = []
-                            st.session_state.messages = []
-                            time.sleep(1)
-                            st.rerun()
-        with c2:
-            if st.button("🗑️ Cancelar Todo"):
-                st.session_state.draft = []
-                st.session_state.messages = []
-                st.rerun()
-
+    c1, c2 = st.columns([1,4])
+    with c1:
+      if st.button("🚀 ENVIAR AL BUZÓN"):
+        if st.session_state.status == "QUESTION":
+          st.error(f"⛔ Faltan datos: {st.session_state.missing_info}")
+        else:
+          with st.spinner("Sincronizando..."):
+            fecha_now = (datetime.datetime.now(timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+            for d in st.session_state.draft: d["fecha_registro"] = fecha_now
+            if enviar_github(FILE_BUZON, st.session_state.draft):
+              st.success("✅ Enviado!")
+              st.session_state.draft = []
+              st.session_state.messages = []
+              time.sleep(1)
+              st.rerun()
+    with c2:
+      if st.button("🗑️ Cancelar Todo"):
+        st.session_state.draft = []
+        st.session_state.messages = []
+        st.rerun()
 # --- Pestañas Stock y Limpieza quedan igual, integrando el cálculo de stock y generación de Excel del segundo código ---
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
