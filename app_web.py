@@ -243,7 +243,7 @@ with t1:
                     st.rerun()
 
         except Exception as e:
-            st.error(f"Error de Auditoría: {}")
+            st.error(f"❌ Error de Auditoría: {error_msg}")
 
     # 3. Tabla en Vivo y Botones
     if st.session_state.draft:
