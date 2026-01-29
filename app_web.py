@@ -38,6 +38,7 @@ GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
+FILE_LECCIONES = "lecciones.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
 # ==========================================
@@ -76,7 +77,19 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     }
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
-
+    
+def aprender_leccion(error, correccion):
+    lecciones, sha = obtener_github(FILE_LECCIONES)
+    nueva = {
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "lo_que_hizo_mal": error,
+        "como_debe_hacerlo": correccion
+    }
+    lecciones.append(nueva)
+    # Guardamos solo las últimas 15 para que no se sature el cerebro
+    if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
+        return True
+    return False
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
@@ -188,17 +201,26 @@ with t1:
   if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"): st.markdown(prompt)
-
-    with st.spinner("LAIA Auditando..."):
-      contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
-      response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-          {"role": "system", "content": SYSTEM_PROMPT},
-          {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
-        ],
-        temperature=0
-      )
+    with st.spinner("LAIA Auditando y consultando su memoria..."):
+        # 1. Traer lecciones de GitHub
+        lecciones_previas, _ = obtener_github(FILE_LECCIONES)
+        texto_memoria = "\n".join([f"- ERROR PASADO: {l['lo_que_hizo_mal']} | LECCIÓN: {l['como_debe_hacerlo']}" for l in lecciones_previas])
+        
+        # 2. Construir el Super-Prompt con Memoria
+        prompt_con_memoria = f"{SYSTEM_PROMPT}\n\n=== MEMORIA DE ERRORES PASADOS (PROHIBIDO REPETIR) ===\n{texto_memoria}"
+        
+        contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
+        
+        # 3. Llamada a la IA con el prompt "entrenado"
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt_con_memoria},
+                {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
+            ],
+            temperature=0
+        )
+    
       res_txt = extraer_json(response.choices[0].message.content)
       if res_txt:
         res_json = json.loads(res_txt)
@@ -298,7 +320,19 @@ with t3:
 
             except Exception as e:
                 st.error("Error: " + str(e))
-
+     st.sidebar.divider()
+     st.sidebar.subheader("🎓 Entrenar a LAIA")
+with st.sidebar.expander("¿LAIA cometió un error? Enséñale"):
+    error_ia = st.text_area("¿Qué hizo mal LAIA?", placeholder="Ej: Me pidió fecha para un envío...")
+    solucion_ia = st.text_area("¿Cómo debe actuar?", placeholder="Ej: Nunca pidas fecha si el tipo es 'Enviado'...")
+    if st.button("🧠 Guardar Lección"):
+        if error_ia and solucion_ia:
+            if aprender_leccion(error_ia, solucion_ia):
+                st.success("Lección guardada. LAIA no volverá a cometer ese error.")
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.error("No se pudo guardar en GitHub.")
 
 if st.sidebar.button("🧹 Borrar Chat"):
     st.session_state.messages = []
