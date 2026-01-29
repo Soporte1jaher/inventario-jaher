@@ -1,1 +1,21 @@
-[]
+[
+    {
+        "equipo": "regulador de voltaje",
+        "marca": "strom",
+        "modelo": "N/A",
+        "serie": "210401916",
+        "cantidad": 1,
+        "estado": "Da\u00f1o",
+        "estado_fisico": "N/A",
+        "tipo": "N/A",
+        "origen": "N/A",
+        "destino": "N/A",
+        "guia": "N/A",
+        "reporte": "N/A",
+        "disco": "N/A",
+        "ram": "N/A",
+        "procesador": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-01-29 18:08"
+    }
+]
