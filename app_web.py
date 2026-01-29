@@ -195,74 +195,93 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-  for m in st.session_state.messages:
-    with st.chat_message(m["role"]): st.markdown(m["content"])
+    # 1. Mostrar historial
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]): 
+            st.markdown(m["content"])
 
-  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
-    with st.spinner("LAIA Auditando y consultando su memoria..."):
-        # 1. Traer lecciones de GitHub
-        lecciones_previas, _ = obtener_github(FILE_LECCIONES)
-        texto_memoria = "\n".join([f"- ERROR PASADO: {l['lo_que_hizo_mal']} | LECCIÓN: {l['como_debe_hacerlo']}" for l in lecciones_previas])
+    # 2. Entrada de chat
+    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): 
+            st.markdown(prompt)
+
+        try:
+            with st.spinner("LAIA Auditando y consultando su memoria..."):
+                # --- LÓGICA DE APRENDIZAJE ---
+                lecciones_previas, _ = obtener_github(FILE_LECCIONES)
+                texto_memoria = "\n".join([f"- ERROR: {l['lo_que_hizo_mal']} | LECCIÓN: {l['como_debe_hacerlo']}" for l in lecciones_previas])
+                
+                # Inyectamos el aprendizaje en el cerebro de LAIA
+                prompt_con_memoria = f"{SYSTEM_PROMPT}\n\n=== MEMORIA DE ERRORES PASADOS (PROHIBIDO REPETIR) ===\n{texto_memoria}"
+                
+                # Memoria de la tabla actual
+                contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
+                
+                # Llamada a la IA
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": prompt_con_memoria},
+                        {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
+                    ],
+                    temperature=0
+                )
+                
+                # Procesar respuesta (Aquí estaba el error de alineación)
+                res_txt = extraer_json(response.choices[0].message.content)
+                if res_txt:
+                    res_json = json.loads(res_txt)
+                    st.session_state.draft = res_json.get("items", [])
+                    st.session_state.status = res_json.get("status", "READY")
+                    st.session_state.missing_info = res_json.get("missing_info", "")
+
+                    msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}" if st.session_state.status=="QUESTION" else "✅ Tabla lista para enviar."
+                    with st.chat_message("assistant"): 
+                        st.markdown(msg_laia)
+                    st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                    st.rerun()
+
+        except Exception as e:
+            st.error(f"Error de Auditoría: {}")
+
+    # 3. Tabla en Vivo y Botones
+    if st.session_state.draft:
+        st.divider()
+        st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
         
-        # 2. Construir el Super-Prompt con Memoria
-        prompt_con_memoria = f"{SYSTEM_PROMPT}\n\n=== MEMORIA DE ERRORES PASADOS (PROHIBIDO REPETIR) ===\n{texto_memoria}"
+        df_editor = pd.DataFrame(st.session_state.draft)
+        # Forzamos el orden de las columnas para que no se desordenen
+        cols_orden = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","procesador","disco","reporte"]
+        df_editor = df_editor.reindex(columns=cols_orden).fillna("")
         
-        contexto_tabla = json.dumps(st.session_state.draft) if st.session_state.draft else "[]"
+        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="auditoria_editor")
         
-        # 3. Llamada a la IA con el prompt "entrenado"
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt_con_memoria},
-                {"role": "user", "content": f"BORRADOR ACTUAL: {contexto_tabla}\n\nMENSAJE USUARIO: {prompt}"}
-            ],
-            temperature=0
-        )
-    
-      res_txt = extraer_json(response.choices[0].message.content)
-      if res_txt:
-        res_json = json.loads(res_txt)
-        st.session_state.draft = res_json.get("items", [])
-        st.session_state.status = res_json.get("status", "READY")
-        st.session_state.missing_info = res_json.get("missing_info", "")
+        if not df_editor.equals(edited_df):
+            st.session_state.draft = edited_df.to_dict("records")
 
-        msg_laia = f"✅ Tabla actualizada. {st.session_state.missing_info}" if st.session_state.status=="QUESTION" else "✅ Tabla lista para enviar."
-        with st.chat_message("assistant"): st.markdown(msg_laia)
-        st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-        st.rerun()
-
-  if st.session_state.draft:
-    st.divider()
-    st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
-    df_editor = pd.DataFrame(st.session_state.draft)
-    columnas_orden = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","procesador","disco","reporte"]
-    df_editor = df_editor.reindex(columns=columnas_orden).fillna("")
-    edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="auditoria_editor")
-    if not df_editor.equals(edited_df):
-      st.session_state.draft = edited_df.to_dict("records")
-
-    c1, c2 = st.columns([1,4])
-    with c1:
-      if st.button("🚀 ENVIAR AL BUZÓN"):
-        if st.session_state.status == "QUESTION":
-          st.error(f"⛔ Faltan datos: {st.session_state.missing_info}")
-        else:
-          with st.spinner("Sincronizando..."):
-            fecha_now = (datetime.datetime.now(timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-            for d in st.session_state.draft: d["fecha_registro"] = fecha_now
-            if enviar_github(FILE_BUZON, st.session_state.draft):
-              st.success("✅ Enviado!")
-              st.session_state.draft = []
-              st.session_state.messages = []
-              time.sleep(1)
-              st.rerun()
-    with c2:
-      if st.button("🗑️ Cancelar Todo"):
-        st.session_state.draft = []
-        st.session_state.messages = []
-        st.rerun()
+        c1, c2 = st.columns([1,4])
+        with c1:
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                if st.session_state.status == "QUESTION":
+                    st.error(f"⛔ BLOQUEADO: {st.session_state.missing_info}")
+                else:
+                    with st.spinner("Sincronizando..."):
+                        final_data = st.session_state.draft
+                        fecha_now = (datetime.datetime.now(timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                        for d in final_data: d["fecha_registro"] = fecha_now
+                        
+                        if enviar_github(FILE_BUZON, final_data):
+                            st.success("✅ Enviado con éxito!")
+                            st.session_state.draft = []
+                            st.session_state.messages = []
+                            time.sleep(1)
+                            st.rerun()
+        with c2:
+            if st.button("🗑️ Cancelar Todo"):
+                st.session_state.draft = []
+                st.session_state.messages = []
+                st.rerun()
 # --- Pestañas Stock y Limpieza quedan igual, integrando el cálculo de stock y generación de Excel del segundo código ---
 with t2:
     hist, _ = obtener_github(FILE_HISTORICO)
