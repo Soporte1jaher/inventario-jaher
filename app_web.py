@@ -82,7 +82,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     if sha is None:
         # Excepción: si es la primera vez que se crea el archivo, el sha será None pero debemos permitirlo si queremos crear archivos nuevos.
         # Pero para tu caso de uso (historico.json ya existe), esto protege.
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {}. Abortando para evitar pérdida de datos.")
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {FILE_PATH}. Abortando para evitar pérdida de datos.")
         return False
 
     # 2. Mezclamos los datos
