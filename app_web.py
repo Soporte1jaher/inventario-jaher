@@ -352,7 +352,7 @@ with t1:
                         "OBJETIVO: Actualiza la tabla. Aplica fechas a recibidos, rellena N/A si se pide, NO borres filas salvo orden expresa."
                     )
                 else:
-                    prompt_completo = f"USUARIO: {}"
+                    prompt_completo = f"USUARIO: {prompt_usuario}"
 
                 # Llamada AI
                 response = client.chat.completions.create(
