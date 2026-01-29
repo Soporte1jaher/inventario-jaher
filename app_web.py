@@ -67,16 +67,36 @@ def obtener_github(archivo):
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
+    # 1. Intentamos obtener lo que ya hay
     actuales, sha = obtener_github(archivo)
-    if isinstance(datos, list): actuales.extend(datos)
-    else: actuales.append(datos)
+    
+    # --- CANDADO DE SEGURIDAD ---
+    # Si 'actuales' es una lista vacía pero el archivo es el histórico,
+    # significa que algo falló en la descarga. ¡NO sobreescribimos!
+    if sha is None:
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {}. Abortando para evitar pérdida de datos.")
+        return False
+
+    # 2. Mezclamos los datos
+    if isinstance(datos, list):
+        actuales.extend(datos)
+    else:
+        actuales.append(datos)
+
+    # 3. Subimos a GitHub
     payload = {
         "message": mensaje,
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
-    return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
+    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    resp = requests.put(url, headers=HEADERS, json=payload)
+    
+    if resp.status_code in [200, 201]:
+        return True
+    else:
+        st.error(f"❌ Error al subir: {resp.text}")
+        return False
     
 def aprender_leccion(error, correccion):
     lecciones, sha = obtener_github(FILE_LECCIONES)
