@@ -428,22 +428,27 @@ with t1:
         try:
             with st.spinner("LAIA está auditando..."):
                 
-                # Contexto
+                # --- CORRECCIÓN DE CONTEXTO ---
+                # Aquí estaba el error: antes separabas el JSON y luego NO se lo enviabas a la IA.
+                # Ahora forzamos que el JSON vaya pegado al mensaje del usuario.
+                
                 if st.session_state.draft:
                     inventario_json = json.dumps(st.session_state.draft, indent=2)
- 
-                    messages = [
-                      {"role": "system", "content": SYSTEM_PROMPT},
-                      {"role": "assistant", "content": f"INVENTARIO ACTUAL:\n{inventario_json}"},
-                      {"role": "user", "content": prompt_usuario}
-                    ]
-                    prompt_completo = prompt_usuario
+                    prompt_completo = (
+                        f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{}\n\n"
+                        f"INSTRUCCIÓN DEL USUARIO: {}\n\n"
+                        "OBJETIVO: Actualiza la tabla basándote en la instrucción. "
+                        "Si el usuario da una fecha, aplícala a los items que la necesiten (Recibidos). "
+                        "Si dice 'N/A' o 'Sin especificaciones', rellena los huecos técnicos. "
+                        "NO BORRES FILAS a menos que se pida."
+                    )
                 else:
-                    prompt_completo = f"USUARIO: {prompt_usuario}"
+                    prompt_completo = f"USUARIO: {}"
 
                 # Llamada AI
+                # CAMBIO IMPORTANTE: Usamos gpt-4o (gpt-4.1 no existe públicamente y falla)
                 response = client.chat.completions.create(
-                    model="gpt-4.1",
+                    model="gpt-4o", 
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": prompt_completo}
@@ -459,10 +464,8 @@ with t1:
                     nuevos_items = res_json.get("items", [])
                     
                     # --- SALVAVIDAS ANTI-BORRADO ---
-                    # Si la IA devuelve 0 items pero antes teníamos datos y el usuario NO pidió borrar:
                     if not nuevos_items and st.session_state.draft and "borra" not in prompt_usuario.lower():
                          st.warning("⚠️ LAIA intentó borrar la tabla por error. Se han restaurado los datos anteriores.")
-                         # No actualizamos el draft, mantenemos el anterior
                     else:
                          st.session_state.draft = nuevos_items
                          st.session_state.status = res_json.get("status", "READY")
@@ -478,7 +481,7 @@ with t1:
             st.rerun()
             
         except Exception as e:
-            st.error(f"Error crítico: {e}")
+            st.error(f"Error crítico: {}")
 
     st.divider()
 
@@ -600,7 +603,7 @@ with t3:
                 )
 
                 resp = client.responses.create(
-                    model="gpt-4.1",
+                    model="gpt-4o",
                     input=p_db
                 )
 
