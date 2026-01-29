@@ -7,21 +7,22 @@ import datetime
 from datetime import timedelta, timezone
 import pandas as pd
 import time
+import re
 
 # ==========================================
-# 1. CONFIGURACIÓN Y ESTILOS
+# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA v91.0 - Auditora Senior", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v91.1 - Auditora Senior", page_icon="🧠", layout="wide")
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
+    .stApp { background-color: #0e1117; color: #e0e0e0; font-family: monospace; }
     .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
-    .stChatFloatingInputContainer { background-color: #0e1117; }
+    .stDataFrame table { background-color: #1c1c1c; color: #e0e0e0; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES
+# 2. CREDENCIALES Y CLIENTE OPENAI
 # ==========================================
 try:
     API_KEY = st.secrets["GPT_API_KEY"]
@@ -38,7 +39,7 @@ FILE_HISTORICO = "historico.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
 # ==========================================
-# 3. FUNCIONES GITHUB
+# 3. FUNCIONES AUXILIARES
 # ==========================================
 def extraer_json(texto: str) -> str:
     """Extrae primer JSON válido del texto de la IA"""
@@ -80,9 +81,6 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
-# ==========================================
-# 4. MOTOR DE STOCK
-# ==========================================
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     df_c = df.copy()
@@ -91,7 +89,6 @@ def calcular_stock_web(df):
     for col in cols:
         if col not in df_c.columns: df_c[col] = "No especificado"
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
-
     def procesar_fila(row):
         est, t, d, eq, cant = str(row['estado']).lower(), str(row['tipo']).lower(), str(row['destino']).lower(), str(row['equipo']).lower(), row['cant_n']
         if any(x in t for x in ['recib','ingreso','entrad','compra']): return cant
@@ -103,15 +100,15 @@ def calcular_stock_web(df):
         if 'dañ' in est or 'obs' in est or 'malo' in est: return 0
         if d == 'stock': return cant
         return 0
-
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     resumen = df_c.groupby(['equipo','marca','modelo','estado_fisico'])['val'].sum().reset_index()
     movimientos = df_c[df_c['val'] != 0]
     return resumen[resumen['val']>0], movimientos
 
 # ==========================================
-# 5. PROMPT INICIAL LAIA
+# 4. PROMPT ULTRA ESTRICTO
 # ==========================================
+
 SYSTEM_PROMPT = """
 Eres LAIA, Auditora Senior de Inventarios de Jaher.
 Actúas bajo la autoridad directa del usuario. La palabra del usuario tiene prioridad operativa; sin embargo, tienes la obligación ineludible de auditar, validar, corregir y bloquear cualquier acción que no cumpla las reglas antes de ejecutarla.
@@ -250,7 +247,7 @@ Si cualquiera falla, queda estrictamente prohibido marcar READY, incluso si acab
 
 SALIDA JSON OBLIGATORIA:
 {
- "status": "QUESTION" o "READY",
+ "status": "QUESTION/READY",
  "missing_info": "Resumen de faltantes",
  "items": [
  {
@@ -263,36 +260,29 @@ SALIDA JSON OBLIGATORIA:
  ]
 }
 """
-
 # ==========================================
-# 6. INICIALIZACIÓN DE SESSION STATE
+# 5. INICIALIZACIÓN SESSION STATE
 # ==========================================
 for key, default in {
-    "messages": [],
-    "draft": None,
-    "status": "NEW",
-    "missing_info": "",
-    "clear_chat": False,
-    "chat_key": 0
+    "messages": [], "draft": None, "status": "NEW", "missing_info": "", "clear_chat": False, "chat_key": 0
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ==========================================
-# 7. INTERFAZ - TABS
+# 6. INTERFAZ - TABS
 # ==========================================
 t1, t2, t3 = st.tabs(["💬 Chat Auditor","📊 Dashboard Previo","🗑️ Limpieza"])
 
 # ==========================================
-# 8. PESTAÑA CHAT
+# 7. PESTAÑA CHAT
 # ==========================================
 with t1:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
-
     with st.form(key="chat_form", clear_on_submit=True):
-        prompt_usuario = st.text_area("📋 Habla con LAIA...", height=80)
+        prompt_usuario = st.text_area("📋 Indica el movimiento...", height=80)
         c_vacia, c_btn = st.columns([5,1])
         with c_btn: submitted = st.form_submit_button("📤 Enviar")
         if submitted and prompt_usuario:
@@ -301,9 +291,9 @@ with t1:
                 with st.spinner("LAIA está auditando..."):
                     if st.session_state.draft:
                         inventario_json = json.dumps(st.session_state.draft, indent=2)
-                        prompt_completo = f"INVENTARIO ACTUAL:\n{inventario_json}\nUSUARIO: {prompt_usuario}\nActualiza tabla y solo indica lo que falta."
+                        prompt_completo = f"INVENTARIO ACTUAL:\n{inventario_json}\nMOVIMIENTO: {prompt_usuario}\nSolo actualiza la tabla y devuelve JSON."
                     else:
-                        prompt_completo = f"USUARIO: {prompt_usuario}"
+                        prompt_completo = f"MOVIMIENTO: {prompt_usuario}"
 
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
@@ -317,10 +307,10 @@ with t1:
                         st.session_state.draft = res_json.get("items",[])
                         st.session_state.status = res_json.get("status","READY")
                         st.session_state.missing_info = res_json.get("missing_info","")
-                        st.session_state.messages.append({"role":"assistant","content":f"✅ {st.session_state.missing_info or 'Tabla actualizada.'}"})
+                        msg = f"✅ {st.session_state.missing_info or 'Tabla actualizada.'}"
+                        st.session_state.messages.append({"role":"assistant","content":msg})
                     else:
                         st.error("⚠️ La IA respondió incoherente.")
-
                 st.rerun()
             except Exception as e:
                 st.error(f"Error crítico: {e}")
@@ -362,7 +352,6 @@ with t1:
                             st.rerun()
                         else:
                             st.error("Error GitHub")
-
     with col2:
         if st.button("🗑️ Borrar todo"):
             st.session_state.draft=None
@@ -370,7 +359,7 @@ with t1:
             st.rerun()
 
 # ==========================================
-# 9. PESTAÑA DASHBOARD
+# 8. PESTAÑA DASHBOARD
 # ==========================================
 with t2:
     hist,_ = obtener_github(FILE_HISTORICO)
@@ -388,7 +377,7 @@ with t2:
         st.info("Sincronizando con GitHub...")
 
 # ==========================================
-# 10. PESTAÑA LIMPIEZA
+# 9. PESTAÑA LIMPIEZA
 # ==========================================
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
