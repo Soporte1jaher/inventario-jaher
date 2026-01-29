@@ -58,17 +58,31 @@ import time
 
 def obtener_github(archivo):
     timestamp = int(time.time())
+    # URL DEFINITIVA
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
     
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
+        
         if resp.status_code == 200:
+            # Todo OK, leemos el archivo
             d = resp.json()
             contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
             return json.loads(contenido_decodificado), d['sha']
+            
+        elif resp.status_code == 404:
+            # El archivo no existe todavía (es normal al principio). 
+            # No mostramos error rojo, solo devolvemos lista vacía.
+            return [], None
+            
+        else:
+            # Error real (Permisos, Token mal copiado, etc)
+            st.error(f"❌ Error GitHub {resp.status_code}: {resp.json().get('message', resp.text)}")
+            return [], None
+            
     except Exception as e:
-        st.error(f"Error al obtener datos de GitHub: {archivo}")
-    return [], None
+        st.error(f"❌ Error crítico de conexión: {str(e)}")
+        return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
     # 1. Intentamos obtener lo que ya hay
