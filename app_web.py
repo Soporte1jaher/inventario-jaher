@@ -56,9 +56,9 @@ def extraer_json(texto):
         return ""
 
 def obtener_github(archivo):
-    # Asegúrate de que esta línea esté indentada exactamente con 4 espacios
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{"Soporte1jaher"}/{"inventario-jaher"}/contents/{"archivo" }?t={timestamp}"
+    # CORRECCIÓN: Usamos las variables globales y quitamos las comillas internas
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
     
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -66,8 +66,11 @@ def obtener_github(archivo):
             d = resp.json()
             contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
             return json.loads(contenido_decodificado), d['sha']
+        else:
+            # Añadimos esto para ver el error real si falla
+            print(f"Error GitHub: {resp.status_code} - {resp.text}")
     except Exception as e:
-        st.error(f"Error al obtener datos de GitHub: {e}")
+        st.error(f"Error al obtener datos de GitHub: {str(e)}")
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
@@ -75,10 +78,11 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     actuales, sha = obtener_github(archivo)
     
     # --- CANDADO DE SEGURIDAD ---
-    # Si 'actuales' es una lista vacía pero el archivo es el histórico,
-    # significa que algo falló en la descarga. ¡NO sobreescribimos!
+    # Si 'actuales' es vacio y SHA es None, falló la descarga. No sobrescribimos.
     if sha is None:
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {archivo}. Abortando para evitar pérdida de datos.")
+        # Excepción: si es la primera vez que se crea el archivo, el sha será None pero debemos permitirlo si queremos crear archivos nuevos.
+        # Pero para tu caso de uso (historico.json ya existe), esto protege.
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {}. Abortando para evitar pérdida de datos.")
         return False
 
     # 2. Mezclamos los datos
@@ -93,7 +97,10 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
         "sha": sha
     }
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
+    
+    # CORRECCIÓN: Aquí también tenías la URL vacía
+url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
+    
     resp = requests.put(url, headers=HEADERS, json=payload)
     
     if resp.status_code in [200, 201]:
