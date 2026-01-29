@@ -435,8 +435,8 @@ with t1:
                 if st.session_state.draft:
                     inventario_json = json.dumps(st.session_state.draft, indent=2)
                     prompt_completo = (
-                        f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{}\n\n"
-                        f"INSTRUCCIÓN DEL USUARIO: {}\n\n"
+                        f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{inventario_json}\n\n"
+                        f"INSTRUCCIÓN DEL USUARIO: {prompt_usuario}\n\n"
                         "OBJETIVO: Actualiza la tabla basándote en la instrucción. "
                         "Si el usuario da una fecha, aplícala a los items que la necesiten (Recibidos). "
                         "Si dice 'N/A' o 'Sin especificaciones', rellena los huecos técnicos. "
