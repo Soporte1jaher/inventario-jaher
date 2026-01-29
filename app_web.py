@@ -66,7 +66,7 @@ def obtener_github(archivo):
             contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
             return json.loads(contenido_decodificado), d['sha']
     except Exception as e:
-        st.error(f"Error al obtener datos de GitHub: {}")
+        st.error(f"Error al obtener datos de GitHub: {e}")
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
