@@ -1,1 +1,40 @@
-[]
+[
+    {
+        "equipo": "Impresora",
+        "marca": "Epson",
+        "modelo": "TM-T88V",
+        "serie": "X6TT009048",
+        "cantidad": 1,
+        "estado": "Da\u00f1ado",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "origen": "...",
+        "destino": "...",
+        "guia": "N/A",
+        "reporte": "MALA, IMPRESION BORROSA",
+        "disco": "N/A",
+        "ram": "N/A",
+        "procesador": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-01-29 17:08"
+    },
+    {
+        "equipo": "Impresora",
+        "marca": "Epson",
+        "modelo": "TM-T88V",
+        "serie": "X6TT005157",
+        "cantidad": 1,
+        "estado": "Da\u00f1ado",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "origen": "...",
+        "destino": "...",
+        "guia": "N/A",
+        "reporte": "MALA, IMPRESION BORROSA",
+        "disco": "N/A",
+        "ram": "N/A",
+        "procesador": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-01-29 17:08"
+    }
+]
