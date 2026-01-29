@@ -339,8 +339,8 @@ with t3:
 
             except Exception as e:
                 st.error("Error: " + str(e))
-     st.sidebar.divider()
-     st.sidebar.subheader("🎓 Entrenar a LAIA")
+                st.sidebar.divider()
+                st.sidebar.subheader("🎓 Entrenar a LAIA")
 with st.sidebar.expander("¿LAIA cometió un error? Enséñale"):
     error_ia = st.text_area("¿Qué hizo mal LAIA?", placeholder="Ej: Me pidió fecha para un envío...")
     solucion_ia = st.text_area("¿Cómo debe actuar?", placeholder="Ej: Nunca pidas fecha si el tipo es 'Enviado'...")
