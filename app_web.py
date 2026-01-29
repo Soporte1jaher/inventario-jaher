@@ -481,7 +481,7 @@ with t1:
             st.rerun()
             
         except Exception as e:
-            st.error(f"Error crítico: {}")
+            st.error(f"Error crítico: {e}")
 
     st.divider()
 
