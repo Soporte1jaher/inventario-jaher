@@ -87,7 +87,7 @@
         "estado_fisico":"Usado",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":"",
+        "reporte":null,
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
@@ -131,5 +131,24 @@
         "procesador":"N\/A",
         "fecha_llegada":"29 de enero del 2026",
         "fecha_registro":"2026-01-29 16:35"
+    },
+    {
+        "guia":"N\/A",
+        "equipo":"All in One",
+        "marca":"HP",
+        "modelo":"22-DD0018LA",
+        "serie":"8CC029098F",
+        "origen":"N\/A",
+        "destino":"N\/A",
+        "estado":"Bueno",
+        "estado_fisico":"Usado",
+        "tipo":"Enviado",
+        "cantidad":1,
+        "reporte":"N\/A",
+        "disco":"1TB HDD",
+        "ram":"4GB",
+        "procesador":"AMD R3",
+        "fecha_llegada":"N\/A",
+        "fecha_registro":"2026-01-29 16:39"
     }
 ]
