@@ -448,7 +448,7 @@ with t1:
                 # Llamada AI
                 # CAMBIO IMPORTANTE: Usamos gpt-4o (gpt-4.1 no existe públicamente y falla)
                 response = client.chat.completions.create(
-                    model="gpt-4o", 
+                    model="gpt-4o-mini", 
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": prompt_completo}
@@ -603,7 +603,7 @@ with t3:
                 )
 
                 resp = client.responses.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     input=p_db
                 )
 
