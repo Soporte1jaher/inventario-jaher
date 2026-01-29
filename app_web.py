@@ -316,17 +316,22 @@ for key, default in {
         st.session_state[key] = default
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
-
 # ==========================================
 # Pestaña Chat
 # ==========================================
 with t1:
-    # 1. HISTORIAL
+    st.title("🧠 LAIA v91.0 - Auditoría Senior")  # Opcional, puedes quitar si ya lo pusiste arriba
+
+    # -----------------------------
+    # 1. HISTORIAL DE MENSAJES
+    # -----------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # 2. FORMULARIO
+    # -----------------------------
+    # 2. FORMULARIO DE CHAT
+    # -----------------------------
     with st.form(key="chat_form", clear_on_submit=True):
         prompt_usuario = st.text_area("📋 Habla con LAIA...", height=80)
         c_vacia, c_btn = st.columns([5, 1])
@@ -335,67 +340,70 @@ with t1:
             st.write("") 
             submitted = st.form_submit_button("📤 Enviar")
 
-    # 3. CEREBRO
-    if submitted and prompt_usuario:
-        st.session_state.messages.append({"role": "user", "content": prompt_usuario})
+        # -----------------------------
+        # 3. BLOQUE DE PROCESAMIENTO LAIA
+        # -----------------------------
+        if submitted and prompt_usuario:
+            st.session_state.messages.append({"role": "user", "content": prompt_usuario})
 
-        try:
-            with st.spinner("LAIA está auditando..."):
-                
-                # Contexto con memoria de la tabla
-                if st.session_state.draft:
-                    inventario_json = json.dumps(st.session_state.draft, indent=2)
-                    prompt_completo = (
-                        f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{inventario_json}\n\n"
-                        f"INSTRUCCIÓN DEL USUARIO: {prompt_usuario}\n\n"
+            try:
+                with st.spinner("LAIA está auditando..."):
 
-                        "OBJETIVO: Actualiza la tabla. Aplica fechas a recibidos, rellena N/A si se pide, NO borres filas salvo orden expresa."
-                    )
-                else:
-                    prompt_completo = f"USUARIO: {prompt_usuario}"
-
-                # Llamada AI
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini", 
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt_completo}
-                    ],
-                    temperature=0
-                )
-
-                # Procesar respuesta
-                texto_limpio = extraer_json(response.choices[0].message.content)
-                
-                if texto_limpio:
-                    res_json = json.loads(texto_limpio)
-                    nuevos_items = res_json.get("items", [])
-                    
-                    if not nuevos_items and st.session_state.draft and "borra" not in prompt_usuario.lower():
-                         st.warning("⚠️ LAIA intentó borrar la tabla por error. Se han restaurado los datos.")
+                    # Contexto con memoria de la tabla
+                    if st.session_state.draft:
+                        inventario_json = json.dumps(st.session_state.draft, indent=2)
+                        prompt_completo = (
+                            f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{inventario_json}\n\n"
+                            f"INSTRUCCIÓN DEL USUARIO: {prompt_usuario}\n\n"
+                            "OBJETIVO: Actualiza la tabla. Aplica fechas a recibidos, rellena N/A si se pide, NO borres filas salvo orden expresa."
+                        )
                     else:
-                         st.session_state.draft = nuevos_items
-                         st.session_state.status = res_json.get("status", "READY")
-                         st.session_state.missing_info = res_json.get("missing_info", "")
-                    
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"
-                    })
-                else:
-                    st.error("⚠️ La IA respondió algo incoherente. Intenta de nuevo.")
+                        prompt_completo = f"USUARIO: {prompt_usuario}"
 
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Error crítico: {e}")
+                    # Llamada AI
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini", 
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt_completo}
+                        ],
+                        temperature=0
+                    )
+
+                    # Procesar respuesta
+                    texto_limpio = extraer_json(response.choices[0].message.content)
+
+                    if texto_limpio:
+                        res_json = json.loads(texto_limpio)
+                        nuevos_items = res_json.get("items", [])
+
+                        if not nuevos_items and st.session_state.draft and "borra" not in prompt_usuario.lower():
+                            st.warning("⚠️ LAIA intentó borrar la tabla por error. Se han restaurado los datos.")
+                        else:
+                            st.session_state.draft = nuevos_items
+                            st.session_state.status = res_json.get("status", "READY")
+                            st.session_state.missing_info = res_json.get("missing_info", "")
+
+                        st.session_state.messages.append({
+                            "role": "assistant", 
+                            "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"
+                        })
+                    else:
+                        st.error("⚠️ La IA respondió algo incoherente. Intenta de nuevo.")
+
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"Error crítico: {e}")
 
     st.divider()
 
+    # -----------------------------
     # 4. TABLA EN VIVO
+    # -----------------------------
     if st.session_state.draft is not None:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
-        
+
         if st.session_state.status == "QUESTION":
             st.warning(f"⚠️ LAIA DETECTA FALTANTES: {st.session_state.missing_info}")
             st.info("💡 CONSEJO: Puedes editar las celdas manualmente antes de enviar.")
@@ -411,56 +419,56 @@ with t1:
         if not df_draft.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-st.write("")  # separador visual
-col1, col2 = st.columns([1, 4])  # define las columnas
+    st.write("")  # separador visual
 
-with col1:
-    if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-        if not st.session_state.draft:
-            st.error("❌ Tabla vacía.")
-        else:
-            # ⚠️ Cambio: Permitir enviar si LAIA aplicó comando supremo
-            enviar = True
-            if st.session_state.status == "QUESTION":
-                # Verificamos si todos los missing_info son "rellenados con N/A"
-                all_na = all(
-                    item.get("serie") == "N/A" or item.get("ram") == "N/A" 
-                    for item in st.session_state.draft
-                )
-                if not all_na:
-                    st.error("⛔ Faltan datos obligatorios.")
-                    enviar = False
-                else:
-                    st.warning("⚠️ Se aplicaron valores N/A según instrucciones del usuario.")
-                    st.session_state.status = "READY"
-
-            if enviar:
-                with st.spinner("Enviando datos..."):
-                    datos = st.session_state.draft
-                    fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    
-                    for d in datos: 
-                        d["fecha"] = fecha
-                        for key in d:
-                            if d[key] is None:
-                                d[key] = ""  # Asegurar que no queden Nones
-
-                    if enviar_github(FILE_BUZON, datos):
-                        st.success("✅ ¡Enviado!")
-                        time.sleep(1)
-                        st.session_state.draft = None
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
-                        st.rerun()
+    # -----------------------------
+    # 5. BOTONES DE ACCIÓN
+    # -----------------------------
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+            if not st.session_state.draft:
+                st.error("❌ Tabla vacía.")
+            else:
+                enviar = True
+                if st.session_state.status == "QUESTION":
+                    all_na = all(
+                        item.get("serie") == "N/A" or item.get("ram") == "N/A" 
+                        for item in st.session_state.draft
+                    )
+                    if not all_na:
+                        st.error("⛔ Faltan datos obligatorios.")
+                        enviar = False
                     else:
-                        st.error("Error GitHub")
+                        st.warning("⚠️ Se aplicaron valores N/A según instrucciones del usuario.")
+                        st.session_state.status = "READY"
 
+                if enviar:
+                    with st.spinner("Enviando datos..."):
+                        datos = st.session_state.draft
+                        fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
-        with col2:
-            if st.button("🗑️ Borrar todo"):
-                st.session_state.draft = None
-                st.session_state.messages = []
-                st.rerun()
+                        for d in datos: 
+                            d["fecha"] = fecha
+                            for key in d:
+                                if d[key] is None:
+                                    d[key] = ""  # Asegurar que no queden Nones
+
+                        if enviar_github(FILE_BUZON, datos):
+                            st.success("✅ ¡Enviado!")
+                            time.sleep(1)
+                            st.session_state.draft = None
+                            st.session_state.messages = []
+                            st.session_state.status = "NEW"
+                            st.rerun()
+                        else:
+                            st.error("Error GitHub")
+
+    with col2:
+        if st.button("🗑️ Borrar todo"):
+            st.session_state.draft = None
+            st.session_state.messages = []
+            st.rerun()
 
 # ==========================================
 # Pestaña Dashboard
