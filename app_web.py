@@ -413,10 +413,6 @@ with t1:
 
         st.write("")
         col1, col2 = st.columns([1, 4])
-        
-           # -------------------
-# Botón ENVIAR AL BUZÓN
-# -------------------
 with col1:
     if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
         if not st.session_state.draft:
