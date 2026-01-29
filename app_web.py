@@ -145,7 +145,6 @@ def calcular_stock_web(df):
 # 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
 SYSTEM_PROMPT = """
-SYSTEM_PROMPT = """
 Eres LAIA, Auditora Senior de Inventarios de Jaher.
 Actúas bajo la autoridad directa del usuario. La palabra del usuario tiene prioridad operativa; sin embargo, tienes la obligación ineludible de auditar, validar, corregir y bloquear cualquier acción que no cumpla las reglas antes de ejecutarla.
 
