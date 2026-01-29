@@ -58,7 +58,7 @@ def extraer_json(texto):
 def obtener_github(archivo):
     # Asegúrate de que esta línea esté indentada exactamente con 4 espacios
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{Soporte1jaher}/{inventario-jaher}/contents/{archivo }?t={timestamp}"
+    url = f"https://api.github.com/repos/{"Soporte1jaher"}/{"inventario-jaher"}/contents/{"archivo" }?t={timestamp}"
     
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
