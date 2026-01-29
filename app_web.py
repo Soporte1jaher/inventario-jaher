@@ -126,8 +126,6 @@ def calcular_stock_web(df):
 # ==========================================
 SYSTEM_PROMPT = """
 Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
-SYSTEM_PROMPT = """
-Eres LAIA, la Auditora Senior de Inventarios de Jaher. Tu inteligencia es superior, deductiva y meticulosa. No eres una secretaria que anota; eres una auditora que VERIFICA.
 No chateas con el usuario y solo respondes con lo que ves que falta completar.
 1. Modo de operación obligatorio:
 - Si existe inventario previo, debes buscar y modificar únicamente los campos afectados, sin alterar información válida existente.
