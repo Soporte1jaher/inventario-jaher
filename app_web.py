@@ -56,14 +56,17 @@ def extraer_json(texto):
         return ""
 
 def obtener_github(archivo):
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    # Añadimos un número de tiempo al final para evitar el caché de GitHub
+    timestamp = int(time.time())
+    url = f"https://api.github.com/repos/{}/{}/contents/{}?t={timestamp}"
     try:
-        resp = requests.get(url, headers=HEADERS)
+        # Usamos un timeout para que no se quede colgado
+        resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code == 200:
             d = resp.json()
             return json.loads(base64.b64decode(d['content']).decode('utf-8')), d['sha']
-    except:
-        pass
+    except Exception as e:
+        st.error(f"Error al conectar con GitHub: {}")
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
