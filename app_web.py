@@ -74,7 +74,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     # Si 'actuales' es una lista vacía pero el archivo es el histórico,
     # significa que algo falló en la descarga. ¡NO sobreescribimos!
     if sha is None:
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {}. Abortando para evitar pérdida de datos.")
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {archivo}. Abortando para evitar pérdida de datos.")
         return False
 
     # 2. Mezclamos los datos
