@@ -58,7 +58,7 @@ import time
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
     
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
