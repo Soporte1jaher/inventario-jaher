@@ -1,3 +1,40 @@
 [
-
+    {
+        "equipo":"Monitor",
+        "marca":"LG",
+        "modelo":"N\/A",
+        "serie":"203ntqdcf620",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "origen":"N\/A",
+        "destino":"N\/A",
+        "guia":"N\/A",
+        "reporte":"",
+        "disco":"N\/A",
+        "ram":"N\/A",
+        "procesador":"N\/A",
+        "fecha_llegada":"N\/A",
+        "fecha_registro":"2026-01-29 16:06"
+    },
+    {
+        "equipo":"Monitor",
+        "marca":"LG",
+        "modelo":"N\/A",
+        "serie":"706ntmxf3643",
+        "cantidad":1,
+        "estado":"Bueno",
+        "estado_fisico":"Nuevo",
+        "tipo":"Recibido",
+        "origen":"N\/A",
+        "destino":"N\/A",
+        "guia":"N\/A",
+        "reporte":"",
+        "disco":"N\/A",
+        "ram":"N\/A",
+        "procesador":"N\/A",
+        "fecha_llegada":"N\/A",
+        "fecha_registro":"2026-01-29 16:06"
+    }
 ]
