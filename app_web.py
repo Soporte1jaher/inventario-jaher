@@ -65,7 +65,7 @@ def extraer_json(texto):
         return ""
 
 def obtener_github(archivo):
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     try:
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code == 200:
