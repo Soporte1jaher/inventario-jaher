@@ -431,17 +431,19 @@ with t1:
                 # Contexto
                 if st.session_state.draft:
                     inventario_json = json.dumps(st.session_state.draft, indent=2)
-                    prompt_completo = (
-                        f"INVENTARIO ACTUAL:\n{inventario_json}\n\n"
-                        f"USUARIO DICE: {prompt_usuario}\n\n"
-                        "Actualiza la tabla. NO BORRES NADA a menos que te lo pidan explícitamente."
-                    )
+ 
+                    messages = [
+                      {"role": "system", "content": SYSTEM_PROMPT},
+                      {"role": "assistant", "content": f"INVENTARIO ACTUAL:\n{inventario_json}"},
+                      {"role": "user", "content": prompt_usuario}
+                    ]
+
                 else:
                     prompt_completo = f"USUARIO: {prompt_usuario}"
 
                 # Llamada AI
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": prompt_completo}
@@ -518,7 +520,8 @@ if st.session_state.draft is not None:
                 else:
                     # Si hay advertencias, enviamos igual pero avisamos
                     if st.session_state.status == "QUESTION":
-                        st.toast("⚠️ Enviando con campos pendientes...", icon="⚠️")
+                        st.error("⛔ BLOQUEADO: existen datos obligatorios pendientes.")
+                        st.stop()
                     
                     with st.spinner("Enviando datos..."):
                         datos = st.session_state.draft
@@ -597,7 +600,7 @@ with t3:
                 )
 
                 resp = client.responses.create(
-                    model="gpt-4.1-mini",
+                    model="gpt-4.1",
                     input=p_db
                 )
 
