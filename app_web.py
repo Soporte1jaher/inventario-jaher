@@ -300,7 +300,6 @@ Antes de generar cualquier salida final debes validar:
 Ítems Enviados o Recibidos sin guía implican QUESTION.
 CPUs o Laptops sin especificaciones válidas implican QUESTION.
 Si cualquiera falla, queda estrictamente prohibido marcar READY, incluso si acabas de recibir otro dato.
-"""
 
 SALIDA JSON OBLIGATORIA:
 {
