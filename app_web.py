@@ -308,29 +308,52 @@ with t1:
                 st.rerun()
 # --- Pestañas Stock y Limpieza quedan igual, integrando el cálculo de stock y generación de Excel del segundo código ---
 with t2:
+    st.subheader("📊 Control de Stock e Historial")
+    
+    # 1. Botón para forzar la sincronización (limpia el caché)
+    if st.button("🔄 Sincronizar Datos de GitHub"):
+        st.rerun()
+
+    # 2. Obtenemos el histórico real
     hist, _ = obtener_github(FILE_HISTORICO)
+    
     if hist:
         df_h = pd.DataFrame(hist)
+        # Normalizamos columnas
         df_h.columns = df_h.columns.str.lower().str.strip()
+        
+        # 3. Calculamos stock (usando tu función)
         st_res, st_det = calcular_stock_web(df_h)
-
+        
+        # 4. Mostramos métricas
         k1, k2 = st.columns(2)
         k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
-        k2.metric("🚚 Movimientos", len(df_h))
+        k2.metric("🚚 Total Movimientos", len(df_h))
 
-        if not st_res.empty:
-            st.dataframe(
-                st_res.pivot_table(
-                    index=['equipo', 'marca'],
-                    columns='estado_fisico',
-                    values='val',
-                    aggfunc='sum'
-                ).fillna(0)
-            )
+        # --- AQUÍ ESTÁ LA MAGIA PARA EL EXCEL ---
+        import io
+        buffer = io.BytesIO()
+        # Creamos el Excel en la memoria del navegador con los datos de historico.json
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df_h.to_excel(writer, index=False, sheet_name='Historico_Real')
+            if not st_res.empty:
+                st_res.to_excel(writer, index=False, sheet_name='Resumen_Stock')
+        
+        st.download_button(
+            label="📥 DESCARGAR EXCEL SINCRONIZADO",
+            data=buffer.getvalue(),
+            file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary" # Lo pone en color verde/destacado
+        )
+        # ----------------------------------------
 
-        st.dataframe(st_det, use_container_width=True)
+        # 5. Mostrar la tabla en la web para verificar
+        st.write("### 📜 Últimos Movimientos en el Histórico")
+        st.dataframe(df_h.tail(20), use_container_width=True) # Muestra los últimos 20
+        
     else:
-        st.info("Sincronizando con GitHub...")
+        st.warning("⚠️ No se encontraron datos en el histórico. Verifica que historico.json en GitHub tenga información.")
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
 
