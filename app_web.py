@@ -284,7 +284,7 @@ with t3:
                 )
 
                 resp = client.responses.create(
-                    model="gpt-4.1-mini",
+                    model="gpt-4o-mini",
                     input=p_db
                 )
 
