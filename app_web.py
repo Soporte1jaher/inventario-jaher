@@ -7,22 +7,22 @@ import datetime
 from datetime import timedelta, timezone
 import pandas as pd
 import time
-import re
 
 # ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS
+# 1. CONFIGURACIÓN Y ESTILOS
 # ==========================================
-st.set_page_config(page_title="LAIA v91.1 - Auditora Senior", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="LAIA v91.0 - Auditora Senior", page_icon="🧠", layout="wide")
+
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; font-family: monospace; }
+    .stApp { background-color: #0e1117; color: #e0e0e0; }
     .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
-    .stDataFrame table { background-color: #1c1c1c; color: #e0e0e0; }
+    .stChatFloatingInputContainer { background-color: #0e1117; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES Y CLIENTE OPENAI
+# 2. CREDENCIAL
 # ==========================================
 try:
     API_KEY = st.secrets["GPT_API_KEY"]
@@ -32,28 +32,37 @@ except:
     st.stop()
 
 client = OpenAI(api_key=API_KEY)
+
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
+
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
-# ==========================================
-# 3. FUNCIONES AUXILIARES
-# ==========================================
-def extraer_json(texto: str) -> str:
-    """Extrae primer JSON válido del texto de la IA"""
+def extraer_json(texto):
     try:
+        # Limpieza básica de Markdown
         texto = texto.replace("```json", "").replace("```", "").strip()
+        
+        # Buscamos dónde empieza el primer objeto
         inicio = texto.find("{")
         if inicio == -1: return ""
+        
+        # Algoritmo de "Balance de Llaves" 
+        # (Cuenta cuántas abren y cierran para encontrar el final exacto)
         balance = 0
         for i in range(inicio, len(texto)):
             char = texto[i]
-            if char == '{': balance += 1
+            if char == '{':
+                balance += 1
             elif char == '}':
                 balance -= 1
-                if balance == 0: return texto[inicio:i+1]
+                # Cuando el balance llega a cero, hemos encontrado el cierre exacto
+                if balance == 0:
+                    json_limpio = texto[inicio:i+1]
+                    return json_limpio
+        
         return ""
     except:
         return ""
@@ -71,8 +80,11 @@ def obtener_github(archivo):
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
     actuales, sha = obtener_github(archivo)
-    if isinstance(datos, list): actuales.extend(datos)
-    else: actuales.append(datos)
+    if isinstance(datos, list):
+        actuales.extend(datos)
+    else:
+        actuales.append(datos)
+
     payload = {
         "message": mensaje,
         "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
@@ -81,34 +93,78 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     return requests.put(url, headers=HEADERS, json=payload).status_code in [200, 201]
 
+# ==========================================
+# 3. MOTOR DE STOCK
+# ==========================================
 def calcular_stock_web(df):
-    if df.empty: return pd.DataFrame(), pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
     df_c = df.copy()
+    # Normalizamos columnas a minúsculas
     df_c.columns = df_c.columns.str.lower().str.strip()
-    cols = ['estado','estado_fisico','tipo','destino','equipo','marca','cantidad','modelo']
+
+    # Asegura columnas básicas
+    cols = ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']
     for col in cols:
-        if col not in df_c.columns: df_c[col] = "No especificado"
+        if col not in df_c.columns:
+            df_c[col] = "No especificado"
+
+    # Convertir cantidad a número (si falla pone 1)
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+
+    # --- LÓGICA DE STOCK ---
     def procesar_fila(row):
-        est, t, d, eq, cant = str(row['estado']).lower(), str(row['tipo']).lower(), str(row['destino']).lower(), str(row['equipo']).lower(), row['cant_n']
-        if any(x in t for x in ['recib','ingreso','entrad','compra']): return cant
-        if any(x in t for x in ['env','salida','baja','despacho']): return -cant
-        perifericos = ['mouse','teclado','cable','hdmi','ponchadora','cargador','limpiador']
+        # Convertimos todo a minúsculas para comparar fácil
+        est = str(row['estado']).lower()
+        t = str(row['tipo']).lower()
+        d = str(row['destino']).lower()
+        eq = str(row['equipo']).lower()
+        cant = row['cant_n']
+
+        # 1. PALABRAS CLAVE PARA SUMAR (Entradas)
+        # Si dice "recibido", "ingreso", "compra", "stock" (como destino) -> SUMA
+        if any(x in t for x in ['recib', 'ingreso', 'entrad', 'compra']):
+            return cant
+        
+        # 2. PALABRAS CLAVE PARA RESTAR (Salidas)
+        # Si dice "enviado", "envío", "salida", "baja", "despacho" -> RESTA
+        if any(x in t for x in ['env', 'salida', 'baja', 'despacho']):
+            return -cant
+
+        # 3. Logica de Periféricos (Doble seguridad)
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador', 'limpiador']
         if any(p in eq for p in perifericos):
-            if d != 'stock' and 'stock' not in d: return -cant
-            else: return cant
-        if 'dañ' in est or 'obs' in est or 'malo' in est: return 0
-        if d == 'stock': return cant
+            # Si el destino NO es stock, asumimos que se fue -> RESTA
+            if d != 'stock' and 'stock' not in d:
+                return -cant
+            # Si el destino ES stock, asumimos que llegó -> SUMA
+            else:
+                return cant
+
+        # 4. Equipos dañados (Usualmente no suman al stock operativo)
+        if 'dañ' in est or 'obs' in est or 'malo' in est:
+            return 0
+
+        # 5. Default: Si el destino es Stock, suma.
+        if d == 'stock':
+            return cant
+            
         return 0
+
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    resumen = df_c.groupby(['equipo','marca','modelo','estado_fisico'])['val'].sum().reset_index()
+
+    # Resumen stock normal
+    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
+
+    # Filas con movimientos (Historia)
     movimientos = df_c[df_c['val'] != 0]
-    return resumen[resumen['val']>0], movimientos
+
+    return resumen[resumen['val'] > 0], movimientos
 
 # ==========================================
-# 4. PROMPT ULTRA ESTRICTO
+# 4. CEREBRO SUPREMO LAIA V91.0
 # ==========================================
-
 SYSTEM_PROMPT = """
 Eres LAIA, Auditora Senior de Inventarios de Jaher.
 Actúas bajo la autoridad directa del usuario. La palabra del usuario tiene prioridad operativa; sin embargo, tienes la obligación ineludible de auditar, validar, corregir y bloquear cualquier acción que no cumpla las reglas antes de ejecutarla.
@@ -245,162 +301,318 @@ Antes de generar cualquier salida final debes validar:
 CPUs o Laptops sin especificaciones válidas implican QUESTION.
 Si cualquiera falla, queda estrictamente prohibido marcar READY, incluso si acabas de recibir otro dato.
 
-IMPORTANTE: Solo devuelve JSON. No escribas nada más. No hagas comentarios. Nada de lenguaje natural.  
-Usa los datos que te doy. Si un campo falta y no hay información, pon "N/A".  
-JSON debe tener esta estructura exacta:
-
+SALIDA JSON OBLIGATORIA:
 {
  "status": "QUESTION" o "READY",
  "missing_info": "Resumen de faltantes",
  "items": [
-   {
-     "equipo": "", "marca": "", "modelo": "", "serie": "",
-     "cantidad": 1, "estado": "", "tipo": "",
-     "origen": "", "destino": "",
-     "guia": "", "fecha_llegada": "",
-     "ram": "", "procesador": "", "disco": "", "reporte": ""
-   }
+ {
+  "equipo": "Laptop", "marca": "Dell", "modelo": "", "serie": "",
+  "cantidad": 1, "estado": "", "tipo": "Enviado",
+  "origen": "Stock", "destino": "Portete",
+  "guia": "", "fecha_llegada": "",
+  "ram": "", "procesador": "", "disco": "", "reporte": ""
+ }
  ]
 }
-
-No cambies valores existentes. Solo agrega lo que falta.  
-No preguntes nada, no hagas resúmenes, no uses lenguaje natural, no digas “tabla actualizada” ni nada.
 """
+
 # ==========================================
-# 5. INICIALIZACIÓN SESSION STATE
+# 5. INTERFAZ
 # ==========================================
+st.title("🧠 LAIA v91.0 - Auditoría Senior")
+
+# -----------------------------
+# Inicialización session_state
+# -----------------------------
 for key, default in {
-    "messages": [], "draft": None, "status": "NEW", "missing_info": "", "clear_chat": False, "chat_key": 0
+    "messages": [],
+    "draft": None,
+    "status": "NEW",
+    "missing_info": "",
+    "clear_chat": False,
+    "chat_key": 0
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# ==========================================
-# 6. INTERFAZ - TABS
-# ==========================================
-t1, t2, t3 = st.tabs(["💬 Chat Auditor","📊 Dashboard Previo","🗑️ Limpieza"])
+t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Dashboard Previo", "🗑️ Limpieza"])
 
 # ==========================================
-# 7. PESTAÑA CHAT
+# 6. GUARDAR EXCEL CON HOJA "DAÑADOS"
+# ==========================================
+def aplicar_formato_zebra(writer, df, nombre_hoja):
+    if df.empty: return
+    df.to_excel(writer, index=False, sheet_name=nombre_hoja)
+    workbook, worksheet = writer.book, writer.sheets[nombre_hoja]
+    header_fmt = workbook.add_format({'bold': True, 'align': 'center', 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1})
+    zebra_fmt = workbook.add_format({'bg_color': '#F2F2F2', 'border': 1})
+    normal_fmt = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1})
+    for col_num, value in enumerate(df.columns.values):
+        worksheet.write(0, col_num, value, header_fmt)
+    for row_num in range(1, len(df)+1):
+        fmt = zebra_fmt if row_num % 2 == 0 else normal_fmt
+        for col_num in range(len(df.columns)):
+            val = df.iloc[row_num-1, col_num]
+            worksheet.write(row_num, col_num, str(val) if pd.notna(val) else "", fmt)
+    worksheet.freeze_panes(1,0)
+    worksheet.set_column(0, len(df.columns)-1, 22)
+
+def guardar_excel_premium(df, ruta):
+    while True:
+        try:
+            writer = pd.ExcelWriter(ruta, engine='xlsxwriter')
+            df_mov = df.copy().fillna("")
+
+            columnas = list(df_mov.columns)
+            orden = ['fecha','equipo','marca','modelo','serie','origen','destino',
+                     'estado','estado_fisico','tipo','cantidad','reporte']
+            columnas_finales = [c for c in orden if c in columnas] + \
+                               [c for c in columnas if c not in orden]
+
+            aplicar_formato_zebra(writer, df_mov[columnas_finales], 'Enviados y Recibidos')
+
+            df_calc = df.copy()
+            df_calc['cant_n'] = pd.to_numeric(df_calc['cantidad'], errors='coerce').fillna(1)
+            df_calc['variacion'] = df_calc.apply(
+                lambda row:
+                    row['cant_n'] if 'recibido' in str(row.get('tipo','')).lower()
+                    else (-row['cant_n'] if 'enviado' in str(row.get('tipo','')).lower() else 0),
+                axis=1
+            )
+            res = df_calc.groupby(['equipo','marca','modelo','estado'])['variacion'].sum().reset_index()
+            aplicar_formato_zebra(writer, res[res['variacion'] > 0], 'Stock (Saldos)')
+
+            df_danados = df_mov[df_mov['estado'].str.lower() == 'dañado']
+            if not df_danados.empty:
+                aplicar_formato_zebra(writer, df_danados, 'Dañados')
+
+            writer.close()
+            return True
+
+        except PermissionError:
+            print("⚠️ POR FAVOR, CIERRA EL EXCEL PARA CONTINUAR...")
+            time.sleep(5)
+        except Exception as e:
+            print("❌ Error crítico: " + str(e))
+            return False
+
+# ==========================================
+# Pestaña Chat
 # ==========================================
 with t1:
+    # ------------------------------------------------
+    # 1. HISTORIAL DE CHAT
+    # ------------------------------------------------
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
+
+    # ------------------------------------------------
+    # 2. FORMULARIO DE ENTRADA (Mantiene el chat limpio)
+    # ------------------------------------------------
     with st.form(key="chat_form", clear_on_submit=True):
-        prompt_usuario = st.text_area("📋 Indica el movimiento...", height=80)
-        c_vacia, c_btn = st.columns([5,1])
-        with c_btn: submitted = st.form_submit_button("📤 Enviar")
-        if submitted and prompt_usuario:
-            st.session_state.messages.append({"role":"user","content":prompt_usuario})
-            try:
-                with st.spinner("LAIA está auditando..."):
-                    if st.session_state.draft:
-                        inventario_json = json.dumps(st.session_state.draft, indent=2)
-                        prompt_completo = f"INVENTARIO ACTUAL:\n{inventario_json}\nMOVIMIENTO: {prompt_usuario}\nSolo actualiza la tabla y devuelve JSON."
-                    else:
-                        prompt_completo = f"MOVIMIENTO: {prompt_usuario}"
+        prompt_usuario = st.text_area("📋 Habla con LAIA...", height=80)
+        c_vacia, c_btn = st.columns([5, 1])
+        with c_btn:
+            st.write("") 
+            st.write("") 
+            submitted = st.form_submit_button("📤 Enviar")
 
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role":"system","content":SYSTEM_PROMPT},{"role":"user","content":prompt_completo}],
-                        temperature=0
+    # ------------------------------------------------
+    # 3. CEREBRO (LÓGICA DE PROCESAMIENTO)
+    # ------------------------------------------------
+    if submitted and prompt_usuario:
+        st.session_state.messages.append({"role": "user", "content": prompt_usuario})
+
+        try:
+            with st.spinner("LAIA está auditando..."):
+                
+                # --- CORRECCIÓN DE CONTEXTO ---
+                # Aquí estaba el error: antes separabas el JSON y luego NO se lo enviabas a la IA.
+                # Ahora forzamos que el JSON vaya pegado al mensaje del usuario.
+                
+                if st.session_state.draft:
+                    inventario_json = json.dumps(st.session_state.draft, indent=2)
+                    prompt_completo = (
+                        f"INVENTARIO ACTUAL (ESTADO PREVIO):\n{inventario_json}\n\n"
+                        f"INSTRUCCIÓN DEL USUARIO: {prompt_usuario}\n\n"
+                        "OBJETIVO: Actualiza la tabla basándote en la instrucción. "
+                        "Si el usuario da una fecha, aplícala a los items que la necesiten (Recibidos). "
+                        "Si dice 'N/A' o 'Sin especificaciones', rellena los huecos técnicos. "
+                        "NO BORRES FILAS a menos que se pida."
                     )
+                else:
+                    prompt_completo = f"USUARIO: {prompt_usuario}"
 
-                    texto_limpio = extraer_json(response.choices[0].message.content)
-                    if texto_limpio:
-                        res_json = json.loads(texto_limpio)
-                        st.session_state.draft = res_json.get("items",[])
-                        st.session_state.status = res_json.get("status","READY")
-                        st.session_state.missing_info = res_json.get("missing_info","")
-                        msg = f"✅ {st.session_state.missing_info or 'Tabla actualizada.'}"
-                        st.session_state.messages.append({"role":"assistant","content":msg})
+                # Llamada AI
+                # CAMBIO IMPORTANTE: Usamos gpt-4o (gpt-4.1 no existe públicamente y falla)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini", 
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt_completo}
+                    ],
+                    temperature=0
+                )
+
+                # Procesar respuesta
+                texto_limpio = extraer_json(response.choices[0].message.content)
+                
+                if texto_limpio:
+                    res_json = json.loads(texto_limpio)
+                    nuevos_items = res_json.get("items", [])
+                    
+                    # --- SALVAVIDAS ANTI-BORRADO ---
+                    if not nuevos_items and st.session_state.draft and "borra" not in prompt_usuario.lower():
+                         st.warning("⚠️ LAIA intentó borrar la tabla por error. Se han restaurado los datos anteriores.")
                     else:
-                        st.error("⚠️ La IA respondió incoherente.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error crítico: {e}")
+                         st.session_state.draft = nuevos_items
+                         st.session_state.status = res_json.get("status", "READY")
+                         st.session_state.missing_info = res_json.get("missing_info", "")
+                    
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": f"✅ {res_json.get('missing_info', 'Tabla actualizada.')}"
+                    })
+                else:
+                    st.error("⚠️ La IA respondió algo incoherente. Intenta de nuevo.")
+
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Error crítico: {e}")
 
     st.divider()
-    if st.session_state.draft is not None:
+
+    # ------------------------------------------------
+    # 4. TABLA EN VIVO (VISIBILIDAD FORZADA)
+    # ------------------------------------------------
+    # Cambiamos la condición: Mostramos la tabla si NO ES "None" (incluso si está vacía [])
+if st.session_state.draft is not None:
         st.subheader("📊 Tabla de Inventario (En Vivo)")
-        if st.session_state.status=="QUESTION":
+        
+        # Muestra la advertencia pero NO bloquea
+        if st.session_state.status == "QUESTION":
             st.warning(f"⚠️ LAIA DETECTA FALTANTES: {st.session_state.missing_info}")
+            st.info("💡 CONSEJO: Puedes editar las celdas manualmente antes de enviar.")
+
+        # Editor
         df_draft = pd.DataFrame(st.session_state.draft)
-        edited_df = st.data_editor(df_draft, num_rows="dynamic", use_container_width=True, key="editor_tabla")
+        edited_df = st.data_editor(
+            df_draft,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="editor_tabla"
+        )
+
         if not df_draft.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-    col1,col2 = st.columns([1,4])
-    with col1:
-        if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
-            if not st.session_state.draft:
-                st.error("❌ Tabla vacía.")
-            else:
-                enviar=True
-                if st.session_state.status=="QUESTION":
-                    all_na = all(item.get("serie")=="N/A" or item.get("ram")=="N/A" for item in st.session_state.draft)
-                    if not all_na: st.error("⛔ Faltan datos obligatorios."); enviar=False
-                    else: st.session_state.status="READY"; st.warning("⚠️ Se aplicaron valores N/A según usuario.")
-                if enviar:
+        # Botones
+        st.write("")
+        col1, col2 = st.columns([1, 4])
+        
+        with col1:
+            # --- CAMBIO AQUÍ: BOTÓN SIN RESTRICCIONES ---
+            if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
+                
+                # Solo verificamos que la tabla no esté vacía (0 filas)
+                if not st.session_state.draft:
+                    st.error("❌ La tabla está vacía, no hay nada que enviar.")
+                else:
+                    # Si hay advertencias, enviamos igual pero avisamos
+                    if st.session_state.status == "QUESTION":
+                        st.error("⛔ BLOQUEADO: existen datos obligatorios pendientes.")
+                        st.stop()
+                    
                     with st.spinner("Enviando datos..."):
                         datos = st.session_state.draft
-                        fecha = (datetime.datetime.now(datetime.timezone.utc)-timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                        for d in datos:
-                            d["fecha"]=fecha
-                            for k in d: 
-                                if d[k] is None: d[k] = ""
+                        fecha = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                        
+                        # Ponemos la fecha a todos
+                        for d in datos: 
+                            d["fecha"] = fecha
+                            # Opcional: Rellenar vacíos con "N/A" automáticamente al enviar
+                            for key in d:
+                                if d[key] == "" or d[key] is None:
+                                    d[key] = ""
+                        
                         if enviar_github(FILE_BUZON, datos):
-                            st.success("✅ ¡Enviado!")
-                            st.session_state.draft=None
-                            st.session_state.messages=[]
-                            st.session_state.status="NEW"
+                            st.success("✅ ¡Enviado exitosamente!")
+                            time.sleep(1)
+                            st.session_state.draft = None
+                            st.session_state.messages = []
+                            st.session_state.status = "NEW"
                             st.rerun()
                         else:
-                            st.error("Error GitHub")
-    with col2:
-        if st.button("🗑️ Borrar todo"):
-            st.session_state.draft=None
-            st.session_state.messages=[]
-            st.rerun()
+                            st.error("Error al conectar con GitHub")
 
+        with col2:
+            if st.button("🗑️ Borrar todo"):
+                st.session_state.draft = None
+                st.session_state.messages = []
+                st.rerun()
 # ==========================================
-# 8. PESTAÑA DASHBOARD
+# Pestaña Dashboard
 # ==========================================
 with t2:
-    hist,_ = obtener_github(FILE_HISTORICO)
+    hist, _ = obtener_github(FILE_HISTORICO)
     if hist:
         df_h = pd.DataFrame(hist)
         df_h.columns = df_h.columns.str.lower().str.strip()
         st_res, st_det = calcular_stock_web(df_h)
-        k1,k2=st.columns(2)
+
+        k1, k2 = st.columns(2)
         k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
         k2.metric("🚚 Movimientos", len(df_h))
+
         if not st_res.empty:
-            st.dataframe(st_res.pivot_table(index=['equipo','marca'],columns='estado_fisico',values='val',aggfunc='sum').fillna(0))
-        st.dataframe(st_det,use_container_width=True)
+            st.dataframe(
+                st_res.pivot_table(
+                    index=['equipo', 'marca'],
+                    columns='estado_fisico',
+                    values='val',
+                    aggfunc='sum'
+                ).fillna(0)
+            )
+
+        st.dataframe(st_det, use_container_width=True)
     else:
         st.info("Sincronizando con GitHub...")
 
 # ==========================================
-# 9. PESTAÑA LIMPIEZA
+# Pestaña Limpieza
 # ==========================================
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
+
     txt_borrar = st.text_input("¿Qué deseas eliminar?")
+
     if st.button("🔥 EJECUTAR BORRADO"):
         if txt_borrar:
             try:
                 p_db = (
-                    "Actúa como DBA. COLUMNAS: [equipo, marca, serie, estado, destino]. "
-                    f"ORDEN: {txt_borrar}. RESPONDE SOLO JSON: "
-                    '{"accion":"borrar_todo"} o {"accion":"borrar_filtro","columna":"...","valor":"..."}'
+                    "Actúa como DBA. "
+                    "COLUMNAS: [equipo, marca, serie, estado, destino]. "
+                    "ORDEN: " + txt_borrar +
+                    "\nRESPONDE SOLO JSON: "
+                    "{\"accion\":\"borrar_todo\"} "
+                    "o "
+                    "{\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
                 )
-                resp = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","content":p_db}])
-                texto = resp.choices[0].message.content
+
+                resp = client.responses.create(
+                    model="gpt-4o-mini",
+                    input=p_db
+                )
+
+                texto = resp.output_text
                 order = json.loads(extraer_json(texto))
+
                 if enviar_github(FILE_BUZON, order):
                     st.success("✅ Orden enviada.")
                     st.json(order)
+
             except Exception as e:
-                st.error("Error: "+str(e))
+                st.error("Error: " + str(e))
