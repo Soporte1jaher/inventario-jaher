@@ -443,7 +443,7 @@ with t1:
                         "NO BORRES FILAS a menos que se pida."
                     )
                 else:
-                    prompt_completo = f"USUARIO: {}"
+                    prompt_completo = f"USUARIO: {prompt_usuario}"
 
                 # Llamada AI
                 # CAMBIO IMPORTANTE: Usamos gpt-4o (gpt-4.1 no existe públicamente y falla)
