@@ -54,10 +54,10 @@ def extraer_json(texto):
         return ""
     except:
         return ""
+import time
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    # URL CORREGIDA: Sin comillas dentro de las llaves
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
     
     try:
