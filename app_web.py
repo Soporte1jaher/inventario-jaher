@@ -57,7 +57,7 @@ def extraer_json(texto):
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    # CORRECCIÓN: Usamos las variables globales y quitamos las comillas internas
+    # URL CORREGIDA: Sin comillas dentro de las llaves
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
     
     try:
@@ -66,11 +66,8 @@ def obtener_github(archivo):
             d = resp.json()
             contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
             return json.loads(contenido_decodificado), d['sha']
-        else:
-            # Añadimos esto para ver el error real si falla
-            print(f"Error GitHub: {resp.status_code} - {resp.text}")
     except Exception as e:
-        st.error(f"Error al obtener datos de GitHub: {str(e)}")
+        st.error(f"Error al obtener datos de GitHub: {}")
     return [], None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
@@ -78,11 +75,8 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     actuales, sha = obtener_github(archivo)
     
     # --- CANDADO DE SEGURIDAD ---
-    # Si 'actuales' es vacio y SHA es None, falló la descarga. No sobrescribimos.
     if sha is None:
-        # Excepción: si es la primera vez que se crea el archivo, el sha será None pero debemos permitirlo si queremos crear archivos nuevos.
-        # Pero para tu caso de uso (historico.json ya existe), esto protege.
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {FILE_PATH}. Abortando para evitar pérdida de datos.")
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {}. Abortando.")
         return False
 
     # 2. Mezclamos los datos
@@ -98,9 +92,10 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
         "sha": sha
     }
     
-    # CORRECCIÓN: Aquí también tenías la URL vacía
-url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
+    # URL CORREGIDA: Ahora apunta al repositorio correctamente
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
     
+    # LÍNEA CORREGIDA: Indentación alineada correctamente
     resp = requests.put(url, headers=HEADERS, json=payload)
     
     if resp.status_code in [200, 201]:
@@ -108,7 +103,7 @@ url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_
     else:
         st.error(f"❌ Error al subir: {resp.text}")
         return False
-    
+        
 def aprender_leccion(error, correccion):
     lecciones, sha = obtener_github(FILE_LECCIONES)
     nueva = {
@@ -116,8 +111,9 @@ def aprender_leccion(error, correccion):
         "lo_que_hizo_mal": error,
         "como_debe_hacerlo": correccion
     }
+    if lecciones is None: lecciones = []
     lecciones.append(nueva)
-    # Guardamos solo las últimas 15 para que no se sature el cerebro
+    
     if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
         return True
     return False
