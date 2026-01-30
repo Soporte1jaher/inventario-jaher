@@ -85,7 +85,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     
     # --- CANDADO DE SEGURIDAD ---
     if sha is None:
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {FILE_PATH}. Abortando.")
+        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {archivo}. Abortando.")
         return False
 
     # 2. Mezclamos los datos
