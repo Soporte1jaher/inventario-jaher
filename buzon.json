@@ -1,1 +1,21 @@
-[]
+[
+    {
+        "equipo": "CPU",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "prueba",
+        "cantidad": 1,
+        "estado": "Da\u00f1ado",
+        "estado_fisico": "N/A",
+        "tipo": "Recibido",
+        "origen": "N/A",
+        "destino": "DA\u00d1ADOS",
+        "guia": "N/A",
+        "reporte": "N/A",
+        "disco": "N/A",
+        "ram": "N/A",
+        "procesador": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-01-29 19:16"
+    }
+]
