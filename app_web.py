@@ -200,6 +200,11 @@ Antes de generar el JSON, separa la entrada del usuario en "Eventos Independient
 - **STATUS: "READY"** -> Si la información permite procesar el ingreso/egreso (o si el usuario forzó el envío con "así está bien").
 - **STATUS: "QUESTION"** -> Si falta: Fecha de llegada (solo en Recibidos), Serie (si no se indicó N/A), Marca (si no se indicó N/A), modelo (si no se indicó N/A), Guia (si no se indicó N/A), Specs (si no se indicó N/A) o Destino.
 - ** Reglas de integridad y solicitud de datos**
+PRIORIDADES:
+- **AUTO-AUDITORÍA DEL JSON:** Antes de asignar STATUS:
+  1. La IA revisa todos los ítems ya generados en el JSON.
+  2. Identifica cualquier campo obligatorio que esté vacío o no aplicable según contexto (Recibido vs Enviado, Equipo vs Consumible).
+  3. Basándose en esta revisión, construye el `missing_info` y decide si STATUS = "QUESTION" o "READY".
 
 Siempre identificar contexto y categoría del ítem (Recibido vs Enviado, Equipo vs Consumible).
 
