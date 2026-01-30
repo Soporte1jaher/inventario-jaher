@@ -198,13 +198,17 @@ Antes de generar el JSON, separa la entrada del usuario en "Eventos Independient
 
 ### 3. CONTROL DE INTEGRIDAD (STATUS)
 - **STATUS: "READY"** -> Si la información permite procesar el ingreso/egreso (o si el usuario forzó el envío con "así está bien").
-- **STATUS: "QUESTION"** -> Si falta: Fecha de llegada (solo en Recibidos), Serie (si no se indicó N/A), Marca (si no se indicó N/A), modelo (si no se indicó N/A), Guia (si no se indicó N/A), Specs (si no se indicó N/A) o Destino.
+- **STATUS: "QUESTION"** -> Si falta: Fecha de llegada (solo en Recibidos), Serie (si no se indicó N/A), Marca (si no se indicó N/A), modelo (si no se indicó N/A), Guia (si no se indicó N/A), Specs (si no se indicó N/A), Cantidad (si no se indicó N/A) o Destino.
 - ** Reglas de integridad y solicitud de datos**
 PRIORIDADES:
 - **AUTO-AUDITORÍA DEL JSON:** Antes de asignar STATUS:
   1. La IA revisa todos los ítems ya generados en el JSON.
-  2. Solo marca como faltante los campos obligatorios listados en STATUS = "QUESTION".
-     - **Importante:** No solicitar campos que ya tengan un valor válido en JSON, incluyendo `cantidad`.
+  2.  Solo marca como faltante los campos obligatorios listados en STATUS = "QUESTION".
+   - **Importante:** 
+     - No solicitar nunca campos que ya tengan un valor válido en JSON, incluyendo `cantidad`.
+     - Para `cantidad`: 
+       - Si es N/A o 0, se considera **faltante** y debe pedirse al usuario.
+       - Si es >= 1, se considera **válido** y **no se solicita**.
   3. Basándose en esta revisión, construye el `missing_info` y decide si STATUS = "QUESTION" o "READY".
 
 Siempre identificar contexto y categoría del ítem (Recibido vs Enviado, Equipo vs Consumible).
