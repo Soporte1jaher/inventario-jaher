@@ -194,7 +194,7 @@ Antes de generar el JSON, separa la entrada del usuario en "Eventos Independient
 
 ### 3. CONTROL DE INTEGRIDAD (STATUS)
 - **STATUS: "READY"** -> Si la información permite procesar el ingreso/egreso (o si el usuario forzó el envío con "así está bien").
-- **STATUS: "QUESTION"** -> Si falta: Fecha de llegada (solo en Recibidos), Serie (si no se indicó N/A), o Destino.
+- **STATUS: "QUESTION"** -> Si falta: Fecha de llegada (solo en Recibidos), Serie (si no se indicó N/A), Destino, marca, modelo, procesador, ram o almacenamiento.
 
 ### 4. REGLAS DE FORMATEO
 - **Texto en JSON:** El campo `missing_info` es tu ÚNICA voz. Sé profesional y directa.
