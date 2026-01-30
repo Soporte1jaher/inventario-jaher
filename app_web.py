@@ -102,7 +102,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     }
     
     # URL CORREGIDA: Ahora apunta al repositorio correctamente
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}?t={timestamp}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
     
     # LÍNEA CORREGIDA: Indentación alineada correctamente
     resp = requests.put(url, headers=HEADERS, json=payload)
