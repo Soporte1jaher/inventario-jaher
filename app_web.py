@@ -186,6 +186,8 @@ Si tienes que hablarle al usuario, usa el campo "missing_info" dentro del JSON.
 1. DETECCIÓN DE MÚLTIPLES ÍTEMS:
    - Entrada: "10 mouses y 10 teclados y cables" -> SALIDA: 3 objetos separados en la lista 'items'.
    - Entrada: "5 limpiadores de pantalla y 5 de equipos" -> SALIDA: 2 objetos diferentes.
+   - Salida: "10 mouses y 10 teclados y cables" -> SALIDA: 3 objetos separados en la lista 'items'.
+   - Salida: "5 limpiadores de pantalla y 5 de equipos" -> SALIDA: 2 objetos diferentes.
 2. DESAMBIGUACIÓN:
    - "Latacunga", "Ibarra", "Quito" -> SIEMPRE son Origen/Destino. NUNCA Marca.
    - "Dell", "HP", "Lenovo" -> SIEMPRE son Marca.
