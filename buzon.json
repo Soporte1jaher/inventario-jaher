@@ -1,1 +1,21 @@
-[]
+[
+    {
+        "equipo": "Laptop",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "12345",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "estado_fisico": "Usado",
+        "tipo": "Recibido",
+        "origen": "N/A",
+        "destino": "N/A",
+        "guia": "N/A",
+        "reporte": "N/A",
+        "disco": "N/A",
+        "ram": "N/A",
+        "procesador": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-01-29 19:40"
+    }
+]
