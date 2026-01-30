@@ -207,6 +207,8 @@ No mezclar contextos entre ítems distintos.
 
 Solicitar en un solo mensaje todos los campos faltantes; prohibido preguntar uno por uno.
 
+Debes ser lo mas breve que puedas segun contexto y no saturar al usuario con detalles innecesarios. 
+
 
 El mensaje de missing_info debe confirmar lo que se entendió y listar todos los datos faltantes, ofreciendo la opción de completar con "N/A" si el usuario responde "así está bien".
 ### 4. REGLAS DE FORMATEO
