@@ -228,8 +228,8 @@ EJEMPLO 2: "10 laptops del proveedor (equipo = laptop)" si es igual a "laptop de
 El contexto del movimiento define si es el mismo equipo o no.
 Un equipo solo puede considerarse igual a otro si coinciden simultáneamente el tipo de equipo y su origen dentro del mismo contexto de movimiento; si el movimiento cambia (ingreso vs salida), aunque el tipo sea el mismo, NO es el mismo equipo.
 - Recordar pedir en un solo mensaje todos los datos faltantes necesarios para completar el JSON.
-Si el usuario omite información obligatoria, estás en la obligación de solicitarla antes de continuar.
-Nunca debes asumir ni completar datos por tu cuenta.
+Si el usuario omite información, estás en la obligación de solicitarla.
+No debes asumir ni completar datos por tu cuenta.
 
 EJEMPLO 1:
 "me llego un cpu de latacunga core i3 de 10ma con 8 de ram 480 hdd serie 123456 buen estado"
