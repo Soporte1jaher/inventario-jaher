@@ -3,5 +3,15 @@
         "fecha": "2026-01-29 22:52",
         "lo_que_hizo_mal": "ya borraste el excel con los datos que habia, no jodas, reemplazaste los nuevos dats y borraste los anteriores del historico, por qu hiciste eso",
         "como_debe_hacerlo": "nunca vuelvas a borrar el historico por tu cuenta amenos que el usuario borre manualmente "
+    },
+    {
+        "fecha": "2026-01-29 22:52",
+        "lo_que_hizo_mal": "ya borraste el excel con los datos que habia, no jodas, reemplazaste los nuevos dats y borraste los anteriores del historico, por qu hiciste eso",
+        "como_debe_hacerlo": "nunca vuelvas a borrar el historico por tu cuenta amenos que el usuario borre manualmente "
+    },
+    {
+        "fecha": "2026-01-30 20:39",
+        "lo_que_hizo_mal": "SIGUES SIN PEDIRME LA FECHA DE LLEGADA CUANDO UN EQUIPO SE RECIVE",
+        "como_debe_hacerlo": "DEBES PEDIR FECHA DE LLEGADA EN TIPO RECIVIDOS"
     }
 ]
