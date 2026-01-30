@@ -203,7 +203,8 @@ Antes de generar el JSON, separa la entrada del usuario en "Eventos Independient
 PRIORIDADES:
 - **AUTO-AUDITORÍA DEL JSON:** Antes de asignar STATUS:
   1. La IA revisa todos los ítems ya generados en el JSON.
-  2. Identifica cualquier campo obligatorio que esté vacío y diferencia entre (Recibido vs Enviado, Equipo vs Consumible).
+  2. Solo marca como faltante los campos obligatorios listados en STATUS = "QUESTION".
+     - **Importante:** No solicitar campos que ya tengan un valor válido en JSON, incluyendo `cantidad`.
   3. Basándose en esta revisión, construye el `missing_info` y decide si STATUS = "QUESTION" o "READY".
 
 Siempre identificar contexto y categoría del ítem (Recibido vs Enviado, Equipo vs Consumible).
