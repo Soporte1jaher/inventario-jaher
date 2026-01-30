@@ -198,10 +198,10 @@
         "origen":"N\/A",
         "destino":"DA\u00d1ADOS",
         "estado":"Da\u00f1ado",
-        "estado_fisico":"N\/A",
+        "estado_fisico":null,
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":"N\/A",
+        "reporte":null,
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
@@ -220,12 +220,12 @@
         "estado_fisico":"Nuevo",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:06"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -239,12 +239,12 @@
         "estado_fisico":"Nuevo",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:06"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -258,12 +258,12 @@
         "estado_fisico":"Nuevo",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:08"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -282,7 +282,7 @@
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"29 de enero del 2026",
-        "fecha_registro":"2026-01-29 16:35"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -296,12 +296,12 @@
         "estado_fisico":"Usado",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"29 de enero del 2026",
-        "fecha_registro":"2026-01-29 16:35"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -320,7 +320,7 @@
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"29 de enero del 2026",
-        "fecha_registro":"2026-01-29 16:35"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -339,7 +339,7 @@
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"29 de enero del 2026",
-        "fecha_registro":"2026-01-29 16:35"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -353,12 +353,12 @@
         "estado_fisico":"Usado",
         "tipo":"Enviado",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"1TB HDD",
         "ram":"4GB",
         "procesador":"AMD R3",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:39"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -377,7 +377,7 @@
         "ram":"8GB",
         "procesador":"Core i3 8va Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -396,7 +396,7 @@
         "ram":"8GB",
         "procesador":"Core i5 7ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -407,15 +407,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"1TB HDD",
         "ram":"4GB",
         "procesador":"Core G4400",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -426,15 +426,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"1TB HDD",
         "ram":"4GB",
         "procesador":"Intel Pentium",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -445,15 +445,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -464,15 +464,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -483,18 +483,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
-        "marca":"Epson",
-        "modelo":"TM-T88V",
-        "serie":"X6TT009048",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -505,15 +502,15 @@
         "origen":"AGENCIAS",
         "destino":"CHATARRIZACION",
         "estado":"Da\u00f1ado",
-        "estado_fisico":null,
+        "estado_fisico":"N\/A",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"100GB",
         "ram":"8GB",
         "procesador":"Core i5 7ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:52"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -527,16 +524,14 @@
         "estado_fisico":"Usado",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:56"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
-        "origen":"...",
-        "destino":"...",
         "guia":"N\/A",
         "equipo":"Monitor",
         "marca":"LG",
@@ -548,14 +543,12 @@
         "estado_fisico":"Usado",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
         "reporte":"MALA, IMPRESION BORROSA",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:56"
-        "fecha_registro":"2026-01-29 17:08"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -568,16 +561,13 @@
         "estado":"Da\u00f1ado",
         "estado_fisico":"Usado",
         "tipo":"Recibido",
-        "marca":"Epson",
-        "modelo":"TM-T88V",
-        "serie":"X6TT005157",
         "cantidad":1,
-        "reporte":null,
+        "reporte":"N\/A",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:56"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -591,16 +581,12 @@
         "estado_fisico":"Usado",
         "tipo":"Recibido",
         "cantidad":1,
-        "reporte":null,
-        "origen":"...",
-        "destino":"...",
-        "guia":"N\/A",
         "reporte":"MALA, IMPRESION BORROSA",
         "disco":"N\/A",
         "ram":"N\/A",
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 16:56"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -619,7 +605,7 @@
         "ram":"8GB",
         "procesador":"Core i3 10ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 17:02"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -638,7 +624,7 @@
         "ram":"8GB",
         "procesador":"Core i3 12ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 17:02"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -657,7 +643,7 @@
         "ram":"8GB",
         "procesador":"Core i3 10ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 17:02"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -676,7 +662,7 @@
         "ram":"8GB",
         "procesador":"Core i3 10ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 17:02"
+        "fecha_registro":"2026-01-29 19:20"
     },
     {
         "guia":"N\/A",
@@ -695,7 +681,6 @@
         "ram":"8GB",
         "procesador":"Core i3 10ma Gen",
         "fecha_llegada":"N\/A",
-        "fecha_registro":"2026-01-29 17:02"
-        "fecha_registro":"2026-01-29 17:08"
+        "fecha_registro":"2026-01-29 19:20"
     }
 ]
