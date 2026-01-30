@@ -71,7 +71,7 @@ def obtener_github(archivo):
             except json.JSONDecodeError:
                 # 🛑 AQUÍ ESTÁ EL CAMBIO: Si falla, devolvemos None, None.
                 # Esto activa la alarma en la función de enviar.
-                st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {} está CORRUPTO en GitHub. Se ha bloqueado el sistema para evitar borrar datos.")
+                st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {archivo} está CORRUPTO en GitHub. Se ha bloqueado el sistema para evitar borrar datos.")
                 return None, None
                 
         elif resp.status_code == 404:
