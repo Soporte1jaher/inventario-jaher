@@ -111,7 +111,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     if sha:
         payload["sha"] = sha
         
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     
     resp = requests.put(url, headers=HEADERS, json=payload)
     
