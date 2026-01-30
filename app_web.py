@@ -93,7 +93,7 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     # Si 'actuales' es None, es porque el archivo está corrupto o no se pudo leer.
     # PROHIBIMOS GUARDAR para no sobrescribir el desastre.
     if actuales is None:
-        st.error(f"🛡️ SEGURIDAD ACTIVADA: No se puede guardar en {} porque el archivo original está dañado. Repáralo en GitHub primero.")
+        st.error(f"🛡️ SEGURIDAD ACTIVADA: No se puede guardar en {archivo} porque el archivo original está dañado. Repáralo en GitHub primero.")
         return False
 
     # 2. Mezclamos los datos
