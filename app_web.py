@@ -54,38 +54,46 @@ def extraer_json(texto):
         return ""
     except:
         return ""
-import time
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
-    
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"    
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
+        
         if resp.status_code == 200:
             d = resp.json()
             contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
             
-            # INTENTO DE LEER EL JSON
             try:
+                # Intentamos leer el JSON
                 return json.loads(contenido_decodificado), d['sha']
             except json.JSONDecodeError:
-                # Si el archivo está roto, avisamos pero no detenemos la app
-                st.warning(f"⚠️ El archivo {archivo} en GitHub tiene un error de formato. Se iniciará vacío para poder repararlo.")
-                return [], d['sha']
+                # 🛑 AQUÍ ESTÁ EL CAMBIO: Si falla, devolvemos None, None.
+                # Esto activa la alarma en la función de enviar.
+                st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {} está CORRUPTO en GitHub. Se ha bloqueado el sistema para evitar borrar datos.")
+                return None, None
                 
-        return [], None
+        elif resp.status_code == 404:
+            # Si no existe, devolvemos lista vacía (esto sí es seguro)
+            return [], None
+        else:
+            st.error(f"❌ Error GitHub {resp.status_code}: {resp.text}")
+            return None, None
+            
     except Exception as e:
-        st.error(f"Error de conexión: {str(e)}")
-        return [], None
-        
+        st.error(f"❌ Error de conexión: {str(e)}")
+        return None, None
+
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
     # 1. Intentamos obtener lo que ya hay
     actuales, sha = obtener_github(archivo)
     
-    # --- CANDADO DE SEGURIDAD ---
-    if sha is None:
-        st.error(f"❌ Error crítico: No se pudo obtener el SHA de {archivo}. Abortando.")
+    # --- CANDADO DE SEGURIDAD TOTAL ---
+    # Si 'actuales' es None, es porque el archivo está corrupto o no se pudo leer.
+    # PROHIBIMOS GUARDAR para no sobrescribir el desastre.
+    if actuales is None:
+        st.error(f"🛡️ SEGURIDAD ACTIVADA: No se puede guardar en {} porque el archivo original está dañado. Repáralo en GitHub primero.")
         return False
 
     # 2. Mezclamos los datos
@@ -97,14 +105,14 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     # 3. Subimos a GitHub
     payload = {
         "message": mensaje,
-        "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
-        "sha": sha
+        "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode()
     }
     
-    # URL CORREGIDA: Ahora apunta al repositorio correctamente
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    if sha:
+        payload["sha"] = sha
+        
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
     
-    # LÍNEA CORREGIDA: Indentación alineada correctamente
     resp = requests.put(url, headers=HEADERS, json=payload)
     
     if resp.status_code in [200, 201]:
@@ -112,15 +120,23 @@ def enviar_github(archivo, datos, mensaje="LAIA Update"):
     else:
         st.error(f"❌ Error al subir: {resp.text}")
         return False
-        
+
 def aprender_leccion(error, correccion):
     lecciones, sha = obtener_github(FILE_LECCIONES)
+    
+    # Si lecciones es None (error de lectura), no intentamos guardar para no romper nada.
+    if lecciones is None and sha is None:
+         # Excepción: Si es la primera vez (404), obtener_github devuelve [], None. 
+         # Si devuelve None, None es error crítico.
+         return False
+
+    if lecciones is None: lecciones = [] # Si era 404, iniciamos lista
+
     nueva = {
         "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lo_que_hizo_mal": error,
         "como_debe_hacerlo": correccion
     }
-    if lecciones is None: lecciones = []
     lecciones.append(nueva)
     
     if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
