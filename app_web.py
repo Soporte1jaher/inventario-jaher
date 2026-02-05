@@ -319,32 +319,38 @@ with t1:
     # =========================
     # 2. Funciones críticas
     # =========================
-    CAMPOS_OBLIGATORIOS = [
-        "equipo","marca","modelo","cantidad",
-        "estado","tipo","ram","procesador","disco"
-    ]
 
-     
+    def extraer_json(texto):
+        texto = texto.strip()
+        if not texto.startswith("{"):
+            return ""
+        try:
+            json.loads(texto)
+            return texto
+        except:
+            return ""
+
     def campos_obligatorios_por_item(it):
-       cat = it.get("categoria_item")
-       evento = it.get("tipo_evento")
+        categoria = it.get("categoria_item")
+        evento = it.get("tipo")
 
-       base = ["equipo", "cantidad", "estado", "tipo_evento"]
+        # Campos base para todos
+        campos = ["equipo", "cantidad", "estado", "tipo"]
 
-       if cat == "Computo":
-           campos = base + ["marca", "modelo", "procesador", "ram", "disco"]
-       elif cat == "Pantalla":
-           campos = base + ["marca", "serie"]
-       elif cat in ["Periferico", "Consumible"]:
-           campos = base
-       else:
-           return []
+        if categoria == "Computo":
+            campos += ["marca", "modelo", "procesador", "ram", "disco"]
 
-       if evento == "Recibido":
-           campos += ["guia", "fecha_llegada"]
+        elif categoria == "Pantalla":
+            campos += ["marca", "serie"]
 
-       return campos
+        elif categoria in ["Periferico", "Consumible"]:
+            campos += []
 
+        # Reglas SOLO si es recibido
+        if evento == "Recibido":
+            campos += ["guia", "fecha_llegada"]
+
+        return campos
 
     def auditar_items(items):
         faltantes = set()
@@ -362,18 +368,7 @@ with t1:
                 ):
                     faltantes.add(campo)
 
-         return sorted(faltantes)
-
-
-    def extraer_json(texto):
-        texto = texto.strip()
-        if not texto.startswith("{"):
-            return ""
-        try:
-            json.loads(texto)
-            return texto
-        except:
-            return ""
+        return sorted(faltantes)
 
     # =========================
     # 3. Entrada de chat
@@ -436,7 +431,6 @@ MENSAJE USUARIO:
                 # =========================
                 nuevos_items = res_json.get("items", [])
 
-                # NO se borra nada existente, solo se agrega
                 if nuevos_items:
                     st.session_state.draft.extend(nuevos_items)
 
@@ -448,7 +442,7 @@ MENSAJE USUARIO:
                 if faltantes:
                     st.session_state.status = "QUESTION"
                     st.session_state.missing_info = (
-                        "Indica " + ", ".join(faltantes)
+                        "Indica: " + ", ".join(faltantes)
                     )
                     msg_laia = f"⛔ Faltan datos: {st.session_state.missing_info}"
                 else:
@@ -498,7 +492,7 @@ MENSAJE USUARIO:
         # =========================
         # 7. Botones finales
         # =========================
-        c1, c2 = st.columns([1,4])
+        c1, c2 = st.columns([1, 4])
 
         with c1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
