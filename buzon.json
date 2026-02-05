@@ -1,1 +1,24 @@
-[]
+[
+    {
+        "categoria_item": "Consumible",
+        "tipo": "Enviado",
+        "equipo": "Disco SSD",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 8,
+        "estado": "Nuevo",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "",
+        "destino": "Puyo",
+        "pasillo": "",
+        "estante": "",
+        "repisa": "",
+        "guia": "903845905465",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-05 18:04"
+    }
+]
