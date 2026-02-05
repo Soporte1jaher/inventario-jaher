@@ -261,9 +261,9 @@ with t1:
                 if not it.get("origen"): falta_origen = True
                 if not it.get("fecha_llegada"): falta_fecha = True
  # Añadimos los errores de logística sin el número de ítem para que sea "limpio"
-    if falta_guia: faltantes.add("guía")
-    if falta_origen: faltantes.add("origen")
-    if falta_fecha: faltantes.add("fecha de llegada")
+        if falta_guia: faltantes.add("guía")
+        if falta_origen: faltantes.add("origen")
+        if falta_fecha: faltantes.add("fecha de llegada")
             
         return sorted(faltantes)
     # 3. Entrada de Chat
