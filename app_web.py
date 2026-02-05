@@ -265,7 +265,7 @@ with t1:
     if falta_origen: faltantes.add("origen")
     if falta_fecha: faltantes.add("fecha de llegada")
             
-    return sorted(faltantes)
+        return sorted(faltantes)
     # 3. Entrada de Chat
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
