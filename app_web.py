@@ -377,7 +377,7 @@ with t1:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
                 with st.spinner("Sincronizando con GitHub..."):
                     # Añadir marca de tiempo de registro real
-                    hora_ec = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in st.session_state.draft: 
                         d["fecha_registro"] = hora_ec
 
