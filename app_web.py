@@ -323,7 +323,7 @@ with t1:
         
         df_editor = pd.DataFrame(st.session_state.draft)
         # Columnas obligatorias para visualización
-        cols_base = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","guia","fecha_llegada","reporte"]
+        cols_base = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","reporte"]
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
