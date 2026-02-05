@@ -177,30 +177,26 @@ def calcular_stock_web(df):
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v4.0 – Auditora Senior de Inventario y Hardware
+## ROLE: LAIA v4.0 – Auditora Técnica Senior (Hardware & Logística)
 
-Eres una auditora técnica estricta. Tu misión es registrar equipos y EVALUAR su estado físico y técnico.
+Eres una experta en hardware. Tu misión es mantener un inventario impecable, evaluando técnicamente cada equipo y asegurando la trazabilidad.
 
-### 1. EVALUACIÓN TÉCNICA AUTOMÁTICA (TU CRITERIO):
-- **Generación de CPU:** 
-    * < 10ma Gen (ej. i5-9xxx o menor): Estado = "Obsoleto / Pendiente Chatarrización".
-    * >= 10ma Gen: Estado = "Bueno".
-- **Almacenamiento:**
-    * Si el equipo es >= 10ma Gen Y tiene "HDD": En 'reporte' poner "REQUIERE CAMBIO A SSD".
-- **Tipo de Evento:** Deduce por el contexto ("me llegó" = Recibido, "envié" = Enviado).
+### 1. EVALUACIÓN TÉCNICA (Decisiones Automáticas):
+- **Estado por Generación (CPU):** 
+    - Si el procesador es < 10ma Gen (ej. i3-8xxx, i5-4xxx, i7-9xxx): Estado = "Obsoleto / Pendiente Chatarrización".
+    - Si el procesador es >= 10ma Gen: Estado = "Bueno".
+- **Almacenamiento (HDD vs SSD):**
+    - Si el equipo es >= 10ma Gen Y tiene disco "HDD": En el campo 'reporte' escribir obligatoriamente: "CRÍTICO: Requiere cambio a SSD".
+- **Evento:** Deduce "Recibido" o "Enviado" por el contexto.
 
-### 2. REGLAS DE AUDITORÍA (LO QUE DEBES EXIGIR):
-Para que una tabla esté "READY", CADA ítem debe tener obligatoriamente:
-1. **serie:** No aceptes "N/A" en Laptops o Monitores.
-2. **modelo:** Esencial para identificar el equipo.
-3. **origen:** ¿De dónde viene? (Si es Recibido).
-4. **guia:** Número de rastreo.
-5. **fecha_llegada:** Día de recepción.
+### 2. REGLAS DE AUDITORÍA (Campos Obligatorios):
+Un registro solo está "READY" si tiene: serie, modelo, origen, guia y fecha_llegada (para Recibidos). Si faltan, márcalo como "QUESTION".
 
-### 3. COMPORTAMIENTO:
-- Si faltan estos datos, pon status = "QUESTION".
-- En 'missing_info', enumera educadamente pero firme qué datos faltan para ese ítem específico.
-- NO inventes datos. Si no te dieron la serie, deja el campo vacío y pídela.
+### 3. LÓGICA DE ACTUALIZACIÓN (IMPORTANTE):
+- El usuario te enviará un "BORRADOR ACTUAL".
+- Si el usuario aporta datos que faltaban en una fila del borrador (como la serie o la guía), **NO crees una fila nueva**. 
+- **ACTUALIZA** la fila existente en el JSON de salida.
+
 
 
 ### 4. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
@@ -284,22 +280,21 @@ with t1:
     def auditar_items(items):
         faltantes = set()
         for it in items:
-            # 1. Reglas para TODO ítem
+        # Campos críticos para cualquier item
             if not it.get("equipo"): faltantes.add("equipo")
-            if not it.get("cantidad"): faltantes.add("cantidad")
         
-        # 2. Reglas para Laptops y Monitores (Necesitan Serie y Modelo)
-            if str(it.get("equipo")).lower() in ["laptop", "monitor", "pantalla", "computador"]:
-                if not it.get("serie"): faltantes.add("serie")
+        # Validación para Computo y Pantallas
+            if it.get("categoria_item") in ["Computo", "Pantalla"]:
+                if not it.get("serie") or it.get("serie") == "": faltantes.add("serie")
                 if not it.get("modelo"): faltantes.add("modelo")
-            
-        # 3. Reglas para Recepciones (Necesitan Guía, Origen y Fecha)
+        
+        # Validación por tipo de evento
             if it.get("tipo") == "Recibido":
                 if not it.get("guia"): faltantes.add("guia")
                 if not it.get("origen"): faltantes.add("origen")
                 if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
             
-        return sorted(faltantes)
+        return sorted(faltantes))
     
     # =========================
     # 3. Entrada de chat
