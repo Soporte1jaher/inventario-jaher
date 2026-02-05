@@ -294,7 +294,7 @@ with t1:
                 if not it.get("origen"): faltantes.add("origen")
                 if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
             
-        return sorted(faltantes))
+         return sorted(faltantes))
     
     # =========================
     # 3. Entrada de chat
