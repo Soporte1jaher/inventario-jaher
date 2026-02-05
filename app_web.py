@@ -368,8 +368,8 @@ MENSAJE USUARIO:
                 # 4. Fusión segura del draft
                 # =========================
                 nuevos_items = res_json.get("items", [])
-                if nuevos_items:
-                    st.session_state.draft.extend(nuevos_items)
+                if "items" in res_json:
+                    st.session_state.draft = res_json["items"]
 
                 # =========================
                 # 5. Auditoría server-side
