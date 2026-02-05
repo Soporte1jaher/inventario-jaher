@@ -147,30 +147,54 @@ def aprender_leccion(error, correccion):
 # ==========================================
 def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
+    
     df_c = df.copy()
+    # Limpieza profunda de columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
-    for col in ['estado', 'estado_fisico', 'tipo', 'destino', 'equipo', 'marca', 'cantidad', 'modelo']:
-        if col not in df_c.columns: df_c[col] = "No especificado"
-    df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(1)
+    
+    # Asegurar que existan las columnas básicas
+    for col in ['estado', 'tipo', 'equipo', 'cantidad']:
+        if col not in df_c.columns: df_c[col] = ""
+    
+    # Convertir cantidad a número de forma segura
+    df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
     def procesar_fila(row):
-        est = str(row['estado']).lower()
-        t = str(row['tipo']).lower()
-        d = str(row['destino']).lower()
-        eq = str(row['equipo']).lower()
+        eq = str(row['equipo']).lower().strip()
+        tipo = str(row['tipo']).lower().strip()
+        est = str(row['estado']).lower().strip()
         cant = row['cant_n']
-        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'ponchadora', 'cargador']
+
+        # 1. Definir si es Entrada o Salida
+        es_entrada = any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó'])
+        es_salida = any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié'])
+
+        # 2. Lógica para Periféricos y Consumibles (Suma y Resta simple)
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta']
         if any(p in eq for p in perifericos):
-            return cant if 'recibido' in t else -cant
-        if 'dañ' in est or 'obs' in est: return 0
-        if d == 'stock' or 'recibido' in t: return cant
-        if 'enviado' in t: return -cant
+            if es_entrada: return cant
+            if es_salida: return -cant
+            return 0 # Si no se sabe qué es, no suma ni resta
+
+        # 3. Lógica para Equipos Críticos (Solo suma si están en buen estado)
+        if 'dañ' in est or 'obs' in est or 'chatarra' in est:
+            return 0
+        
+        if es_entrada: return cant
+        if es_salida: return -cant
+        
         return 0
 
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    resumen = df_c.groupby(['equipo', 'marca', 'modelo', 'estado_fisico'])['val'].sum().reset_index()
-    movimientos = df_c[df_c['val'] != 0]
-    return resumen[resumen['val'] > 0], movimientos
+    
+    # Agrupamos para el resumen de saldos
+    resumen = df_c.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
+    resumen.columns = ['equipo', 'marca', 'modelo', 'variacion']
+    
+    # Solo mostramos en el stock lo que tiene saldo positivo
+    stock_real = resumen[resumen['variacion'] > 0].copy()
+    
+    return stock_real, df_c
 
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
