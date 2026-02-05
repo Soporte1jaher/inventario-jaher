@@ -140,11 +140,11 @@
         "fecha_registro":"2026-02-05 14:56"
     },
     {
-        "guia":"718737287238",
+        "guia":"718737287238.0",
         "equipo":"Laptop",
         "marca":"HP",
         "modelo":"ProBook 45P",
-        "serie":"76767346",
+        "serie":"76767346.0",
         "origen":"Stock",
         "destino":"Latacunga",
         "estado":"Da\u00f1ado",
@@ -156,7 +156,7 @@
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
         "categoria_item":"Computo",
-        "almacenamiento":"",
+        "almacenamiento":null,
         "fecha_registro":"2026-02-05 15:01"
     },
     {
@@ -176,11 +176,11 @@
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
         "categoria_item":"Computo",
-        "almacenamiento":"",
+        "almacenamiento":null,
         "fecha_registro":"2026-02-05 15:01"
     },
     {
-        "guia":"718737287238",
+        "guia":"718737287238.0",
         "equipo":"Mouse",
         "marca":"N\/A",
         "modelo":"N\/A",
@@ -196,11 +196,11 @@
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
         "categoria_item":"Periferico",
-        "almacenamiento":"",
+        "almacenamiento":null,
         "fecha_registro":"2026-02-05 15:01"
     },
     {
-        "guia":"718737287238",
+        "guia":"718737287238.0",
         "equipo":"Teclado",
         "marca":"N\/A",
         "modelo":"N\/A",
@@ -216,7 +216,27 @@
         "procesador":"N\/A",
         "fecha_llegada":"N\/A",
         "categoria_item":"Periferico",
-        "almacenamiento":"",
+        "almacenamiento":null,
         "fecha_registro":"2026-02-05 15:01"
+    },
+    {
+        "guia":"N\/A",
+        "equipo":"Laptop",
+        "marca":"Lenovo",
+        "modelo":"N\/A",
+        "serie":"90909090",
+        "origen":"Agencia Portete",
+        "destino":"N\/A",
+        "estado":"Da\u00f1ado",
+        "tipo":"Recibido",
+        "cantidad":1,
+        "reporte":"El equipo tiene la pantalla trizada y no enciende, se gener\u00f3 el IT123 para chatarrizaci\u00f3n pendiente de aprobaci\u00f3n de auditor\u00eda.",
+        "disco":"N\/A",
+        "ram":"N\/A",
+        "procesador":"N\/A",
+        "fecha_llegada":"N\/A",
+        "categoria_item":"Computo",
+        "almacenamiento":"N\/A",
+        "fecha_registro":"2026-02-05 15:08"
     }
 ]
