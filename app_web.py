@@ -292,7 +292,7 @@ with t1:
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA (REVISA AQUÍ ANTES DE PEDIR DATOS): {}"}
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA (REVISA AQUÍ ANTES DE PEDIR DATOS): {contexto_tabla}"}
                 ]
                 
                 # Añadimos los últimos 10 mensajes del chat para que tenga memoria de la plática
