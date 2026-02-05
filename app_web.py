@@ -219,7 +219,7 @@ Eres una experta en hardware y gestión de activos. No eres un robot de entrada 
    "equipo": "", "marca": "", "modelo": "", "serie": "",
    "cantidad": 1, "estado": "", "procesador": "", "ram": "", "disco": "",
    "reporte": "Tu análisis técnico aquí",
-   "origen": "", "guia": "", "fecha_llegada": ""
+   "origen": "", "destino": "" "guia": "", "fecha_llegada": ""
   }
  ]
 }
