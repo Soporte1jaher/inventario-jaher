@@ -1,1 +1,40 @@
-[]
+[
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Enviado",
+        "equipo": "Teclado",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Nuevo",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "",
+        "destino": "Pederales",
+        "guia": "018723728937293",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-05 13:48"
+    },
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Enviado",
+        "equipo": "Cable HDMI",
+        "marca": "",
+        "modelo": "",
+        "serie": "",
+        "cantidad": 1,
+        "estado": "Nuevo",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "",
+        "destino": "Pederales",
+        "guia": "018723728937293",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-05 13:48"
+    }
+]
