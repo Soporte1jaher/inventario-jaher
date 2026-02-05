@@ -256,6 +256,7 @@ Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movi
    "procesador": "",
    "ram": "",
    "disco": "",
+   "almacenamiento": "",
    "reporte": "Tu análisis técnico aquí",
    "origen": "",
    "destino": "",
@@ -337,7 +338,7 @@ with t1:
         
         df_editor = pd.DataFrame(st.session_state.draft)
         # Columnas obligatorias para visualización
-        cols_base = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","disco","procesador","reporte"]
+        cols_base = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","disco","almacenamiento","procesador","reporte"]
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
