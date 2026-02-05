@@ -2088,27 +2088,5 @@
         "guia": "N/A",
         "fecha_llegada": "",
         "fecha_registro": "2026-02-05 17:42"
-    },
-    {
-        "categoria_item": "Periferico",
-        "tipo": "Recibido",
-        "equipo": "Parlantes",
-        "marca": "N/A",
-        "modelo": "N/A",
-        "serie": "N/A",
-        "cantidad": 1,
-        "estado": "Bueno",
-        "procesador": "",
-        "ram": "",
-        "disco": "",
-        "reporte": "",
-        "origen": "Data Center",
-        "destino": "Bodega",
-        "pasillo": "3",
-        "estante": "",
-        "repisa": "",
-        "guia": "N/A",
-        "fecha_llegada": "",
-        "fecha_registro": "2026-02-05 17:42"
     }
 ]
