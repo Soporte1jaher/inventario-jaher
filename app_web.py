@@ -278,36 +278,34 @@ with t1:
         return campos
 
     def auditar_items(items):
-    faltantes = set()
+        faltantes = set()
 
-    for it in items:
-        # Campos críticos para cualquier item
-        if not it.get("equipo"):
-            faltantes.add("equipo")
+        for it in items:
+            # Campos críticos para cualquier item
+            if not it.get("equipo"):
+                faltantes.add("equipo")
 
-        # Validación para Computo y Pantallas
-        if it.get("categoria_item") in ["Computo", "Pantalla"]:
-            if not it.get("serie"):
-                faltantes.add("serie")
+            # Validación para Computo y Pantallas
+            if it.get("categoria_item") in ["Computo", "Pantalla"]:
+                if not it.get("serie") or it.get("serie") == "":
+                    faltantes.add("serie")
 
-            if not it.get("modelo"):
-                faltantes.add("modelo")
+                if not it.get("modelo"):
+                    faltantes.add("modelo")
 
-        # Validación por tipo de evento
-        if it.get("tipo") == "Recibido":
-            if not it.get("guia"):
-                faltantes.add("guia")
+            # Validación por tipo de evento
+            if it.get("tipo") == "Recibido":
+                if not it.get("guia"):
+                    faltantes.add("guia")
 
-            if not it.get("origen"):
-                faltantes.add("origen")
+                if not it.get("origen"):
+                    faltantes.add("origen")
 
-            if not it.get("fecha_llegada"):
-                faltantes.add("fecha_llegada")
+                if not it.get("fecha_llegada"):
+                    faltantes.add("fecha_llegada")
 
-    return sorted(faltantes)
+        return sorted(faltantes)
 
-
-    
     # =========================
     # 3. Entrada de chat
     # =========================
@@ -409,9 +407,9 @@ MENSAJE USUARIO:
         df_editor = pd.DataFrame(st.session_state.draft)
 
         cols_orden = [
-            "equipo","marca","modelo","serie","cantidad","estado",
-            "tipo","origen","destino","guia","fecha_llegada",
-            "ram","procesador","disco","reporte"
+            "equipo", "marca", "modelo", "serie", "cantidad", "estado",
+            "tipo", "origen", "destino", "guia", "fecha_llegada",
+            "ram", "procesador", "disco", "reporte"
         ]
 
         df_editor = df_editor.reindex(columns=cols_orden).fillna("")
