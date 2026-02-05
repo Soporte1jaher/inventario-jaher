@@ -501,4 +501,4 @@ with t3:
             except Exception as e:
                 st.error(f"Error técnico: {str(e)}")
         else:
-            st.warning("Escribe algo antes de ejecutar."
+            st.warning("Escribe algo antes de ejecutar.")
