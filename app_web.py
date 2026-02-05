@@ -139,78 +139,74 @@ def aprender_leccion(error, correccion):
 # 4. MOTOR DE STOCK
 # ==========================================
 def calcular_stock_web(df):
-    if df.empty: return pd.DataFrame(), pd.DataFrame()
+    if df.empty: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
     df_c = df.copy()
-    # 1. Normalización total: todo a minúsculas y sin espacios locos
+    # 1. Normalización total de nombres de columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
     
-    # 2. Aseguramos que las columnas existan y limpiamos los "N/A"
-    for col in ['equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad']:
+    # 2. Aseguramos que existan las columnas de Bodega y Periféricos
+    cols_necesarias = [
+        'equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad', 
+        'destino', 'pasillo', 'estante', 'repisa', 'serie'
+    ]
+    
+    for col in cols_necesarias:
         if col not in df_c.columns: 
             df_c[col] = "n/a"
         else:
-            # Convertimos todo a texto, quitamos espacios y estandarizamos "n/a"
             df_c[col] = df_c[col].astype(str).str.lower().str.strip().replace(['nan', 'none', '', 'nan'], 'n/a')
     
-    # 3. Cantidad a número (si falla pone 0)
+    # 3. Cantidad a número
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
-    def procesar_fila(row):
-        eq = row['equipo']
+    # --- LÓGICA 1: STOCK DE PERIFÉRICOS (SALDOS SUMA/RESTA) ---
+    perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'parlante', 'herramienta']
+    
+    # Filtramos solo periféricos para el cálculo de saldos
+    mask_perifericos = df_c['equipo'].str.contains('|'.join(perifericos), na=False)
+    df_p = df_c[mask_perifericos].copy()
+
+    def procesar_saldo(row):
         tipo = row['tipo']
-        est = row['estado']
         cant = row['cant_n']
-
-        # Detección inteligente de Movimiento
-        es_entrada = any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó', 'compra', 'stock'])
-        es_salida = any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié', 'envio', 'entregado'])
-
-        # Lógica de Periféricos (No importa el estado técnico)
-        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'herramienta']
-        if any(p in eq for p in perifericos):
-            if es_entrada: return cant
-            if es_salida: return -cant
-            return 0 
-
-        # Lógica de Equipos Críticos (Laptops/Monitores)
-        # Si está dañado o es chatarra, no suma al stock disponible
-        if any(x in est for x in ['dañ', 'obs', 'chatarra', 'malo']):
-            return 0
-        
-        if es_entrada: return cant
-        if es_salida: return -cant
+        # Si entra suma, si sale resta
+        if any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó', 'compra', 'stock']):
+            return cant
+        if any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié', 'envio', 'entregado']):
+            return -cant
         return 0
 
-    # Aplicamos la lógica a cada fila
-    df_c['val'] = df_c.apply(procesar_fila, axis=1)
-    
-    # 4. AGRUPACIÓN MAESTRA
-    # Agrupamos SOLO por equipo, marca y modelo para que los "Enviados" 
-    # encuentren a los "Recibidos" y se resten.
-    resumen = df_c.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
-    
-    # Renombramos para el Excel de saldos
-    resumen.columns = ['equipo', 'marca', 'modelo', 'variacion']
-    
-    # Creamos stock_real para las métricas de la web (usando el nombre 'val')
-    stock_real = resumen.copy()
-    stock_real.columns = ['equipo', 'marca', 'modelo', 'val']
-    stock_real = stock_real[stock_real['val'] > 0]
-    
-    return stock_real, df_c
+    df_p['val'] = df_p.apply(procesar_saldo, axis=1)
+    st_res = df_p.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
+    st_res = st_res[st_res['val'] > 0] # Solo mostramos lo que existe
 
+    # --- LÓGICA 2: BODEGA (EQUIPOS UBICADOS) ---
+    # Aquí filtramos todo lo que tenga como destino "bodega"
+    bod_res = df_c[df_c['destino'].str.contains('bodega', na=False)].copy()
+    
+    # Seleccionamos las columnas que queremos ver en la hoja de Bodega
+    if not bod_res.empty:
+        bod_res = bod_res[[
+            'equipo', 'marca', 'modelo', 'serie', 'cantidad', 'estado', 
+            'pasillo', 'estante', 'repisa', 'procesador', 'ram', 'disco'
+        ]]
+
+    # 4. Retornamos 3 cosas: Saldos de periféricos, Detalle de Bodega e Historial Completo
+    return st_res, bod_res, df_c
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v9.0 – Auditora Técnica Senior (Hardware & Logística)
+## ROLE: LAIA v10.0 – Auditora Técnica Senior (Hardware & Logística)
 
-Eres una experta analista de hardware y gestora de inventarios. Tu prioridad es el razonamiento lógico y la integridad de los datos.
+Eres una experta analista de hardware y gestora de inventarios. Tu prioridad es el razonamiento lógico, la integridad de los datos y la organización de bodega.
+
 ### 0. REGLAS DE MAPEO (CRÍTICO):
 - **Marca:** Es el fabricante (HP, Dell, LG, Lenovo). **NUNCA** pongas una ciudad o lugar en esta columna.
 - **Origen:** Es el lugar de donde viene el equipo (Latacunga, Ibarra, Bodega, etc.).
+- **Ubicación de Bodega:** Si el usuario menciona pasillos, estantes o repisas, extrae esa información con precisión para las columnas correspondientes.
 
 Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movimientos "Recibido":
 1. **guia:** El número de rastreo.
@@ -218,55 +214,54 @@ Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movi
 3. **serie:** Fundamental para CPUs y Monitores.
 4. No exijas datos si el usuario ya adjunto estos datos.
 5. No vuelvas a pedir datos que ya pediste una vez.
-- Si falta cualquiera de estos, pon status: "QUESTION" y pide los datos faltantes de forma directa.
-- **Solo pon status: "READY" si el usuario explícitamente dice "No tengo la guía" o "No hay serie".** De lo contrario, asume que se le olvidó y pídela.
 
+- Si falta cualquiera de estos, pon status: "QUESTION" y pide los datos faltantes de forma directa.
+- **Solo pon status: "READY" si el usuario explícitamente dice "No tengo la guía" o "No hay serie".**
 
 ### 1. RAZONAMIENTO TÉCNICO EXPERTO:
 - Evalúa procesadores, RAM y discos por iniciativa propia.
 - **Hardware Obsoleto:** Si detectas CPUs de hace más de 10 años (ej. Intel Core de 4ta gen o anterior), clasifícalos como "Obsoleto / Pendiente Chatarrización".
-- **Optimización:** Si ves un equipo moderno (>= 10ma gen) con disco mecánico (HDD), añade en 'reporte' tu sugerencia de cambia a SSD que veas conveniente.
-- Usa la 'MEMORIA DE ERRORES' para evitar fallos de formato o lógica cometidos anteriormente.
+- **Optimización:** Si ves un equipo moderno (>= 10ma gen) con disco mecánico (HDD), añade en 'reporte' tu sugerencia de cambio a SSD.
+- Usa la 'MEMORIA DE ERRORES' para evitar fallos previos.
 
-### 2. LOGÍSTICA E INVENTARIO (REGLAS CRÍTICAS):
-- **Tipo de Movimiento:** Clasifica SIEMPRE como "Recibido" (Entradas) o "Enviado" (Salidas). Usa estas palabras exactas para que el motor de stock funcione.
-- **Destino Stock:** Si el usuario dice "a stock", "llega a bodega" o similar, pon automáticamente "Stock" en la columna 'destino'.
-- **Lógica de Lotes:** Si el usuario describe varios ítems en un solo mensaje, asume que comparten la misma GUIA, ORIGEN, FECHA y DESTINO. No los separes a menos que se indique lo contrario.
-
+### 2. LOGÍSTICA, STOCK Y BODEGA:
+- **Tipo de Movimiento:** Clasifica SIEMPRE como "Recibido" (Entradas) o "Enviado" (Salidas).
+- **Destino Stock vs Bodega:** 
+    * Si el usuario dice "a stock", el destino es "Stock". (Generalmente para periféricos).
+    * Si el usuario dice "a Bodega" o da coordenadas de estantería, el destino es "Bodega". (Generalmente para CPUs, Laptops y Monitores).
+- **Lógica de Lotes:** Si el usuario describe varios ítems en un solo mensaje, asume que comparten la misma GUIA, ORIGEN, FECHA y DESTINO.
 
 ### 3. GESTIÓN DE MEMORIA (ANTIBORRADO):
-- Recibirás el 'BORRADOR ACTUAL'. 
-- **NO ELIMINES NADA:** Si el usuario añade algo nuevo, mantén lo que ya estaba y agrégalo a la lista.
-- **Actualización Masiva:** Si el usuario proporciona un dato (como guía, fecha u origen) y hay varios ítems en la tabla que necesitan ese dato, APLÍCALO A TODOS los ítems afectados automáticamente.
-- **Validación de N/A:** Si un campo tiene "N/A", se considera LLENO y VÁLIDO. No lo marques como faltante.
-**Eres capaz de sugerir al usuario llenar datos faltantes del JSON  si estan vacios o tienen "N/A"**
-Excepción: Si se trata de "marca" y "modelo" marcado con "N/A" es tu obligación sugerir al usuario poner estos datos.
-- **Prioridad de la Tabla:** Antes de responder, revisa cada fila de la tabla. Si todos los campos obligatorios tienen información (aunque sea N/A), el status DEBE ser "READY".
+- Recibirás el 'BORRADOR ACTUAL'. **NO ELIMINES NADA.**
+- **Actualización Masiva:** Si el usuario proporciona un dato (guía, fecha, origen, pasillo) y hay varios ítems que lo necesitan, APLÍCALO A TODOS automáticamente.
+- **Sugerencia de Datos:** Eres capaz de sugerir llenar datos faltantes si están vacíos o tienen "N/A". Es obligatorio sugerir Marca y Modelo si están en "N/A".
 
 ### 4. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY" o "QUESTION",
- "missing_info": "Mensaje corto pidiendo lo que falte (guía, origen, serie, etc.)",
+ "missing_info": "Mensaje corto pidiendo lo que falte",
  "items": [
-  {
-   "categoria_item": "Computo/Pantalla/Periferico/Consumible",
-   "tipo": "Recibido/Enviado",
-   "equipo": "",
-   "marca": "",
-   "modelo": "",
-   "serie": "",
-   "cantidad": 1,
-   "estado": "Nuevo/Bueno/Obsoleto/Dañado",
-   "procesador": "",
-   "ram": "",
-   "disco": "",
-   "almacenamiento": "",
-   "reporte": "Tu análisis técnico aquí",
-   "origen": "",
-   "destino": "",
-   "guia": "",
-   "fecha_llegada": ""
-  }
+ {
+  "categoria_item": "Computo/Pantalla/Periferico/Consumible",
+  "tipo": "Recibido/Enviado",
+  "equipo": "",
+  "marca": "",
+  "modelo": "",
+  "serie": "",
+  "cantidad": 1,
+  "estado": "Nuevo/Bueno/Obsoleto/Dañado",
+  "procesador": "",
+  "ram": "",
+  "disco": "",
+  "reporte": "Tu análisis técnico aquí",
+  "origen": "",
+  "destino": "",
+  "pasillo": "",
+  "estante": "",
+  "repisa": "",
+  "guia": "",
+  "fecha_llegada": ""
+ }
  ]
 }
 """
@@ -353,9 +348,9 @@ with t1:
         
         # Columnas obligatorias (Aseguramos que 'destino' y 'ram/disco' sean visibles)
         cols_base = [
-            "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
-            "tipo", "origen", "destino", "guia", "fecha_llegada", 
-            "ram", "disco", "procesador", "reporte"
+    "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
+    "tipo", "origen", "destino", "pasillo", "estante", "repisa", 
+    "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"
         ]
         
         for c in cols_base:
@@ -421,32 +416,49 @@ with t2:
         k2.metric("🚚 Total Movimientos", len(df_h))
 
         # --- AQUÍ ESTÁ LA MAGIA PARA EL EXCEL ---
-        import io
-        buffer = io.BytesIO()
-        # Creamos el Excel en la memoria del navegador con los datos de historico.json
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-          df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos') # Cambié el nombre para que sea más claro
-          if not st_res.empty:
-        # Aquí forzamos que la columna se llame 'variacion' en el Excel
+          # 3. Calculamos stock usando la nueva función v10.0
+    st_res, bod_res, df_h = calcular_stock_web(df_h)
+     
+    # 4. Mostramos métricas
+    k1, k2 = st.columns(2)
+    # Usamos 'val' para la métrica porque st_res aún conserva ese nombre internamente
+    total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
+    k1.metric("📦 Periféricos en Stock", total_stock)
+    k2.metric("🚚 Movimientos Totales", len(df_h))
+
+    # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
+    import io
+    buffer = io.BytesIO()
+    
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # HOJA 1: Enviados y Recibidos (Historial completo)
+        df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
+        
+        # HOJA 2: Stock (Saldos de Periféricos)
+        if not st_res.empty:
             st_res_excel = st_res.copy()
+            # Renombramos 'val' a 'variacion' solo para el Excel como pediste
             st_res_excel.columns = ['equipo', 'marca', 'modelo', 'variacion']
             st_res_excel.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
         
-        st.download_button(
-            label="📥 DESCARGAR EXCEL SINCRONIZADO",
-            data=buffer.getvalue(),
-            file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary" # Lo pone en color verde/destacado
-        )
-        # ----------------------------------------
+        # HOJA 3: BODEGA (Ubicaciones de equipos de valor)
+        if not bod_res.empty:
+            # Limpiamos los nombres de columnas para que se vean bien en el Excel
+            bod_res.columns = [c.capitalize() for c in bod_res.columns]
+            bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
+     
+    st.download_button(
+        label="📥 DESCARGAR EXCEL SINCRONIZADO (3 HOJAS)",
+        data=buffer.getvalue(),
+        file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type="primary" 
+    )
+    # ----------------------------------------
 
-        # 5. Mostrar la tabla en la web para verificar
-        st.write("### 📜 Últimos Movimientos en el Histórico")
-        st.dataframe(df_h.tail(20), use_container_width=True) # Muestra los últimos 20
-        
-    else:
-        st.warning("⚠️ No se encontraron datos en el histórico. Verifica que historico.json en GitHub tenga información.")
+    # 5. Mostrar la tabla en la web para verificar
+    st.write("### 📜 Últimos Movimientos en el Histórico")
+    st.dataframe(df_h.tail(20), use_container_width=True) 
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
 
