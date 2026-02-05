@@ -186,6 +186,8 @@ Eres una auditora técnica experta. Tu prioridad es la PRECISIÓN y la MEMORIA.
 - Si el usuario aporta datos que faltan (serie, modelo, origen, guía) para un equipo que YA ESTÁ en la tabla, **ACTUALIZA LA FILA EXISTENTE**. 
 - **NO crees filas duplicadas**. Si el usuario dice "la serie es X", busca el ítem que no tenía serie y pónsela.
 - **PROHIBIDO BORRAR:** No elimines datos que ya estaban en el borrador (como la marca o el estado) solo porque el usuario no los repitió.
+- **Lógica de Lotes:** Si el usuario describe varios ítems en un solo mensaje, asume que comparten la misma GUIA, ORIGEN, FECHA y DESTINO. No los trates como envíos separados.
+- **Destino Stock:** Si el usuario dice "a stock" o "llega a bodega", pon automáticamente "Stock" en la columna 'destino' para todos esos ítems.
 
 ### 2. CRITERIOS TÉCNICOS AUTOMÁTICOS:
 - **CPU < 10ma Gen (ej. i5-8xxx, i7-4xxx):** Estado = "Obsoleto / Pendiente Chatarrización".
@@ -243,23 +245,27 @@ with t1:
     # 2. Funciones de Auditoría Interna
     def auditar_items_local(items):
         faltantes = set()
+        falta_guia = falta_origen = falta_fecha = False
         for i, it in enumerate(items):
             eq = str(it.get("equipo", "")).lower()
             tipo = str(it.get("tipo", "")).lower()
-            if not it.get("equipo"): continue
             
             # Regla para Hardware Crítico
-            if any(p in eq for p in ["monitor", "pantalla", "laptop", "pc", "cpu", "computador"]):
-                if not it.get("serie"): faltantes.add(f"serie (ítem {i+1})")
-                if not it.get("modelo"): faltantes.add(f"modelo (ítem {i+1})")
+            if any(p in eq for p in ["monitor", "laptop", "pc", "cpu", "pantalla"]):
+                if not it.get("serie"): faltantes.add(f"serie")
+                if not it.get("modelo"): faltantes.add(f"modelo")
             
-            # Regla para Logística
+            # 2. Logística Global (Si falta en uno del lote, lo pedimos una sola vez)
             if "recibido" in tipo or it.get("guia") or it.get("origen"):
-                if not it.get("guia"): faltantes.add(f"guía (ítem {i+1})")
-                if not it.get("origen"): faltantes.add(f"origen (ítem {i+1})")
-                if not it.get("fecha_llegada"): faltantes.add(f"fecha (ítem {i+1})")
-        return sorted(faltantes)
-
+                if not it.get("guia"): falta_guia = True
+                if not it.get("origen"): falta_origen = True
+                if not it.get("fecha_llegada"): falta_fecha = True
+ # Añadimos los errores de logística sin el número de ítem para que sea "limpio"
+    if falta_guia: faltantes.add("guía")
+    if falta_origen: faltantes.add("origen")
+    if falta_fecha: faltantes.add("fecha de llegada")
+            
+    return sorted(faltantes)
     # 3. Entrada de Chat
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
