@@ -149,42 +149,61 @@ def calcular_stock_web(df):
     if df.empty: return pd.DataFrame(), pd.DataFrame()
     
     df_c = df.copy()
+    # 1. Normalización total: todo a minúsculas y sin espacios locos
     df_c.columns = df_c.columns.str.lower().str.strip()
     
-    for col in ['estado', 'tipo', 'equipo', 'cantidad']:
-        if col not in df_c.columns: df_c[col] = ""
+    # 2. Aseguramos que las columnas existan y limpiamos los "N/A"
+    for col in ['equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad']:
+        if col not in df_c.columns: 
+            df_c[col] = "n/a"
+        else:
+            # Convertimos todo a texto, quitamos espacios y estandarizamos "n/a"
+            df_c[col] = df_c[col].astype(str).str.lower().str.strip().replace(['nan', 'none', '', 'nan'], 'n/a')
     
+    # 3. Cantidad a número (si falla pone 0)
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
     def procesar_fila(row):
-        eq = str(row['equipo']).lower().strip()
-        tipo = str(row['tipo']).lower().strip()
-        est = str(row['estado']).lower().strip()
+        eq = row['equipo']
+        tipo = row['tipo']
+        est = row['estado']
         cant = row['cant_n']
 
-        es_entrada = any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó'])
-        es_salida = any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié'])
+        # Detección inteligente de Movimiento
+        es_entrada = any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó', 'compra', 'stock'])
+        es_salida = any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié', 'envio', 'entregado'])
 
-        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta']
+        # Lógica de Periféricos (No importa el estado técnico)
+        perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'herramienta']
         if any(p in eq for p in perifericos):
             if es_entrada: return cant
             if es_salida: return -cant
             return 0 
 
-        if 'dañ' in est or 'obs' in est or 'chatarra' in est:
+        # Lógica de Equipos Críticos (Laptops/Monitores)
+        # Si está dañado o es chatarra, no suma al stock disponible
+        if any(x in est for x in ['dañ', 'obs', 'chatarra', 'malo']):
             return 0
         
         if es_entrada: return cant
         if es_salida: return -cant
         return 0
 
+    # Aplicamos la lógica a cada fila
     df_c['val'] = df_c.apply(procesar_fila, axis=1)
     
-    # Agrupamos y mantenemos el nombre 'val' para que la métrica funcione
+    # 4. AGRUPACIÓN MAESTRA
+    # Agrupamos SOLO por equipo, marca y modelo para que los "Enviados" 
+    # encuentren a los "Recibidos" y se resten.
     resumen = df_c.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
     
-    # Solo mostramos en el stock lo que tiene saldo positivo
-    stock_real = resumen[resumen['val'] > 0].copy()
+    # Renombramos para el Excel de saldos
+    resumen.columns = ['equipo', 'marca', 'modelo', 'variacion']
+    
+    # Creamos stock_real para las métricas de la web (usando el nombre 'val')
+    stock_real = resumen.copy()
+    stock_real.columns = ['equipo', 'marca', 'modelo', 'val']
+    stock_real = stock_real[stock_real['val'] > 0]
     
     return stock_real, df_c
 
@@ -341,9 +360,12 @@ with t2:
         buffer = io.BytesIO()
         # Creamos el Excel en la memoria del navegador con los datos de historico.json
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            df_h.to_excel(writer, index=False, sheet_name='Historico_Real')
-            if not st_res.empty:
-                st_res.to_excel(writer, index=False, sheet_name='Resumen_Stock')
+          df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos') # Cambié el nombre para que sea más claro
+          if not st_res.empty:
+        # Aquí forzamos que la columna se llame 'variacion' en el Excel
+            st_res_excel = st_res.copy()
+            st_res_excel.columns = ['equipo', 'marca', 'modelo', 'variacion']
+            st_res_excel.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
         
         st.download_button(
             label="📥 DESCARGAR EXCEL SINCRONIZADO",
