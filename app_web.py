@@ -453,27 +453,28 @@ with t2:
     else:
         st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
 with t3:
-    st.subheader("🗑️ Limpieza Inteligente de Base de Datos")
-    st.info("Escribe qué quieres borrar (ej: 'borra todo', 'borra lo de latacunga')")
+    st.subheader("🗑️ Limpieza Inteligente Selectiva")
+    st.info("Puedes decir: 'Borra solo los dañados', 'Limpia la bodega' o 'Borra enviados y recibidos'")
 
-    txt_borrar = st.text_input("Instrucción de borrado:", placeholder="¿Qué deseas eliminar?")
+    txt_borrar = st.text_input("¿Qué deseas eliminar específicamente?", placeholder="Ej: Borra los equipos de latacunga...")
 
-    if st.button("🔥 EJECUTAR ACCIÓN DE LIMPIEZA", type="secondary"):
+    if st.button("🔥 EJECUTAR LIMPIEZA SELECTIVA", type="secondary"):
         if txt_borrar:
             try:
-                with st.spinner("LAIA procesando orden..."):
-                    # Prompt reforzado para evitar texto extra
+                with st.spinner("LAIA analizando categorías de borrado..."):
                     p_db = f"""
-                    Actúa como un Administrador de Base de Datos (DBA) estricto. 
-                    Convierte la petición del usuario en UN SOLO objeto JSON de comando.
-
-                    REGLAS DE COMANDO:
-                    - Si pide borrar TODO, limpiar historial o menciona varias categorías (Enviados, Stock, Dañados): {{"accion": "borrar_todo"}}
-                    - Si pide borrar un equipo específico: {{"accion": "borrar_filtro", "columna": "equipo", "valor": "NOMBRE_DEL_EQUIPO"}}
+                    Actúa como DBA. Tu objetivo es identificar QUÉ SECCIÓN del inventario quiere borrar el usuario.
                     
-                    PETICIÓN DEL USUARIO: "{txt_borrar}"
+                    CATEGORÍAS DISPONIBLES:
+                    1. "logistica": Se refiere a la hoja 'Enviados y Recibidos'.
+                    2. "bodega": Se refiere a la hoja 'BODEGA'.
+                    3. "danados": Se refiere a los equipos con estado 'Dañado', 'Malo' u 'Obsoleto'.
+                    4. "todo": Solo si pide borrar TODO el historial.
 
-                    SALIDA: Responde ÚNICAMENTE con el objeto JSON. Está prohibido escribir texto antes o después del JSON.
+                    INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
+
+                    RESPONDE ÚNICAMENTE CON ESTE JSON:
+                    {{"accion": "borrar_especifico", "objetivo": "logistica/bodega/danados/todo", "detalle": "menciona si hay un filtro extra como una ciudad o equipo, si no pon 'n/a'"}}
                     """
 
                     response = client.chat.completions.create(
@@ -482,31 +483,13 @@ with t3:
                         temperature=0
                     )
 
-                    # --- LIMPIEZA EXTREMA DEL TEXTO ---
                     texto_ia = response.choices[0].message.content.strip()
-                    # Buscamos el primer '{' y el último '}' para ignorar cualquier texto extra que la IA haya puesto
-                    inicio = texto_ia.find("{")
-                    fin = texto_ia.rfind("}") + 1
-                    
-                    if inicio == -1 or fin == 0:
-                        st.error("LAIA no generó un comando válido. Intenta decir: 'Borrar todo'.")
-                        st.stop()
-                    
-                    json_limpio = texto_ia[inicio:fin]
+                    inicio, fin = texto_ia.find("{"), texto_ia.rfind("}") + 1
+                    order = json.loads(texto_ia[inicio:fin])
 
-                    try:
-                        order = json.loads(json_limpio)
-                    except json.JSONDecodeError:
-                        st.error("❌ El comando generado no es válido. Reintenta.")
-                        st.stop()
-
-                    # Enviamos la orden al buzón
-                    if enviar_github(FILE_BUZON, order, "Comando de Limpieza"):
-                        st.success(f"✅ Orden enviada correctamente.")
+                    if enviar_github(FILE_BUZON, order, "Orden de Limpieza Selectiva"):
+                        st.success(f"✅ Orden de borrado enviada para: {order['objetivo']}")
                         st.json(order)
-                        st.warning("⚠️ El script local ejecutará el borrado en unos segundos. No cierres el script en tu PC.")
-                    
+                        st.warning("El script de tu PC ejecutará la limpieza en el próximo ciclo.")
             except Exception as e:
-                st.error(f"Error técnico: {str(e)}")
-        else:
-            st.warning("Por favor, escribe qué deseas eliminar.")
+                st.error(f"Error: {e}")
