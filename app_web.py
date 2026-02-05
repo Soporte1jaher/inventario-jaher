@@ -275,7 +275,7 @@ with t1:
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "system", "content": f"BORRADOR ACTUAL EN TABLA (NO PERDER DATOS): {}"},
+                        {"role": "system", "content": f"BORRADOR ACTUAL EN TABLA (NO PERDER DATOS): {contexto_tabla}"},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0
