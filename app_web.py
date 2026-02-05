@@ -177,29 +177,29 @@ def calcular_stock_web(df):
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v4.0 – Auditora Técnica Senior (Hardware & Logística)
+## ROLE: LAIA v5.0 – Auditora Senior Implacable
 
-Eres una experta en hardware. Tu misión es mantener un inventario impecable, evaluando técnicamente cada equipo y asegurando la trazabilidad.
+### 1. REGLAS DE ORO DE HARDWARE:
+- **CPU < 10ma Gen:** Estado = "Obsoleto / Pendiente Chatarrización".
+- **CPU >= 10ma Gen:** Estado = "Bueno".
+- **Disco HDD en CPU >= 10ma Gen:** Reporte = "CRÍTICO: Requiere cambio a SSD".
 
-### 1. EVALUACIÓN TÉCNICA (Decisiones Automáticas):
-- **Estado por Generación (CPU):** 
-    - Si el procesador es < 10ma Gen (ej. i3-8xxx, i5-4xxx, i7-9xxx): Estado = "Obsoleto / Pendiente Chatarrización".
-    - Si el procesador es >= 10ma Gen: Estado = "Bueno".
-- **Almacenamiento (HDD vs SSD):**
-    - Si el equipo es >= 10ma Gen Y tiene disco "HDD": En el campo 'reporte' escribir obligatoriamente: "CRÍTICO: Requiere cambio a SSD".
-- **Evento:** Deduce "Recibido" o "Enviado" por el contexto.
+### 2. REGLAS DE CLASIFICACIÓN (ESTRICTO):
+- Si el equipo es Monitor/Pantalla/TV -> categoria_item: "Pantalla".
+- Si es Laptop/Computadora/CPU/All-in-one -> categoria_item: "Computo".
 
-### 2. REGLAS DE AUDITORÍA (Campos Obligatorios):
-Un registro solo está "READY" si tiene: serie, modelo, origen, guia y fecha_llegada (para Recibidos). Si faltan, márcalo como "QUESTION".
+### 3. AUDITORÍA DE DATOS:
+Para que status sea "READY", DEBES tener:
+- **serie y modelo:** Obligatorio para Computo y Pantalla.
+- **origen, guia y fecha_llegada:** Obligatorio si el tipo es "Recibido".
+- **Si el usuario no dice el origen o la guía, DEBES marcar status: "QUESTION" y pedirlo.**
 
-### 3. LÓGICA DE ACTUALIZACIÓN (IMPORTANTE):
-- El usuario te enviará un "BORRADOR ACTUAL".
-- Si el usuario aporta datos que faltaban en una fila del borrador (como la serie o la guía), **NO crees una fila nueva**. 
-- **ACTUALIZA** la fila existente en el JSON de salida.
+### 4. LÓGICA DE ACTUALIZACIÓN:
+- Analiza el "BORRADOR ACTUAL". 
+- Si el usuario menciona una serie que ya está en la tabla, **actualiza esa fila**.
+- Si es una serie nueva o no tiene serie, **crea una fila nueva**.
 
-
-
-### 4. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+### 5. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY",
  "missing_info": "",
@@ -279,31 +279,26 @@ with t1:
 
     def auditar_items(items):
         faltantes = set()
-
         for it in items:
-            # Campos críticos para cualquier item
-            if not it.get("equipo"):
-                faltantes.add("equipo")
-
-            # Validación para Computo y Pantallas
-            if it.get("categoria_item") in ["Computo", "Pantalla"]:
-                if not it.get("serie") or it.get("serie") == "":
-                    faltantes.add("serie")
-
-                if not it.get("modelo"):
-                    faltantes.add("modelo")
-
-            # Validación por tipo de evento
-            if it.get("tipo") == "Recibido":
-                if not it.get("guia"):
-                    faltantes.add("guia")
-
-                if not it.get("origen"):
-                    faltantes.add("origen")
-
-                if not it.get("fecha_llegada"):
-                    faltantes.add("fecha_llegada")
-
+            eq = str(it.get("equipo", "")).lower()
+            tipo = str(it.get("tipo", "")).lower()
+        
+        # 1. Validación básica
+            if not it.get("equipo"): faltantes.add("equipo")
+        
+        # 2. Validación forzada por nombre de equipo (por si la IA categoriza mal)
+            es_hardware_critico = any(p in eq for p in ["monitor", "pantalla", "laptop", "pc", "cpu", "computador"])
+        
+            if es_hardware_critico:
+                if not it.get("serie") or it.get("serie") == "": faltantes.add("serie")
+                if not it.get("modelo") or it.get("modelo") == "": faltantes.add("modelo")
+        
+        # 3. Validación de logística
+            if "recibido" in tipo or it.get("guia") or it.get("origen"):
+                if not it.get("guia"): faltantes.add("guia")
+                if not it.get("origen"): faltantes.add("origen")
+                if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
+            
         return sorted(faltantes)
 
     # =========================
