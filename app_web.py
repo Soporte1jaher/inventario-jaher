@@ -453,28 +453,34 @@ with t2:
     else:
         st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
 with t3:
-    st.subheader("🗑️ Limpieza Inteligente Selectiva")
-    st.info("Puedes decir: 'Borra solo los dañados', 'Limpia la bodega' o 'Borra enviados y recibidos'")
+    st.subheader("🗑️ Limpieza Inteligente con Análisis de Historial")
+    st.info("Ejemplo: 'Borra la laptop ProBook', 'Limpia lo que llegó de Latacunga'")
 
-    txt_borrar = st.text_input("¿Qué deseas eliminar específicamente?", placeholder="Ej: Borra los equipos de latacunga...")
+    txt_borrar = st.text_input("¿Qué deseas eliminar de la base de datos?", placeholder="Escribe tu instrucción aquí...")
 
-    if st.button("🔥 EJECUTAR LIMPIEZA SELECTIVA", type="secondary"):
+    if st.button("🔥 BUSCAR Y ELIMINAR", type="secondary"):
         if txt_borrar:
             try:
-                with st.spinner("LAIA analizando categorías de borrado..."):
+                with st.spinner("LAIA analizando historial para identificar el objetivo..."):
+                    # 1. Obtenemos el historial real para darle contexto a la IA
+                    hist, _ = obtener_github(FILE_HISTORICO)
+                    contexto_breve = json.dumps(hist[-30:], ensure_ascii=False) if hist else "[]" # Últimos 30 registros
+
                     p_db = f"""
-                    Actúa como DBA. Tu objetivo es identificar QUÉ SECCIÓN del inventario quiere borrar el usuario.
-                    
-                    CATEGORÍAS DISPONIBLES:
-                    1. "logistica": Se refiere a la hoja 'Enviados y Recibidos'.
-                    2. "bodega": Se refiere a la hoja 'BODEGA'.
-                    3. "danados": Se refiere a los equipos con estado 'Dañado', 'Malo' u 'Obsoleto'.
-                    4. "todo": Solo si pide borrar TODO el historial.
+                    Actúa como DBA Senior. Tu objetivo es generar un comando de borrado preciso.
+                    REVISA EL HISTORIAL ACTUAL PARA ENCONTRAR COINCIDENCIAS.
+
+                    HISTORIAL ACTUAL (Muestra): {contexto_breve}
 
                     INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
 
-                    RESPONDE ÚNICAMENTE CON ESTE JSON:
-                    {{"accion": "borrar_especifico", "objetivo": "logistica/bodega/danados/todo", "detalle": "menciona si hay un filtro extra como una ciudad o equipo, si no pon 'n/a'"}}
+                    REGLAS DE SALIDA:
+                    1. Si es algo general (ej: 'borra todo'): {{"accion": "borrar_todo"}}
+                    2. Si es algo específico (ej: 'borra las laptops', 'borra la serie 123', 'borra lo de HP'):
+                       Busca en el historial la columna que mejor coincida (equipo, marca, modelo, serie, origen, destino).
+                       Genera: {{"accion": "borrar_filtro", "columna": "NOMBRE_COLUMNA", "valor": "VALOR_EXACTO"}}
+
+                    RESPONDE ÚNICAMENTE EL JSON.
                     """
 
                     response = client.chat.completions.create(
@@ -487,9 +493,9 @@ with t3:
                     inicio, fin = texto_ia.find("{"), texto_ia.rfind("}") + 1
                     order = json.loads(texto_ia[inicio:fin])
 
-                    if enviar_github(FILE_BUZON, order, "Orden de Limpieza Selectiva"):
-                        st.success(f"✅ Orden de borrado enviada para: {order['objetivo']}")
+                    if enviar_github(FILE_BUZON, order, "Orden de Borrado Inteligente"):
+                        st.success(f"✅ Orden de borrado generada con éxito.")
                         st.json(order)
-                        st.warning("El script de tu PC ejecutará la limpieza en el próximo ciclo.")
+                        st.warning("El script local eliminará estos registros en unos segundos.")
             except Exception as e:
                 st.error(f"Error: {e}")
