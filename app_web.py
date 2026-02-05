@@ -394,71 +394,62 @@ with t1:
                 st.rerun()
 with t2:
     st.subheader("📊 Control de Stock e Historial")
-    
-    # 1. Botón para forzar la sincronización (limpia el caché)
+     
+    # 1. Botón para sincronizar
     if st.button("🔄 Sincronizar Datos de GitHub"):
         st.rerun()
 
     # 2. Obtenemos el histórico real
     hist, _ = obtener_github(FILE_HISTORICO)
-    
+     
     if hist:
-        df_h = pd.DataFrame(hist)
-        # Normalizamos columnas
-        df_h.columns = df_h.columns.str.lower().str.strip()
+        # --- AQUÍ CREAMOS df_h PARA QUE NO DE NAMEERROR ---
+        df_h_raw = pd.DataFrame(hist)
         
-        # 3. Calculamos stock (usando tu función)
-        st_res, st_det = calcular_stock_web(df_h)
-        
+        # 3. Calculamos stock usando la nueva función v10.0
+        # La función nos devuelve: saldos, bodega e historial limpio
+        st_res, bod_res, df_h = calcular_stock_web(df_h_raw)
+         
         # 4. Mostramos métricas
         k1, k2 = st.columns(2)
-        k1.metric("📦 Stock Total", int(st_res['val'].sum()) if not st_res.empty else 0)
-        k2.metric("🚚 Total Movimientos", len(df_h))
+        # Usamos 'val' para la métrica
+        total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
+        k1.metric("📦 Periféricos en Stock", total_stock)
+        k2.metric("🚚 Movimientos Totales", len(df_h))
 
-        # --- AQUÍ ESTÁ LA MAGIA PARA EL EXCEL ---
-          # 3. Calculamos stock usando la nueva función v10.0
-    st_res, bod_res, df_h = calcular_stock_web(df_h)
-     
-    # 4. Mostramos métricas
-    k1, k2 = st.columns(2)
-    # Usamos 'val' para la métrica porque st_res aún conserva ese nombre internamente
-    total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
-    k1.metric("📦 Periféricos en Stock", total_stock)
-    k2.metric("🚚 Movimientos Totales", len(df_h))
-
-    # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
-    import io
-    buffer = io.BytesIO()
-    
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # HOJA 1: Enviados y Recibidos (Historial completo)
-        df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
+        # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
+        import io
+        buffer = io.BytesIO()
         
-        # HOJA 2: Stock (Saldos de Periféricos)
-        if not st_res.empty:
-            st_res_excel = st_res.copy()
-            # Renombramos 'val' a 'variacion' solo para el Excel como pediste
-            st_res_excel.columns = ['equipo', 'marca', 'modelo', 'variacion']
-            st_res_excel.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
-        
-        # HOJA 3: BODEGA (Ubicaciones de equipos de valor)
-        if not bod_res.empty:
-            # Limpiamos los nombres de columnas para que se vean bien en el Excel
-            bod_res.columns = [c.capitalize() for c in bod_res.columns]
-            bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
-     
-    st.download_button(
-        label="📥 DESCARGAR EXCEL SINCRONIZADO (3 HOJAS)",
-        data=buffer.getvalue(),
-        file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        type="primary" 
-    )
-    # ----------------------------------------
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # HOJA 1: Historial Completo
+            df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
+            
+            # HOJA 2: Stock Saldos
+            if not st_res.empty:
+                st_res_excel = st_res.copy()
+                st_res_excel.columns = ['equipo', 'marca', 'modelo', 'variacion']
+                st_res_excel.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
+            
+            # HOJA 3: BODEGA
+            if not bod_res.empty:
+                bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
+         
+        st.download_button(
+            label="📥 DESCARGAR EXCEL SINCRONIZADO (3 HOJAS)",
+            data=buffer.getvalue(),
+            file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary" 
+        )
+        # ----------------------------------------
 
-    # 5. Mostrar la tabla en la web para verificar
-    st.write("### 📜 Últimos Movimientos en el Histórico")
-    st.dataframe(df_h.tail(20), use_container_width=True) 
+        # 5. Mostrar la tabla en la web
+        st.write("### 📜 Últimos Movimientos en el Histórico")
+        st.dataframe(df_h.tail(20), use_container_width=True) 
+         
+    else:
+        st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
 with t3:
     st.subheader("🗑️ Limpieza Inteligente")
 
