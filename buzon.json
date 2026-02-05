@@ -8,5 +8,10 @@
         "accion": "borrar_filtro",
         "columna": "equipo",
         "valor": "Tarjeta RAM"
+    },
+    {
+        "accion": "borrar_filtro",
+        "columna": "equipo",
+        "valor": "Disco M.2"
     }
 ]
