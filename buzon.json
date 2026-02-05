@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_especifico",
+        "objetivo": "logistica",
+        "detalle": "n/a"
+    }
+]
