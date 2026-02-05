@@ -1,1 +1,42 @@
-[]
+[
+    {
+        "categoria_item": "Computo",
+        "tipo": "Recibido",
+        "equipo": "CPU",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "123456",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "procesador": "Intel Core i3 10ma gen",
+        "ram": "8GB",
+        "disco": "HDD",
+        "almacenamiento": "480GB",
+        "reporte": "Considerar cambiar a SSD para mejorar el rendimiento.",
+        "origen": "Latacunga",
+        "destino": "Stock",
+        "guia": "N/A",
+        "fecha_llegada": "14 de enero del 2026",
+        "fecha_registro": "2026-02-05 14:56"
+    },
+    {
+        "categoria_item": "Computo",
+        "tipo": "Recibido",
+        "equipo": "CPU",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "09876",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "procesador": "Intel Core i3 12va gen",
+        "ram": "8GB",
+        "disco": "SSD",
+        "almacenamiento": "480GB",
+        "reporte": "Equipo en buen estado.",
+        "origen": "Ibarra",
+        "destino": "Stock",
+        "guia": "N/A",
+        "fecha_llegada": "14 de enero del 2026",
+        "fecha_registro": "2026-02-05 14:56"
+    }
+]
