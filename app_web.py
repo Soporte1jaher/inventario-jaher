@@ -177,32 +177,32 @@ def calcular_stock_web(df):
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v5.0 – Auditora Senior Implacable
+## ROLE: LAIA v7.0 – Auditora Senior de Inventario (Hardware & Logística)
 
-### 1. REGLAS DE ORO DE HARDWARE:
-- **CPU < 10ma Gen:** Estado = "Obsoleto / Pendiente Chatarrización".
+Eres una auditora técnica experta. Tu prioridad es la PRECISIÓN y la MEMORIA.
+
+### 1. REGLA DE ORO DE ACTUALIZACIÓN (VITAL):
+- Recibirás un "BORRADOR ACTUAL" con lo que ya está en la tabla.
+- Si el usuario aporta datos que faltan (serie, modelo, origen, guía) para un equipo que YA ESTÁ en la tabla, **ACTUALIZA LA FILA EXISTENTE**. 
+- **NO crees filas duplicadas**. Si el usuario dice "la serie es X", busca el ítem que no tenía serie y pónsela.
+- **PROHIBIDO BORRAR:** No elimines datos que ya estaban en el borrador (como la marca o el estado) solo porque el usuario no los repitió.
+
+### 2. CRITERIOS TÉCNICOS AUTOMÁTICOS:
+- **CPU < 10ma Gen (ej. i5-8xxx, i7-4xxx):** Estado = "Obsoleto / Pendiente Chatarrización".
 - **CPU >= 10ma Gen:** Estado = "Bueno".
-- **Disco HDD en CPU >= 10ma Gen:** Reporte = "CRÍTICO: Requiere cambio a SSD".
+- **Hardware >= 10ma Gen + HDD:** Reporte = "CRÍTICO: Requiere cambio a SSD".
+- **Categorías:** Monitor/TV -> "Pantalla", Laptop/PC/All-in-one -> "Computo".
 
-### 2. REGLAS DE CLASIFICACIÓN (ESTRICTO):
-- Si el equipo es Monitor/Pantalla/TV -> categoria_item: "Pantalla".
-- Si es Laptop/Computadora/CPU/All-in-one -> categoria_item: "Computo".
-
-### 3. AUDITORÍA DE DATOS:
-Para que status sea "READY", DEBES tener:
+### 3. REGLAS DE AUDITORÍA:
+Para que status sea "READY", CADA fila de la tabla debe tener:
 - **serie y modelo:** Obligatorio para Computo y Pantalla.
-- **origen, guia y fecha_llegada:** Obligatorio si el tipo es "Recibido".
-- **Si el usuario no dice el origen o la guía, DEBES marcar status: "QUESTION" y pedirlo.**
+- **guia, origen y fecha_llegada:** Obligatorio para ingresos ("Recibido").
 
-### 4. LÓGICA DE ACTUALIZACIÓN:
-- Analiza el "BORRADOR ACTUAL". 
-- Si el usuario menciona una serie que ya está en la tabla, **actualiza esa fila**.
-- Si es una serie nueva o no tiene serie, **crea una fila nueva**.
-
-### 5. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+### 4. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+Debes responder ÚNICAMENTE con este formato JSON:
 {
- "status": "READY",
- "missing_info": "",
+ "status": "READY" o "QUESTION",
+ "missing_info": "Especifca qué falta y en qué ítem",
  "items": [
   {
    "categoria_item": "Computo/Pantalla/Periferico",
@@ -216,7 +216,8 @@ Para que status sea "READY", DEBES tener:
    "procesador": "",
    "ram": "",
    "disco": "",
-   "reporte": "Aquí van diagnósticos técnicos automáticos",
+   "reporte": "Diagnósticos técnicos automáticos aquí",
+   "origen": "",
    "guia": "",
    "fecha_llegada": ""
   }
@@ -234,219 +235,118 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 with t1:
-    # =========================
-    # 1. Mostrar historial chat
-    # =========================
+    # 1. Mostrar historial de chat
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # =========================
-    # 2. Funciones críticas
-    # =========================
-
-    def extraer_json(texto):
-        texto = texto.strip()
-        if not texto.startswith("{"):
-            return ""
-        try:
-            json.loads(texto)
-            return texto
-        except Exception:
-            return ""
-
-    def campos_obligatorios_por_item(it):
-        categoria = it.get("categoria_item")
-        tipo = it.get("tipo")
-
-        # Campos base (siempre)
-        campos = ["equipo", "cantidad", "estado", "tipo"]
-
-        if categoria == "Computo":
-            campos += ["marca", "modelo", "procesador", "ram", "disco"]
-
-        elif categoria == "Pantalla":
-            campos += ["marca", "serie"]
-
-        elif categoria in ["Periferico", "Consumible"]:
-            pass
-
-        # SOLO si es recibido
-        if tipo == "Recibido":
-            campos += ["guia", "fecha_llegada"]
-
-        return campos
-
-    def auditar_items(items):
+    # 2. Funciones de Auditoría Interna
+    def auditar_items_local(items):
         faltantes = set()
-        for it in items:
+        for i, it in enumerate(items):
             eq = str(it.get("equipo", "")).lower()
             tipo = str(it.get("tipo", "")).lower()
-        
-        # 1. Validación básica
-            if not it.get("equipo"): faltantes.add("equipo")
-        
-        # 2. Validación forzada por nombre de equipo (por si la IA categoriza mal)
-            es_hardware_critico = any(p in eq for p in ["monitor", "pantalla", "laptop", "pc", "cpu", "computador"])
-        
-            if es_hardware_critico:
-                if not it.get("serie") or it.get("serie") == "": faltantes.add("serie")
-                if not it.get("modelo") or it.get("modelo") == "": faltantes.add("modelo")
-        
-        # 3. Validación de logística
-            if "recibido" in tipo or it.get("guia") or it.get("origen"):
-                if not it.get("guia"): faltantes.add("guia")
-                if not it.get("origen"): faltantes.add("origen")
-                if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
+            if not it.get("equipo"): continue
             
+            # Regla para Hardware Crítico
+            if any(p in eq for p in ["monitor", "pantalla", "laptop", "pc", "cpu", "computador"]):
+                if not it.get("serie"): faltantes.add(f"serie (ítem {i+1})")
+                if not it.get("modelo"): faltantes.add(f"modelo (ítem {i+1})")
+            
+            # Regla para Logística
+            if "recibido" in tipo or it.get("guia") or it.get("origen"):
+                if not it.get("guia"): faltantes.add(f"guía (ítem {i+1})")
+                if not it.get("origen"): faltantes.add(f"origen (ítem {i+1})")
+                if not it.get("fecha_llegada"): faltantes.add(f"fecha (ítem {i+1})")
         return sorted(faltantes)
 
-    # =========================
-    # 3. Entrada de chat
-    # =========================
+    # 3. Entrada de Chat
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         try:
-            with st.spinner("LAIA auditando inventario..."):
-                # --- Memoria de errores previos ---
-                lecciones_previas, _ = obtener_github(FILE_LECCIONES)
-                texto_memoria = "\n".join(
-                    f"- ERROR: {l['lo_que_hizo_mal']} | LECCIÓN: {l['como_debe_hacerlo']}"
-                    for l in lecciones_previas
-                )
-
-                # --- Contexto actual ---
-                contexto_tabla = (
-                    json.dumps(st.session_state.draft, ensure_ascii=False)
-                    if st.session_state.draft
-                    else "[]"
-                )
-
-                prompt_con_memoria = f"""
-{SYSTEM_PROMPT}
-
-=== MEMORIA DE ERRORES PASADOS (PROHIBIDO REPETIR) ===
-{texto_memoria}
-"""
-
+            with st.spinner("LAIA procesando..."):
+                # Contexto de la tabla para que la IA no olvide nada
+                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
+                
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": prompt_con_memoria},
-                        {
-                            "role": "user",
-                            "content": f"""
-BORRADOR ACTUAL (NO BORRAR, SOLO AÑADIR O COMPLETAR):
-{contexto_tabla}
-
-MENSAJE USUARIO:
-{prompt}
-"""
-                        }
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": f"BORRADOR ACTUAL EN TABLA (NO PERDER DATOS): {}"},
+                        {"role": "user", "content": prompt}
                     ],
                     temperature=0
                 )
 
-                res_txt = extraer_json(
-                    response.choices[0].message.content
-                )
-
-                if not res_txt:
-                    raise Exception("Respuesta no es JSON válido")
-
+                res_txt = extraer_json(response.choices[0].message.content)
+                if not res_txt: raise Exception("LAIA no devolvió un formato válido.")
+                
                 res_json = json.loads(res_txt)
-
-                # =========================
-                # 4. Fusión segura del draft
-                # =========================
-                nuevos_items = res_json.get("items", [])
+                
+                # ACTUALIZACIÓN TOTAL: Reemplazamos el borrador con la versión procesada por la IA
                 if "items" in res_json:
                     st.session_state.draft = res_json["items"]
 
-                # =========================
-                # 5. Auditoría server-side
-                # =========================
-                faltantes = auditar_items(st.session_state.draft)
-
+                # Auditoría de control
+                faltantes = auditar_items_local(st.session_state.draft)
                 if faltantes:
                     st.session_state.status = "QUESTION"
-                    st.session_state.missing_info = "Indica: " + ", ".join(faltantes)
-                    msg_laia = f"⛔ Faltan datos: {st.session_state.missing_info}"
+                    st.session_state.missing_info = "Falta: " + ", ".join(faltantes)
+                    msg_laia = f"⛔ {st.session_state.missing_info}"
                 else:
                     st.session_state.status = "READY"
                     st.session_state.missing_info = ""
-                    msg_laia = "✅ TABLA LISTA"
+                    msg_laia = "✅ TABLA LISTA PARA ENVIAR"
 
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": msg_laia}
-                )
-
+                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
                 st.rerun()
 
         except Exception as e:
-            st.error(f"❌ Error de Auditoría: {str(e)}")
+            st.error(f"❌ Error: {str(e)}")
 
-    # =========================
-    # 6. Tabla editable en vivo
-    # =========================
+    # 4. Tabla de Edición en Vivo
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Tabla de Inventario (Edición en Vivo)")
-
+        
         df_editor = pd.DataFrame(st.session_state.draft)
-
-        cols_orden = [
-            "equipo", "marca", "modelo", "serie", "cantidad", "estado",
-            "tipo", "origen", "destino", "guia", "fecha_llegada",
-            "ram", "procesador", "disco", "reporte"
-        ]
-
+        cols_orden = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "guia", "fecha_llegada", "ram", "procesador", "disco", "reporte"]
         df_editor = df_editor.reindex(columns=cols_orden).fillna("")
 
-        edited_df = st.data_editor(
-            df_editor,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="auditoria_editor"
-        )
-
+        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="main_editor")
+        
+        # Sincronizar edición manual con el estado
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
+            # Re-auditar tras cambio manual
+            f_manual = auditar_items_local(st.session_state.draft)
+            st.session_state.status = "QUESTION" if f_manual else "READY"
+            st.session_state.missing_info = ("Falta: " + ", ".join(f_manual)) if f_manual else ""
 
-        # =========================
-        # 7. Botones finales
-        # =========================
+        # 5. Botones de Acción
         c1, c2 = st.columns([1, 4])
-
         with c1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 if st.session_state.status == "QUESTION":
-                    st.error(f"⛔ BLOQUEADO: {st.session_state.missing_info}")
+                    st.error(f"Bloqueado: {st.session_state.missing_info}")
                 else:
-                    with st.spinner("Sincronizando..."):
-                        fecha_now = (
-                            datetime.datetime.now(timezone.utc)
-                            - timedelta(hours=5)
-                        ).strftime("%Y-%m-%d %H:%M")
-
-                        for d in st.session_state.draft:
-                            d["fecha_registro"] = fecha_now
-
+                    with st.spinner("Guardando..."):
+                        fecha_now = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                        for d in st.session_state.draft: d["fecha_registro"] = fecha_now
+                        
                         if enviar_github(FILE_BUZON, st.session_state.draft):
-                            st.success("✅ Enviado con éxito")
+                            st.success("Sincronizado!")
                             st.session_state.draft = []
                             st.session_state.messages = []
                             time.sleep(1)
                             st.rerun()
-
         with c2:
-            if st.button("🗑️ Cancelar Todo"):
+            if st.button("🗑️ Cancelar"):
                 st.session_state.draft = []
                 st.session_state.messages = []
                 st.rerun()
