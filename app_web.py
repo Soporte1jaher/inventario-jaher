@@ -303,7 +303,7 @@ with t1:
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"MEMORIA TÉCNICA: {memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {}"}
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
                 
                 # AÑADIMOS EL HISTORIAL DE LA CONVERSACIÓN (Últimos 10 mensajes)
