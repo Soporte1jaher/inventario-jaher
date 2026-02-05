@@ -454,27 +454,26 @@ with t2:
         st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
 with t3:
     st.subheader("🗑️ Limpieza Inteligente de Base de Datos")
-    st.info("Escribe qué quieres borrar (ej: 'borra todo', 'borra las laptops', 'borra lo de latacunga')")
+    st.info("Escribe qué quieres borrar (ej: 'borra todo', 'borra lo de latacunga')")
 
     txt_borrar = st.text_input("Instrucción de borrado:", placeholder="¿Qué deseas eliminar?")
 
     if st.button("🔥 EJECUTAR ACCIÓN DE LIMPIEZA", type="secondary"):
         if txt_borrar:
             try:
-                with st.spinner("LAIA procesando orden de comando..."):
-                    # Prompt especializado para que no hable, solo actúe
+                with st.spinner("LAIA procesando orden..."):
+                    # Prompt reforzado para evitar texto extra
                     p_db = f"""
-                    Actúa como un Administrador de Base de Datos (DBA). 
-                    Tu objetivo es convertir la instrucción del usuario en un comando JSON.
+                    Actúa como un Administrador de Base de Datos (DBA) estricto. 
+                    Convierte la petición del usuario en UN SOLO objeto JSON de comando.
+
+                    REGLAS DE COMANDO:
+                    - Si pide borrar TODO, limpiar historial o menciona varias categorías (Enviados, Stock, Dañados): {{"accion": "borrar_todo"}}
+                    - Si pide borrar un equipo específico: {{"accion": "borrar_filtro", "columna": "equipo", "valor": "NOMBRE_DEL_EQUIPO"}}
                     
-                    INSTRUCCIÓN: {txt_borrar}
-                    
-                    REGLAS:
-                    1. Si el usuario pide borrar TODO o limpiar el historial: {{"accion":"borrar_todo"}}
-                    2. Si el usuario pide borrar algo específico (ej: laptops): {{"accion":"borrar_filtro","columna":"equipo","valor":"Laptop"}}
-                    3. Si pide borrar un origen (ej: Latacunga): {{"accion":"borrar_filtro","columna":"origen","valor":"Latacunga"}}
-                    
-                    RESPONDE ÚNICAMENTE EL JSON. SIN TEXTO ADICIONAL.
+                    PETICIÓN DEL USUARIO: "{txt_borrar}"
+
+                    SALIDA: Responde ÚNICAMENTE con el objeto JSON. Está prohibido escribir texto antes o después del JSON.
                     """
 
                     response = client.chat.completions.create(
@@ -483,22 +482,31 @@ with t3:
                         temperature=0
                     )
 
-                    texto = response.choices[0].message.content
-                    json_limpio = extraer_json(texto)
+                    # --- LIMPIEZA EXTREMA DEL TEXTO ---
+                    texto_ia = response.choices[0].message.content.strip()
+                    # Buscamos el primer '{' y el último '}' para ignorar cualquier texto extra que la IA haya puesto
+                    inicio = texto_ia.find("{")
+                    fin = texto_ia.rfind("}") + 1
                     
-                    if not json_limpio:
-                        st.error("No se pudo interpretar la orden. Sé más específico.")
+                    if inicio == -1 or fin == 0:
+                        st.error("LAIA no generó un comando válido. Intenta decir: 'Borrar todo'.")
+                        st.stop()
+                    
+                    json_limpio = texto_ia[inicio:fin]
+
+                    try:
+                        order = json.loads(json_limpio)
+                    except json.JSONDecodeError:
+                        st.error("❌ El comando generado no es válido. Reintenta.")
                         st.stop()
 
-                    order = json.loads(json_limpio)
-
-                    # Enviamos la orden al buzón para que el script local la ejecute
+                    # Enviamos la orden al buzón
                     if enviar_github(FILE_BUZON, order, "Comando de Limpieza"):
-                        st.success(f"✅ Orden enviada: {txt_borrar}")
+                        st.success(f"✅ Orden enviada correctamente.")
                         st.json(order)
-                        st.warning("⚠️ El script local ejecutará el borrado en el siguiente ciclo (15 seg).")
+                        st.warning("⚠️ El script local ejecutará el borrado en unos segundos. No cierres el script en tu PC.")
                     
             except Exception as e:
                 st.error(f"Error técnico: {str(e)}")
         else:
-            st.warning("Escribe algo antes de ejecutar.")
+            st.warning("Por favor, escribe qué deseas eliminar.")
