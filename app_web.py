@@ -287,7 +287,7 @@ with t1:
 
         # Validación para Computo y Pantallas
         if it.get("categoria_item") in ["Computo", "Pantalla"]:
-            if not it.get("serie") or it.get("serie") == "":
+            if not it.get("serie"):
                 faltantes.add("serie")
 
             if not it.get("modelo"):
@@ -305,6 +305,7 @@ with t1:
                 faltantes.add("fecha_llegada")
 
     return sorted(faltantes)
+
 
     
     # =========================
