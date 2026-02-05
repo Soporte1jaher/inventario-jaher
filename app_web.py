@@ -268,7 +268,7 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # 1. Historial de chat (Visualización en pantalla)
+    # 1. Mostrar historial de chat (Visualización)
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
@@ -280,38 +280,47 @@ with t1:
             st.markdown(prompt)
 
         try:
-            with st.spinner("LAIA analizando contexto y memoria..."):
-                # A) Cargar lecciones aprendidas
+            with st.spinner("LAIA razonando contexto y memoria..."):
+                # A) Obtener lecciones de errores previos
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 
-                # B) Cargar estado actual de la tabla
+                # B) Obtener el borrador actual en formato texto
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
                 
-                # C) CONSTRUCCIÓN DE MEMORIA TOTAL PARA LA API
-                # Empezamos con el Sistema y la Tabla
+                # C) Construir el paquete de mensajes para la IA (HISTORIAL COMPLETO)
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": f"MEMORIA TÉCNICA: {memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
+                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA (REVISA AQUÍ ANTES DE PEDIR DATOS): {}"}
                 ]
                 
-                # AÑADIMOS EL HISTORIAL DE LA CONVERSACIÓN (Últimos 10 mensajes)
-                # Esto evita que pida cosas que ya se dijeron en el chat
+                # Añadimos los últimos 10 mensajes del chat para que tenga memoria de la plática
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
-                # D) Llamada a la Inteligencia
+                # D) Llamada a OpenAI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=mensajes_api,
                     temperature=0
                 )
 
-                res_txt = extraer_json(response.choices[0].message.content)
-                res_json = json.loads(res_txt)
+                # E) Procesamiento SEGURO del JSON (Escudo contra Error de Contexto)
+                raw_txt = response.choices[0].message.content
+                res_txt = extraer_json(raw_txt)
                 
-                # E) Actualización inteligente del borrador
+                if not res_txt or res_txt.strip() == "":
+                    st.error("⚠️ LAIA no devolvió un formato válido. Por favor, intenta de nuevo con una instrucción más clara.")
+                    st.stop()
+
+                try:
+                    res_json = json.loads(res_txt)
+                except json.JSONDecodeError:
+                    st.error("❌ La respuesta de la IA está corrupta. Intenta refrescar la página.")
+                    st.stop()
+                
+                # F) Actualización de la Tabla
                 nuevos_items = res_json.get("items", [])
                 if nuevos_items:
                     st.session_state.draft = nuevos_items
@@ -319,67 +328,69 @@ with t1:
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
 
-                # F) Respuesta de LAIA
-                msg_laia = f"🤖 {st.session_state.missing_info}" if st.session_state.missing_info else "✅ Todo registrado. He actualizado la tabla con el nuevo contexto."
+                # G) Respuesta de LAIA en el chat
+                msg_laia = f"🤖 {st.session_state.missing_info}" if st.session_state.missing_info else "✅ Todo registrado. He actualizado la tabla."
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
-                
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                
                 st.rerun()
 
         except Exception as e:
-            st.error(f"❌ Error de Contexto: {e}")
+            st.error(f"❌ Fallo crítico de IA: {str(e)}")
 
-    # 3. Tabla de Edición en Vivo
+    # 3. Tabla de Edición en Vivo (Vista de Bodega y Stock)
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Borrador de Movimientos (Antes de Guardar)")
         
         df_editor = pd.DataFrame(st.session_state.draft)
         
-        # Columnas obligatorias (Aseguramos que 'destino' y 'ram/disco' sean visibles)
+        # Columnas obligatorias incluyendo las de BODEGA y REPORTE TÉCNICO
         cols_base = [
-    "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
-    "tipo", "origen", "destino", "pasillo", "estante", "repisa", 
-    "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"
+            "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
+            "tipo", "origen", "destino", "pasillo", "estante", "repisa", 
+            "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"
         ]
         
+        # Aseguramos que existan todas las columnas
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
-        # Reordenar y limpiar visualmente
+        # Reordenar y limpiar visualmente para el usuario
         df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
 
         edited_df = st.data_editor(
             df_editor, 
             num_rows="dynamic", 
             use_container_width=True,
-            key="editor_principal_v9"
+            key="editor_pro_v10"
         )
         
-        # Sincronizar cambios manuales del usuario con el estado de la app
+        # Guardar cambios manuales si el usuario edita la celda directamente
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # 4. Botones de Acción Final
+        # 4. Botones de Acción
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
                 with st.spinner("Sincronizando con GitHub..."):
-                    hora_ec = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                    # Añadir marca de tiempo de registro real
+                    hora_ec = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in st.session_state.draft: 
                         d["fecha_registro"] = hora_ec
 
-                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA - Memoria Contextual"):
-                        st.success("✅ Guardado correctamente.")
+                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA - Bodega y Stock"):
+                        st.success("✅ Guardado con éxito.")
                         st.session_state.draft = []
                         st.session_state.messages = []
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Error al subir a GitHub. Revisa el Token.")
+                        st.error("No se pudo subir a GitHub. Revisa la conexión.")
         with c2:
-            if st.button("🗑️ Descartar Borrador"):
+            if st.button("🗑️ Descartar Todo"):
                 st.session_state.draft = []
                 st.session_state.messages = []
                 st.rerun()
