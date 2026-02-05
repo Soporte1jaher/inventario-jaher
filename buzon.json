@@ -1,1 +1,7 @@
-[]
+[
+    {
+        "accion": "borrar_filtro",
+        "columna": "equipo",
+        "valor": "Tarjeta RAM"
+    }
+]
