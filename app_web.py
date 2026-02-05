@@ -139,60 +139,51 @@ def aprender_leccion(error, correccion):
 # 4. MOTOR DE STOCK
 # ==========================================
 def calcular_stock_web(df):
-    if df.empty: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    # 1. Si no hay datos, devolvemos dataframes vacíos con estructura correcta
+    if df is None or df.empty: 
+        return pd.DataFrame(columns=['equipo', 'marca', 'modelo', 'val']), pd.DataFrame(), pd.DataFrame()
     
     df_c = df.copy()
-    # 1. Normalización total de nombres de columnas
     df_c.columns = df_c.columns.str.lower().str.strip()
     
-    # 2. Aseguramos que existan las columnas de Bodega y Periféricos
-    cols_necesarias = [
-        'equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad', 
-        'destino', 'pasillo', 'estante', 'repisa', 'serie'
-    ]
-    
+    # 2. Aseguramos columnas básicas
+    cols_necesarias = ['equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad', 'destino', 'serie']
     for col in cols_necesarias:
         if col not in df_c.columns: 
             df_c[col] = "n/a"
         else:
             df_c[col] = df_c[col].astype(str).str.lower().str.strip().replace(['nan', 'none', '', 'nan'], 'n/a')
     
-    # 3. Cantidad a número
+    # Cantidad a número
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
-    # --- LÓGICA 1: STOCK DE PERIFÉRICOS (SALDOS SUMA/RESTA) ---
+    # --- LÓGICA 1: PERIFÉRICOS (Saldos) ---
     perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'parlante', 'herramienta']
-    
-    # Filtramos solo periféricos para el cálculo de saldos
     mask_perifericos = df_c['equipo'].str.contains('|'.join(perifericos), na=False)
     df_p = df_c[mask_perifericos].copy()
 
-    def procesar_saldo(row):
-        tipo = row['tipo']
-        cant = row['cant_n']
-        # Si entra suma, si sale resta
-        if any(x in tipo for x in ['recibido', 'ingreso', 'entrada', 'llegó', 'compra', 'stock']):
-            return cant
-        if any(x in tipo for x in ['enviado', 'salida', 'despacho', 'egreso', 'envié', 'envio', 'entregado']):
-            return -cant
-        return 0
+    if not df_p.empty:
+        def procesar_saldo(row):
+            t = str(row['tipo'])
+            c = row['cant_n']
+            if any(x in t for x in ['recibido', 'ingreso', 'entrada', 'llegó']): return c
+            if any(x in t for x in ['enviado', 'salida', 'despacho', 'egreso', 'envio']): return -c
+            return 0
+        
+        df_p['val'] = df_p.apply(procesar_saldo, axis=1)
+        st_res = df_p.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
+        st_res = st_res[st_res['val'] > 0]
+    else:
+        # Estructura vacía para evitar que la métrica de Streamlit falle
+        st_res = pd.DataFrame(columns=['equipo', 'marca', 'modelo', 'val'])
 
-    df_p['val'] = df_p.apply(procesar_saldo, axis=1)
-    st_res = df_p.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
-    st_res = st_res[st_res['val'] > 0] # Solo mostramos lo que existe
-
-    # --- LÓGICA 2: BODEGA (EQUIPOS UBICADOS) ---
-    # Aquí filtramos todo lo que tenga como destino "bodega"
+    # --- LÓGICA 2: BODEGA ---
     bod_res = df_c[df_c['destino'].str.contains('bodega', na=False)].copy()
-    
-    # Seleccionamos las columnas que queremos ver en la hoja de Bodega
     if not bod_res.empty:
-        bod_res = bod_res[[
-            'equipo', 'marca', 'modelo', 'serie', 'cantidad', 'estado', 
-            'pasillo', 'estante', 'repisa', 'procesador', 'ram', 'disco'
-        ]]
+        # Solo columnas que interesan para la hoja bodega
+        cols_b = [c for c in ['equipo', 'marca', 'modelo', 'serie', 'cantidad', 'estado', 'pasillo', 'estante', 'repisa', 'procesador', 'ram', 'disco'] if c in bod_res.columns]
+        bod_res = bod_res[cols_b]
 
-    # 4. Retornamos 3 cosas: Saldos de periféricos, Detalle de Bodega e Historial Completo
     return st_res, bod_res, df_c
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
