@@ -177,12 +177,12 @@ def calcular_stock_web(df):
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v2.3 – Auditora de Inventario Multicategoría
+## ROLE: LAIA v2.4 – Auditora de Inventario Multicategoría
 
 Eres una IA auditora especializada en inventarios empresariales.
 Operas mediante:
 - Clasificación estricta por categoría
-- Validación condicional por tipo de evento
+- Validación condicional por tipo
 - No inferencia de datos
 
 Tu salida debe ser EXCLUSIVAMENTE un JSON válido.
@@ -199,9 +199,7 @@ NO pides campos que no aplican.
 
 Para CADA ítem debes definir:
 - categoria_item ∈ ["Computo", "Pantalla", "Periferico", "Consumible"]
-- tipo_evento ∈ ["Recibido", "Enviado"]
-
-Esta clasificación controla TODOS los campos obligatorios.
+- tipo ∈ ["Recibido", "Enviado"]
 
 --------------------------------------------------
 
@@ -217,9 +215,9 @@ Obligatorios:
 - disco
 - cantidad
 - estado
-- tipo_evento
-- guia (SOLO si tipo_evento = "Recibido")
-- fecha_llegada (SOLO si tipo_evento = "Recibido")
+- tipo
+- guia (SOLO si tipo = "Recibido")
+- fecha_llegada (SOLO si tipo = "Recibido")
 
 #### B) categoria_item = "Pantalla"
 Obligatorios:
@@ -228,9 +226,9 @@ Obligatorios:
 - serie
 - cantidad
 - estado
-- tipo_evento
-- guia (SOLO si tipo_evento = "Recibido")
-- fecha_llegada (SOLO si tipo_evento = "Recibido")
+- tipo
+- guia (SOLO si tipo = "Recibido")
+- fecha_llegada (SOLO si tipo = "Recibido")
 
 PROHIBIDO:
 - procesador
@@ -243,9 +241,9 @@ Obligatorios:
 - equipo
 - cantidad
 - estado
-- tipo_evento
-- guia (SOLO si tipo_evento = "Recibido")
-- fecha_llegada (SOLO si tipo_evento = "Recibido")
+- tipo
+- guia (SOLO si tipo = "Recibido")
+- fecha_llegada (SOLO si tipo = "Recibido")
 
 --------------------------------------------------
 
@@ -253,18 +251,16 @@ Obligatorios:
 
 Un campo es faltante SOLO si:
 - Es obligatorio para ESA categoría
-- Aplica al tipo_evento
+- Aplica al tipo
 - Está vacío, null o inválido
-
-Está PROHIBIDO marcar como faltante un campo no aplicable.
 
 --------------------------------------------------
 
-### 4. REGLA ABSOLUTA
+### 4. SALIDA
 
-Si existe cualquier campo faltante:
+Si hay faltantes:
 - status = "QUESTION"
-- missing_info debe listar SOLO los campos faltantes
+- missing_info SOLO lista campos faltantes
 
 Si no hay faltantes:
 - status = "READY"
@@ -280,7 +276,7 @@ Si no hay faltantes:
   "items": [
     {
       "categoria_item": "",
-      "tipo_evento": "",
+      "tipo": "",
       "equipo": "",
       "marca": "",
       "modelo": "",
@@ -299,6 +295,7 @@ Si no hay faltantes:
   ]
 }
 """
+
 # ==========================================
 # 6. INTERFAZ PRINCIPAL
 # ==========================================
@@ -327,14 +324,14 @@ with t1:
         try:
             json.loads(texto)
             return texto
-        except:
+        except Exception:
             return ""
 
     def campos_obligatorios_por_item(it):
         categoria = it.get("categoria_item")
-        evento = it.get("tipo")
+        tipo = it.get("tipo")
 
-        # Campos base para todos
+        # Campos base (siempre)
         campos = ["equipo", "cantidad", "estado", "tipo"]
 
         if categoria == "Computo":
@@ -344,10 +341,10 @@ with t1:
             campos += ["marca", "serie"]
 
         elif categoria in ["Periferico", "Consumible"]:
-            campos += []
+            pass
 
-        # Reglas SOLO si es recibido
-        if evento == "Recibido":
+        # SOLO si es recibido
+        if tipo == "Recibido":
             campos += ["guia", "fecha_llegada"]
 
         return campos
@@ -360,12 +357,18 @@ with t1:
 
             for campo in obligatorios:
                 v = it.get(campo)
-                if (
-                    v is None
-                    or v == ""
-                    or v == "N/A"
-                    or (campo == "cantidad" and int(v) < 1)
-                ):
+
+                # Validación especial cantidad
+                if campo == "cantidad":
+                    try:
+                        if int(v) < 1:
+                            faltantes.add(campo)
+                    except Exception:
+                        faltantes.add(campo)
+                    continue
+
+                # Validación general
+                if v is None or str(v).strip() == "" or v == "N/A":
                     faltantes.add(campo)
 
         return sorted(faltantes)
@@ -382,15 +385,17 @@ with t1:
             with st.spinner("LAIA auditando inventario..."):
                 # --- Memoria de errores previos ---
                 lecciones_previas, _ = obtener_github(FILE_LECCIONES)
-                texto_memoria = "\n".join([
+                texto_memoria = "\n".join(
                     f"- ERROR: {l['lo_que_hizo_mal']} | LECCIÓN: {l['como_debe_hacerlo']}"
                     for l in lecciones_previas
-                ])
+                )
 
-                # --- Contexto actual de la tabla ---
-                contexto_tabla = json.dumps(
-                    st.session_state.draft, ensure_ascii=False
-                ) if st.session_state.draft else "[]"
+                # --- Contexto actual ---
+                contexto_tabla = (
+                    json.dumps(st.session_state.draft, ensure_ascii=False)
+                    if st.session_state.draft
+                    else "[]"
+                )
 
                 prompt_con_memoria = f"""
 {SYSTEM_PROMPT}
@@ -427,23 +432,20 @@ MENSAJE USUARIO:
                 res_json = json.loads(res_txt)
 
                 # =========================
-                # 4. FUSIÓN SEGURA DEL DRAFT
+                # 4. Fusión segura del draft
                 # =========================
                 nuevos_items = res_json.get("items", [])
-
                 if nuevos_items:
                     st.session_state.draft.extend(nuevos_items)
 
                 # =========================
-                # 5. AUDITORÍA SERVER-SIDE
+                # 5. Auditoría server-side
                 # =========================
                 faltantes = auditar_items(st.session_state.draft)
 
                 if faltantes:
                     st.session_state.status = "QUESTION"
-                    st.session_state.missing_info = (
-                        "Indica: " + ", ".join(faltantes)
-                    )
+                    st.session_state.missing_info = "Indica: " + ", ".join(faltantes)
                     msg_laia = f"⛔ Faltan datos: {st.session_state.missing_info}"
                 else:
                     st.session_state.status = "READY"
@@ -497,9 +499,7 @@ MENSAJE USUARIO:
         with c1:
             if st.button("🚀 ENVIAR AL BUZÓN", type="primary"):
                 if st.session_state.status == "QUESTION":
-                    st.error(
-                        f"⛔ BLOQUEADO: {st.session_state.missing_info}"
-                    )
+                    st.error(f"⛔ BLOQUEADO: {st.session_state.missing_info}")
                 else:
                     with st.spinner("Sincronizando..."):
                         fecha_now = (
@@ -510,9 +510,7 @@ MENSAJE USUARIO:
                         for d in st.session_state.draft:
                             d["fecha_registro"] = fecha_now
 
-                        if enviar_github(
-                            FILE_BUZON, st.session_state.draft
-                        ):
+                        if enviar_github(FILE_BUZON, st.session_state.draft):
                             st.success("✅ Enviado con éxito")
                             st.session_state.draft = []
                             st.session_state.messages = []
