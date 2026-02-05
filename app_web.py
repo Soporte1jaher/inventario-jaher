@@ -278,23 +278,34 @@ with t1:
         return campos
 
     def auditar_items(items):
-        faltantes = set()
-        for it in items:
+    faltantes = set()
+
+    for it in items:
         # Campos críticos para cualquier item
-            if not it.get("equipo"): faltantes.add("equipo")
-        
+        if not it.get("equipo"):
+            faltantes.add("equipo")
+
         # Validación para Computo y Pantallas
-            if it.get("categoria_item") in ["Computo", "Pantalla"]:
-                if not it.get("serie") or it.get("serie") == "": faltantes.add("serie")
-                if not it.get("modelo"): faltantes.add("modelo")
-        
+        if it.get("categoria_item") in ["Computo", "Pantalla"]:
+            if not it.get("serie") or it.get("serie") == "":
+                faltantes.add("serie")
+
+            if not it.get("modelo"):
+                faltantes.add("modelo")
+
         # Validación por tipo de evento
-            if it.get("tipo") == "Recibido":
-                if not it.get("guia"): faltantes.add("guia")
-                if not it.get("origen"): faltantes.add("origen")
-                if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
-            
-            return sorted(faltantes))
+        if it.get("tipo") == "Recibido":
+            if not it.get("guia"):
+                faltantes.add("guia")
+
+            if not it.get("origen"):
+                faltantes.add("origen")
+
+            if not it.get("fecha_llegada"):
+                faltantes.add("fecha_llegada")
+
+    return sorted(faltantes)
+
     
     # =========================
     # 3. Entrada de chat
