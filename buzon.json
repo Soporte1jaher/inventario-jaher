@@ -1,1 +1,40 @@
-[]
+[
+    {
+        "categoria_item": "Computo",
+        "tipo": "Recibido",
+        "equipo": "Monitor",
+        "marca": "LG",
+        "modelo": "",
+        "serie": "203ntqdcf620",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "Latacunga",
+        "destino": "Stock",
+        "guia": "N/A",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-05 13:50"
+    },
+    {
+        "categoria_item": "Computo",
+        "tipo": "Recibido",
+        "equipo": "Monitor",
+        "marca": "LG",
+        "modelo": "",
+        "serie": "706ntmxf3643",
+        "cantidad": 1,
+        "estado": "Bueno",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "Latacunga",
+        "destino": "Stock",
+        "guia": "N/A",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-05 13:50"
+    }
+]
