@@ -1,12 +1,1 @@
-[
-    {
-        "accion": "borrar_filtro",
-        "columna": "equipo",
-        "valor": "Tarjeta RAM Mini"
-    },
-    {
-        "accion": "borrar_filtro",
-        "columna": "equipo",
-        "valor": "Tarjeta RAM Mini"
-    }
-]
+[]
