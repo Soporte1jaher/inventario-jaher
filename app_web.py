@@ -243,7 +243,7 @@ with t1:
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "system", "content": f"MEMORIA DE APRENDIZAJE:\n{memoria}"},
-                        {"role": "system", "content": f"BORRADOR ACTUAL:\n{}"},
+                        {"role": "system", "content": f"BORRADOR ACTUAL:\n{contexto_tabla}"},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0
