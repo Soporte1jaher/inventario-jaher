@@ -324,44 +324,45 @@ with t1:
         "estado","tipo","ram","procesador","disco"
     ]
 
-   def campos_obligatorios_por_item(it):
-    cat = it.get("categoria_item")
-    evento = it.get("tipo_evento")
+     
+    def campos_obligatorios_por_item(it):
+       cat = it.get("categoria_item")
+       evento = it.get("tipo_evento")
 
-    base = ["equipo", "cantidad", "estado", "tipo_evento"]
+       base = ["equipo", "cantidad", "estado", "tipo_evento"]
 
-    if cat == "Computo":
-        campos = base + ["marca", "modelo", "procesador", "ram", "disco"]
-    elif cat == "Pantalla":
-        campos = base + ["marca", "serie"]
-    elif cat in ["Periferico", "Consumible"]:
-        campos = base
-    else:
-        return []
+       if cat == "Computo":
+           campos = base + ["marca", "modelo", "procesador", "ram", "disco"]
+       elif cat == "Pantalla":
+           campos = base + ["marca", "serie"]
+       elif cat in ["Periferico", "Consumible"]:
+           campos = base
+       else:
+           return []
 
-    if evento == "Recibido":
-        campos += ["guia", "fecha_llegada"]
+       if evento == "Recibido":
+           campos += ["guia", "fecha_llegada"]
 
-    return campos
+       return campos
 
 
-   def auditar_items(items):
-    faltantes = set()
+    def auditar_items(items):
+        faltantes = set()
 
-    for it in items:
-        obligatorios = campos_obligatorios_por_item(it)
+        for it in items:
+            obligatorios = campos_obligatorios_por_item(it)
 
-        for campo in obligatorios:
-            v = it.get(campo)
-            if (
-                v is None
-                or v == ""
-                or v == "N/A"
-                or (campo == "cantidad" and int(v) < 1)
-            ):
-                faltantes.add(campo)
+            for campo in obligatorios:
+                v = it.get(campo)
+                if (
+                    v is None
+                    or v == ""
+                    or v == "N/A"
+                    or (campo == "cantidad" and int(v) < 1)
+                ):
+                    faltantes.add(campo)
 
-    return sorted(faltantes)
+         return sorted(faltantes)
 
 
     def extraer_json(texto):
