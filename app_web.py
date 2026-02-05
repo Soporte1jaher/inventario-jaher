@@ -453,52 +453,52 @@ with t2:
     else:
         st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
 with t3:
-    st.subheader("🗑️ Limpieza Inteligente")
+    st.subheader("🗑️ Limpieza Inteligente de Base de Datos")
+    st.info("Escribe qué quieres borrar (ej: 'borra todo', 'borra las laptops', 'borra lo de latacunga')")
 
-    txt_borrar = st.text_input("¿Qué deseas eliminar?")
+    txt_borrar = st.text_input("Instrucción de borrado:", placeholder="¿Qué deseas eliminar?")
 
-    if st.button("🔥 EJECUTAR BORRADO"):
+    if st.button("🔥 EJECUTAR ACCIÓN DE LIMPIEZA", type="secondary"):
         if txt_borrar:
             try:
-                p_db = (
-                    "Actúa como DBA. "
-                    "COLUMNAS: [equipo, marca, serie, estado, destino]. "
-                    "ORDEN: " + txt_borrar +
-                    "\nRESPONDE SOLO JSON: "
-                    "{\"accion\":\"borrar_todo\"} "
-                    "o "
-                    "{\"accion\":\"borrar_filtro\",\"columna\":\"...\",\"valor\":\"...\"}"
-                )
+                with st.spinner("LAIA procesando orden de comando..."):
+                    # Prompt especializado para que no hable, solo actúe
+                    p_db = f"""
+                    Actúa como un Administrador de Base de Datos (DBA). 
+                    Tu objetivo es convertir la instrucción del usuario en un comando JSON.
+                    
+                    INSTRUCCIÓN: {txt_borrar}
+                    
+                    REGLAS:
+                    1. Si el usuario pide borrar TODO o limpiar el historial: {{"accion":"borrar_todo"}}
+                    2. Si el usuario pide borrar algo específico (ej: laptops): {{"accion":"borrar_filtro","columna":"equipo","valor":"Laptop"}}
+                    3. Si pide borrar un origen (ej: Latacunga): {{"accion":"borrar_filtro","columna":"origen","valor":"Latacunga"}}
+                    
+                    RESPONDE ÚNICAMENTE EL JSON. SIN TEXTO ADICIONAL.
+                    """
 
-                resp = client.responses.create(
-                    model="gpt-4o-mini",
-                    input=p_db
-                )
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "system", "content": p_db}],
+                        temperature=0
+                    )
 
-                texto = resp.output_text
-                order = json.loads(extraer_json(texto))
+                    texto = response.choices[0].message.content
+                    json_limpio = extraer_json(texto)
+                    
+                    if not json_limpio:
+                        st.error("No se pudo interpretar la orden. Sé más específico.")
+                        st.stop()
 
-                if enviar_github(FILE_BUZON, order):
-                    st.success("✅ Orden enviada.")
-                    st.json(order)
+                    order = json.loads(json_limpio)
 
+                    # Enviamos la orden al buzón para que el script local la ejecute
+                    if enviar_github(FILE_BUZON, order, "Comando de Limpieza"):
+                        st.success(f"✅ Orden enviada: {txt_borrar}")
+                        st.json(order)
+                        st.warning("⚠️ El script local ejecutará el borrado en el siguiente ciclo (15 seg).")
+                    
             except Exception as e:
-                st.error("Error: " + str(e))
-                st.sidebar.divider()
-                st.sidebar.subheader("🎓 Entrenar a LAIA")
-with st.sidebar.expander("¿LAIA cometió un error? Enséñale"):
-    error_ia = st.text_area("¿Qué hizo mal LAIA?", placeholder="Ej: Me pidió fecha para un envío...")
-    solucion_ia = st.text_area("¿Cómo debe actuar?", placeholder="Ej: Nunca pidas fecha si el tipo es 'Enviado'...")
-    if st.button("🧠 Guardar Lección"):
-        if error_ia and solucion_ia:
-            if aprender_leccion(error_ia, solucion_ia):
-                st.success("Lección guardada. LAIA no volverá a cometer ese error.")
-                time.sleep(2)
-                st.rerun()
-            else:
-                st.error("No se pudo guardar en GitHub.")
-
-if st.sidebar.button("🧹 Borrar Chat"):
-    st.session_state.messages = []
-    st.session_state.draft = None
-    st.rerun()
+                st.error(f"Error técnico: {str(e)}")
+        else:
+            st.warning("Escribe algo antes de ejecutar."
