@@ -278,7 +278,7 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # 1. Historial de chat
+    # 1. Historial de chat (Visualización en pantalla)
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
@@ -290,46 +290,55 @@ with t1:
             st.markdown(prompt)
 
         try:
-            with st.spinner("LAIA razonando..."):
-                # Obtenemos lecciones aprendidas
+            with st.spinner("LAIA analizando contexto y memoria..."):
+                # A) Cargar lecciones aprendidas
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 
-                # Contexto de lo que ya está en la tabla (VITAL para no borrar nada)
+                # B) Cargar estado actual de la tabla
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
                 
+                # C) CONSTRUCCIÓN DE MEMORIA TOTAL PARA LA API
+                # Empezamos con el Sistema y la Tabla
+                mensajes_api = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": f"MEMORIA TÉCNICA: {memoria_err}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {}"}
+                ]
+                
+                # AÑADIMOS EL HISTORIAL DE LA CONVERSACIÓN (Últimos 10 mensajes)
+                # Esto evita que pida cosas que ya se dijeron en el chat
+                for m in st.session_state.messages[-10:]:
+                    mensajes_api.append(m)
+
+                # D) Llamada a la Inteligencia
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "system", "content": f"MEMORIA TÉCNICA (Lecciones): {memoria_err}"},
-                        {"role": "system", "content": f"BORRADOR ACTUAL (NO BORRAR LO QUE YA ESTÁ AQUÍ): {contexto_tabla}"},
-                        {"role": "user", "content": f"NUEVA INSTRUCCIÓN: {prompt}"}
-                    ],
+                    messages=mensajes_api,
                     temperature=0
                 )
 
                 res_txt = extraer_json(response.choices[0].message.content)
                 res_json = json.loads(res_txt)
                 
-                # --- LÓGICA DE ACTUALIZACIÓN ANTI-BORRADO ---
+                # E) Actualización inteligente del borrador
                 nuevos_items = res_json.get("items", [])
-                
-                # Si la IA devuelve una lista vacía por error, no sobreescribimos el draft
                 if nuevos_items:
                     st.session_state.draft = nuevos_items
                 
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
 
-                msg_laia = f"🤖 {st.session_state.missing_info}" if st.session_state.missing_info else "✅ Entendido. Todo registrado en la tabla."
+                # F) Respuesta de LAIA
+                msg_laia = f"🤖 {st.session_state.missing_info}" if st.session_state.missing_info else "✅ Todo registrado. He actualizado la tabla con el nuevo contexto."
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
+                
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
                 st.rerun()
 
         except Exception as e:
-            st.error(f"❌ Error de LAIA: {e}")
+            st.error(f"❌ Error de Contexto: {e}")
 
     # 3. Tabla de Edición en Vivo
     if st.session_state.draft:
@@ -337,22 +346,28 @@ with t1:
         st.subheader("📊 Borrador de Movimientos (Antes de Guardar)")
         
         df_editor = pd.DataFrame(st.session_state.draft)
-        # Columnas obligatorias para visualización
-        cols_base = ["equipo","marca","modelo","serie","cantidad","estado","tipo","origen","destino","guia","fecha_llegada","ram","disco","almacenamiento","procesador","reporte"]
+        
+        # Columnas obligatorias (Aseguramos que 'destino' y 'ram/disco' sean visibles)
+        cols_base = [
+            "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
+            "tipo", "origen", "destino", "guia", "fecha_llegada", 
+            "ram", "disco", "procesador", "reporte"
+        ]
+        
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
-        # Reordenar para que sea fácil de leer
+        # Reordenar y limpiar visualmente
         df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
 
         edited_df = st.data_editor(
             df_editor, 
             num_rows="dynamic", 
             use_container_width=True,
-            key="editor_principal"
+            key="editor_principal_v9"
         )
         
-        # Sincronizar cambios manuales
+        # Sincronizar cambios manuales del usuario con el estado de la app
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
@@ -361,21 +376,18 @@ with t1:
         with c1:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
                 with st.spinner("Sincronizando con GitHub..."):
-                    # Añadimos marca de tiempo real a cada registro
                     hora_ec = (datetime.datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in st.session_state.draft: 
                         d["fecha_registro"] = hora_ec
 
-                    # Enviamos al BUZÓN (que luego se procesa al histórico)
-                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro de Inventario - LAIA"):
+                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA - Memoria Contextual"):
                         st.success("✅ Guardado correctamente.")
-                        # LIMPIEZA TOTAL SOLO TRAS ÉXITO
                         st.session_state.draft = []
                         st.session_state.messages = []
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("No se pudo conectar con GitHub.")
+                        st.error("Error al subir a GitHub. Revisa el Token.")
         with c2:
             if st.button("🗑️ Descartar Borrador"):
                 st.session_state.draft = []
