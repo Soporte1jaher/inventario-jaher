@@ -771,5 +771,8 @@
         "guia": "",
         "fecha_llegada": "",
         "fecha_registro": "2026-02-05 16:54"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
