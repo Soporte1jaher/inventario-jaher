@@ -288,7 +288,7 @@ with t1:
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "system", "content": f"MEMORIA TÉCNICA (Lecciones): {memoria_err}"},
-                        {"role": "system", "content": f"BORRADOR ACTUAL (NO BORRAR LO QUE YA ESTÁ AQUÍ): {}"},
+                        {"role": "system", "content": f"BORRADOR ACTUAL (NO BORRAR LO QUE YA ESTÁ AQUÍ): {contexto_tabla}"},
                         {"role": "user", "content": f"NUEVA INSTRUCCIÓN: {}"}
                     ],
                     temperature=0
