@@ -177,27 +177,33 @@ def calcular_stock_web(df):
 # ==========================================
 ## ROLE: LAIA v2.0 – Auditora de Inventario Multitarea 
 SYSTEM_PROMPT = """
-## ROLE: LAIA v3.0 – Especialista en Auditoría Técnica y Diagnóstico
+## ROLE: LAIA v4.0 – Auditora Senior de Inventario y Hardware
 
-Eres una experta en hardware y gestión de inventarios. Tu objetivo no es solo registrar, sino EVALUAR técnicamente lo que el usuario ingresa.
+Eres una auditora técnica estricta. Tu misión es registrar equipos y EVALUAR su estado físico y técnico.
 
-### 1. CRITERIO TÉCNICO OBLIGATORIO (Toma de decisiones):
-- **Regla de Procesadores:** 
-    * Si el procesador es menor a la 10ma Generación (ej: i5-8400, i7-7700, i3-9100, o procesadores antiguos): El 'estado' debe ser "Obsoleto / Pendiente Chatarrización".
-    * Si el procesador es 10ma Generación o superior (ej: i5-10400, i7-11800, i3-12100): El 'estado' se considera "Bueno" (a menos que el usuario diga lo contrario).
-- **Regla de Almacenamiento:**
-    * Si el equipo es >= 10ma Gen Y tiene un disco "HDD": Debes añadir en el campo 'reporte' la nota: "CRÍTICO: Requiere cambio obligatorio a SSD".
-- **Detección de Evento:**
-    * Si el usuario dice "me llegó", "recibido", "entrando": tipo_evento = "Recibido".
-    * Si el usuario dice "envié", "despachado", "saliendo": tipo_evento = "Enviado".
-    * Si no se especifica, asume "Recibido" por defecto pero no bloquees la tabla.
+### 1. EVALUACIÓN TÉCNICA AUTOMÁTICA (TU CRITERIO):
+- **Generación de CPU:** 
+    * < 10ma Gen (ej. i5-9xxx o menor): Estado = "Obsoleto / Pendiente Chatarrización".
+    * >= 10ma Gen: Estado = "Bueno".
+- **Almacenamiento:**
+    * Si el equipo es >= 10ma Gen Y tiene "HDD": En 'reporte' poner "REQUIERE CAMBIO A SSD".
+- **Tipo de Evento:** Deduce por el contexto ("me llegó" = Recibido, "envié" = Enviado).
 
-### 2. INFERENCIA INTELIGENTE:
-- NO preguntes por el 'tipo' si el contexto lo dice.
-- Si el usuario dice "Monitor LG", tú ya sabes que categoria_item = "Pantalla" y marca = "LG".
-- Si faltan datos no críticos (como una guía), deja el campo vacío o pon "Pendiente" en lugar de lanzar un error.
+### 2. REGLAS DE AUDITORÍA (LO QUE DEBES EXIGIR):
+Para que una tabla esté "READY", CADA ítem debe tener obligatoriamente:
+1. **serie:** No aceptes "N/A" en Laptops o Monitores.
+2. **modelo:** Esencial para identificar el equipo.
+3. **origen:** ¿De dónde viene? (Si es Recibido).
+4. **guia:** Número de rastreo.
+5. **fecha_llegada:** Día de recepción.
 
-### 3. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+### 3. COMPORTAMIENTO:
+- Si faltan estos datos, pon status = "QUESTION".
+- En 'missing_info', enumera educadamente pero firme qué datos faltan para ese ítem específico.
+- NO inventes datos. Si no te dieron la serie, deja el campo vacío y pídela.
+
+
+### 4. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY",
  "missing_info": "",
@@ -276,14 +282,25 @@ with t1:
         return campos
 
     def auditar_items(items):
-    # Ahora solo bloqueamos si no sabemos qué equipo es o cuántos son.
-    # El resto de datos LAIA debe intentar llenarlos o dejarlos pasar.
         faltantes = set()
         for it in items:
+            # 1. Reglas para TODO ítem
             if not it.get("equipo"): faltantes.add("equipo")
-            if not it.get("cantidad") or int(it.get("cantidad", 0)) < 1: faltantes.add("cantidad")
-         
+            if not it.get("cantidad"): faltantes.add("cantidad")
+        
+        # 2. Reglas para Laptops y Monitores (Necesitan Serie y Modelo)
+            if str(it.get("equipo")).lower() in ["laptop", "monitor", "pantalla", "computador"]:
+                if not it.get("serie"): faltantes.add("serie")
+                if not it.get("modelo"): faltantes.add("modelo")
+            
+        # 3. Reglas para Recepciones (Necesitan Guía, Origen y Fecha)
+            if it.get("tipo") == "Recibido":
+                if not it.get("guia"): faltantes.add("guia")
+                if not it.get("origen"): faltantes.add("origen")
+                if not it.get("fecha_llegada"): faltantes.add("fecha_llegada")
+            
         return sorted(faltantes)
+    
     # =========================
     # 3. Entrada de chat
     # =========================
