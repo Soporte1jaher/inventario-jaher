@@ -68,80 +68,7 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 #     return False, str(e)
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
-def conectar_glpi_jaher():
-    config, _ = obtener_github("config_glpi.json")
-    if not config or "url_glpi" not in config:
-        return None, "Fallo: El link en GitHub no existe."
-    
-    base_url = config["url_glpi"]
-    session = requests.Session()
-    
-    # HEADERS MÁS REALES (Copiados de un Chrome real)
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'es-ES,es;q=0.9',
-        'Origin': base_url,
-        'Referer': f"{base_url}/front/login.php"
-    })
 
-    usuario = "soporte1"
-    clave = "Cpktnwt1986@*."
-
-    try:
-        # 1. Obtener Token CSRF
-        login_page = session.get(f"{base_url}/front/login.php", timeout=10)
-        import re
-        csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
-        csrf_token = csrf_match.group(1) if csrf_match else ""
-
-        # 2. Intentar Login
-        payload = {
-            'noAuto': '0',
-            'login_name': usuario,
-            'login_password': clave,
-            '_glpi_csrf_token': csrf_token,
-            'submit': 'Enviar'
-        }
-        
-        response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
-
-        # 3. VERIFICACIÓN DE DIAGNÓSTICO
-        if session.cookies.get('glpi_session'):
-            # Si entramos, manejamos el perfil
-            if "selectprofile.php" in response.url:
-                p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
-                p_id = p_match.group(1) if p_match else "4"
-                session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
-            return session, base_url
-        else:
-            # MOSTRAR QUÉ DICE LA PÁGINA (Para saber si es un error de clave, captcha o bloqueo)
-            if "CSRF" in response.text: error = "Error de Token CSRF (Seguridad)"
-            elif "identificador o la contraseña son incorrectos" in response.text: error = "Usuario o Clave mal escritos"
-            elif "Javascript" in response.text: error = "GLPI exige navegador con Javascript (Bloqueo de bot)"
-            else: error = "Bloqueo desconocido por el Firewall de Jaher"
-            return None, f"Fallo: {error}"
-
-    except Exception as e:
-        return None, f"Error de red: {str(e)}"
-
-def consultar_datos_glpi(serie):
-    """ Busca datos navegando en el panel global (ya que la API está deshabilitada) """
-    session, base_url = conectar_glpi_jaher()
-    if not session:
-        return None
-    
-    # Buscamos en el buscador global de GLPI
-    url_busqueda = f"{base_url}/front/allassets.php?contains%5B0%5D={serie}&itemtype=all"
-    
-    try:
-        resp = session.get(url_busqueda, timeout=10)
-        if serie.lower() in resp.text.lower():
-            # Si la serie aparece en el HTML, es que el equipo existe
-            return {"status": "Encontrado", "msg": f"Equipo {serie} detectado en GLPI"}
-        return None
-    except:
-        return None
 
 # --- FUNCIONES DE GITHUB Y JSON ---
 
@@ -572,9 +499,77 @@ with t3:
                         st.warning("El script local eliminará estos registros en unos segundos.")
             except Exception as e:
                 st.error(f"Error: {e}")
-if st.button("🔌 Probar Conexión GLPI"):
-    headers, mensaje = conectar_glpi_jaher()
-    if headers:
-        st.success(f"¡Conectado! Perfil activo cambiado a Soporte Técnico.")
-    else:
-        st.error(f"Fallo: {mensaje}")
+def conectar_glpi_jaher():
+    config, _ = obtener_github("config_glpi.json")
+    if not config or "url_glpi" not in config:
+        return None, "Fallo: El link en GitHub no existe."
+    
+    base_url = config["url_glpi"]
+    session = requests.Session()
+    
+    # HEADERS MÁS REALES (Copiados de un Chrome real)
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9',
+        'Origin': base_url,
+        'Referer': f"{base_url}/front/login.php"
+    })
+
+    usuario = "soporte1"
+    clave = "Cpktnwt1986@*."
+
+    try:
+        # 1. Obtener Token CSRF
+        login_page = session.get(f"{base_url}/front/login.php", timeout=10)
+        import re
+        csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
+        csrf_token = csrf_match.group(1) if csrf_match else ""
+
+        # 2. Intentar Login
+        payload = {
+            'noAuto': '0',
+            'login_name': usuario,
+            'login_password': clave,
+            '_glpi_csrf_token': csrf_token,
+            'submit': 'Enviar'
+        }
+        
+        response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
+
+        # 3. VERIFICACIÓN DE DIAGNÓSTICO
+        if session.cookies.get('glpi_session'):
+            # Si entramos, manejamos el perfil
+            if "selectprofile.php" in response.url:
+                p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
+                p_id = p_match.group(1) if p_match else "4"
+                session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
+            return session, base_url
+        else:
+            # MOSTRAR QUÉ DICE LA PÁGINA (Para saber si es un error de clave, captcha o bloqueo)
+            if "CSRF" in response.text: error = "Error de Token CSRF (Seguridad)"
+            elif "identificador o la contraseña son incorrectos" in response.text: error = "Usuario o Clave mal escritos"
+            elif "Javascript" in response.text: error = "GLPI exige navegador con Javascript (Bloqueo de bot)"
+            else: error = "Bloqueo desconocido por el Firewall de Jaher"
+            return None, f"Fallo: {error}"
+
+    except Exception as e:
+        return None, f"Error de red: {str(e)}"
+
+def consultar_datos_glpi(serie):
+    """ Busca datos navegando en el panel global (ya que la API está deshabilitada) """
+    session, base_url = conectar_glpi_jaher()
+    if not session:
+        return None
+    
+    # Buscamos en el buscador global de GLPI
+    url_busqueda = f"{base_url}/front/allassets.php?contains%5B0%5D={serie}&itemtype=all"
+    
+    try:
+        resp = session.get(url_busqueda, timeout=10)
+        if serie.lower() in resp.text.lower():
+            # Si la serie aparece en el HTML, es que el equipo existe
+            return {"status": "Encontrado", "msg": f"Equipo {serie} detectado en GLPI"}
+        return None
+    except:
+        return None
