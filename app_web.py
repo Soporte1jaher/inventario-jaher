@@ -84,7 +84,7 @@ def conectar_glpi_guerrilla(usuario, password):
         # 2. Intentar el login como si fuera un humano
         payload = {
             'login_name': soporte1,
-            'login_password': Cpktnwt1986@*.,
+            'login_password': "Cpktnwt1986@*.",
             '_glpi_csrf_token': csrf_token,
             'submit': 'Enviar'
         }
