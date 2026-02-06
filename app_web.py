@@ -127,10 +127,10 @@ def solicitar_busqueda_glpi(serie):
 def revisar_respuesta_glpi():
     """ Lee el archivo de pedido para ver si la PC local ya respondió """
     contenido, _ = obtener_github("pedido.json")
-    if contenido and contenido.get("estado") == "completado":
+    # Validamos que el contenido sea un diccionario antes de usar .get()
+    if isinstance(contenido, dict) and contenido.get("estado") == "completado":
         return contenido
     return None
-
 # --- 3. AYUDANTES DE IA Y APRENDIZAJE ---
 
 def extraer_json(texto):
@@ -346,9 +346,13 @@ with t1:
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
 
-                # E) Respuesta de LAIA (CORREGIDO: Sin error de info_correo)
-                confirmacion = "✅ Borrador actualizado con éxito."
-                msg_laia = f"🤖 {st.session_state.missing_info if st.session_state.missing_info else confirmacion}"
+                # E) Respuesta de LAIA (NUEVA LÓGICA DE AUDITORÍA)
+                if st.session_state.status == "QUESTION":
+                    # Si falta info, mensaje de advertencia
+                    msg_laia = f"🤖 ⚠️ **DATOS FALTANTES:** {st.session_state.missing_info}"
+                else:
+                    # Si todo está bien, mensaje de éxito
+                    msg_laia = "🤖 ✅ **AUDITORÍA COMPLETA:** He verificado los datos y el borrador está listo para guardar."
                 
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
