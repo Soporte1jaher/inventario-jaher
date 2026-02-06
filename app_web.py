@@ -69,33 +69,29 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
 def conectar_glpi_jaher():
-    """ Inicia sesión en GLPI usando el túnel de Cloudflare """
-    # LA URL DE TU TÚNEL ACTUAL:
     base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com/apirest.php"
     u_token = "ZzDYafRp64b4gcuaPQ3qOcQCDfjcl3wX4Pq62Fov"
     
+    # Intenta conseguir el App-Token de sistemas. Si ya lo tienes, ponlo aquí:
+    # a_token = "EL_TOKEN_QUE_TE_DE_SISTEMAS" 
+    
     headers = {
         "Content-Type": "application/json",
-        "user_token": u_token
+        "user_token": u_token,
+        # "App-Token": a_token  <-- Descomenta esto cuando lo tengas
     }
     
     try:
-        # 1. Iniciar Sesión
         resp = requests.get(f"{base_url}/initSession", headers=headers, timeout=10)
+        
+        if resp.status_code == 400:
+            # ESTO NOS DIRÁ EL ERROR REAL (Ej: "ERROR_APP_TOKEN_PARAMETERS_MISSING")
+            return None, f"GLPI dice: {resp.text}"
+            
         if resp.status_code != 200:
-            return None, f"Error de Sesión: {resp.status_code}"
+            return None, f"Error: {resp.status_code}"
             
-        session_token = resp.json().get("session_token")
-        headers["session_token"] = session_token
-        
-        # 2. Cambiar a Perfil de Soporte (para tener permisos)
-        perfiles = requests.get(f"{base_url}/getMyProfiles", headers=headers).json()
-        id_soporte = next((p['id'] for p in perfiles.get('myprofiles', []) if "Soporte" in p['name']), None)
-        
-        if id_soporte:
-            requests.post(f"{base_url}/changeActiveProfile", headers=headers, json={"profiles_id": id_soporte})
-            
-        return headers, "OK"
+        return resp.json().get("session_token"), "OK"
     except Exception as e:
         return None, str(e)
 
