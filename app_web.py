@@ -256,25 +256,7 @@ Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movi
 - Aunque un equipo (CPU, Laptop, Servidor) vaya a "Bodega", es OBLIGATORIO registrar su Procesador, RAM y Disco.
 - No des por completado el registro (status: READY) si faltan estos datos técnicos para equipos de computo.
 
-### 5. NOTIFICACIONES POR CORREO:
-- Si el usuario pide enviar un correo o menciona un destinatario (ej. @jaher.com.ec), debes:
-  1. Redactar un 'asunto_correo' profesional.
-  2. Redactar un 'cuerpo_correo' formal y técnico que resuma el movimiento.
-  3. Identificar el 'destinatario'.
-
-### 6. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
-{
- "status": "READY" o "QUESTION",
- "missing_info": "...",
- "items": [...],
- "enviar_email": true/false,
- "email_data": {
-    "destinatarios": "correo@ejemplo.com",
-    "asunto": "Notificación de Despacho Técnico - Agencia X",
-    "cuerpo": "Estimados, por medio de la presente se informa el envío de..."
- }
-
-### 7. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+### 5. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY" o "QUESTION",
  "missing_info": "Mensaje corto pidiendo lo que falte",
