@@ -44,30 +44,30 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 # ==========================================
 # 3. FUNCIONES AUXILIARES
 # ==========================================
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+#import smtplib
+#from email.mime.text import MIMEText
+#from email.mime.multipart import MIMEMultipart
 
-def enviar_correo_outlook(destinatario, asunto, cuerpo):
-    try:
-        remitente = st.secrets["EMAIL_USER"]
-        password = st.secrets["EMAIL_PASS"]
+#def enviar_correo_outlook(destinatario, asunto, cuerpo):
+   # try:
+       # remitente = st.secrets["EMAIL_USER"]
+        #password = st.secrets["EMAIL_PASS"]
         
-        msg = MIMEMultipart()
-        msg['From'] = remitente
-        msg['To'] = destinatario
-        msg['Subject'] = asunto
-        msg.attach(MIMEText(cuerpo, 'plain'))
+       # msg = MIMEMultipart()
+        #msg['From'] = remitente
+       # msg['To'] = destinatario
+        #msg['Subject'] = asunto
+        #msg.attach(MIMEText(cuerpo, 'plain'))
         
-        server = smtplib.SMTP('smtp.office365.com', 587)
-        server.starttls()
-        server.login(remitente, password)
-        server.send_message(msg)
-        server.quit()
-        return True, "OK"
-    except Exception as e:
+        #server = smtplib.SMTP('smtp.office365.com', 587)
+       # server.starttls()
+        #server.login(remitente, password)
+        #server.send_message(msg)
+        #server.quit()
+        #return True, "OK"
+    #except Exception as e:
         # Devolvemos el error real para que LAIA lo muestre
-        return False, str(e)
+        #return False, str(e)
 def extraer_json(texto):
     try:
         texto = texto.replace("```json", "").replace("```", "").strip()
@@ -327,29 +327,6 @@ with t1:
 
                 res_json = json.loads(res_txt)
                 
-                # ==========================================
-                # NUEVA LÓGICA: ENVÍO DE CORREO AUTOMÁTICO
-                # ==========================================
-                info_correo = ""
-                if res_json.get("enviar_email") is True:
-                    e_data = res_json.get("email_data", {})
-                    dest = e_data.get("destinatario")
-                    
-                    if dest:
-                        with st.spinner(f"📧 Enviando correo..."):
-                            # CAPTURAMOS EL ÉXITO Y EL MENSAJE DE ERROR REAL
-                            exito, mensaje_tecnico = enviar_correo_outlook(
-                                destinatario=dest,
-                                asunto=e_data.get("asunto", "Notificación"),
-                                cuerpo=e_data.get("cuerpo", "")
-                            )
-                            if exito:
-                                info_correo = f"\n\n📧 **Correo enviado con éxito a:** {dest}"
-                                st.toast(f"Correo enviado!", icon="✅")
-                            else:
-                                # AQUÍ MOSTRAREMOS EL ERROR QUE NOS DA MICROSOFT
-                                info_correo = f"\n\n❌ **Error de Microsoft:** {mensaje_tecnico}"
-                # ==========================================
 
                 # F) Actualización de la Tabla
                 nuevos_items = res_json.get("items", [])
