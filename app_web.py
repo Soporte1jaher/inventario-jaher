@@ -363,13 +363,39 @@ with t1:
                 else:
                     st.warning("⚠️ No hay una serie válida para buscar.")
         
-        with col_glpi2:
-            if st.button("🔄 REVISAR RESPUESTA"):
+          with col_glpi2:
+            if st.button("🔄 REVISAR Y AUTORELLENAR"):
                 res_glpi = revisar_respuesta_glpi()
-                if res_glpi:
-                    st.success(f"✅ Resultado: {res_glpi.get('info')}")
+                
+                # Si la PC ya respondió y mandó la ficha técnica (specs)
+                if res_glpi and res_glpi.get("estado") == "completado":
+                    specs_oficina = res_glpi.get("specs", {})
+                    serie_buscada = res_glpi.get("serie")
+                    
+                    # Buscamos la fila en la tabla y la actualizamos
+                    encontrado = False
+                    nuevo_borrador = []
+                    
+                    for item in st.session_state.draft:
+                        if item.get("serie") == serie_buscada:
+                            # ACTUALIZAMOS LOS CAMPOS CON LO QUE MANDÓ LA PC
+                            item["marca"] = specs_oficina.get("marca", item["marca"])
+                            item["modelo"] = specs_oficina.get("modelo", item["modelo"])
+                            item["ram"] = specs_oficina.get("ram", item["ram"])
+                            item["disco"] = specs_oficina.get("disco", item["disco"])
+                            item["procesador"] = specs_oficina.get("procesador", item["procesador"])
+                            item["reporte"] = specs_oficina.get("reporte", item["reporte"])
+                            encontrado = True
+                        nuevo_borrador.append(item)
+                    
+                    if encontrado:
+                        st.session_state.draft = nuevo_borrador
+                        st.success(f"✨ ¡Datos de serie {serie_buscada} cargados en la tabla!")
+                        time.sleep(1)
+                        st.rerun() # Refrescamos para que se vea el cambio
                 else:
-                    st.info("⏳ Aún no hay respuesta en GitHub. Espera 5 segundos.")
+                    st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
+
 
         # 4. Botones de Acción
         c1, c2 = st.columns([1, 4])
