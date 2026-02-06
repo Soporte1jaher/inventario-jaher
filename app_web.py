@@ -52,23 +52,29 @@ def enviar_correo_outlook(destinatario, asunto, cuerpo):
     try:
         remitente = st.secrets["EMAIL_USER"]
         password = st.secrets["EMAIL_PASS"]
-
+        
         msg = MIMEMultipart()
         msg['From'] = remitente
         msg['To'] = destinatario
         msg['Subject'] = asunto
-
         msg.attach(MIMEText(cuerpo, 'plain'))
-
-        # Configuración del servidor Outlook
-        server = smtplib.SMTP('smtp-mail.outlook.com', 587)
+        
+        # PROBAMOS CON EL SERVIDOR OFICIAL DE OFFICE 365
+        server = smtplib.SMTP('smtp.office365.com', 587)
         server.starttls()
-        server.login(remitente, password)
+        
+        try:
+            server.login(remitente, password)
+        except Exception as auth_error:
+            # ESTO NOS DIRÁ EL ERROR REAL EN PANTALLA
+            st.error(f"❌ Error de Microsoft: {str(auth_error)}")
+            return False
+            
         server.send_message(msg)
         server.quit()
         return True
     except Exception as e:
-        st.error(f"❌ Error al enviar correo: {e}")
+        st.error(f"❌ Error técnico: {str(e)}")
         return False
 def extraer_json(texto):
     try:
