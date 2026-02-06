@@ -72,7 +72,7 @@ def conectar_glpi_jaher():
     base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
     session = requests.Session()
     
-    # User-Agent para que el servidor crea que somos Chrome de verdad
+    # User-Agent para parecer un navegador real
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     })
@@ -87,7 +87,7 @@ def conectar_glpi_jaher():
         csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
         csrf_token = csrf_match.group(1) if csrf_match else ""
 
-        # 2. Intentar Login
+        # 2. Intentar Login (CORREGIDO allow_redirects)
         payload = {
             'login_name': usuario,
             'login_password': clave,
@@ -95,29 +95,26 @@ def conectar_glpi_jaher():
             'submit': 'Enviar'
         }
         
-        response = session.post(f"{base_url}/front/login.php", data=payload, follow_redirects=True)
+        # Aquí cambiamos follow_redirects por allow_redirects
+        response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
 
         # 3. ¿Estamos en la página de seleccionar perfil?
         if "selectprofile.php" in response.url:
-            # Buscamos el ID del perfil "Soporte Tecnico" en el código de la página
-            # Normalmente los perfiles están en un formulario o links
+            # Buscamos el ID del perfil "Soporte Técnico"
             profile_id_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
             
             if profile_id_match:
                 p_id = profile_id_match.group(1)
-                # Forzamos el cambio de perfil
                 session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
             else:
-                # Si no lo hallamos por nombre, intentamos con el ID que suele ser el 4 o 5
+                # Intento genérico si no lo encuentra por nombre
                 session.get(f"{base_url}/front/selectprofile.php?profiles_id=4")
 
-        # 4. Verificación Final: ¿Hay cookie de sesión?
+        # 4. Verificación Final
         if session.cookies.get('glpi_session'):
             return session, "OK"
         else:
-            # Si falla, te mostraré un trozo de lo que ve LAIA para saber qué pasó
-            debug_info = response.text[:200].replace("<", "[") 
-            return None, f"Bloqueado. GLPI muestra: {debug_info}"
+            return None, "Fallo: No se generó cookie de sesión. Revisa el login."
 
     except Exception as e:
         return None, f"Error de red: {str(e)}"
