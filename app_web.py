@@ -306,15 +306,12 @@ with t1:
             st.markdown(prompt)
 
         try:
-            with st.spinner("LAIA razonando contexto y memoria..."):
-                # A) Obtener lecciones de errores previos
+            with st.spinner("LAIA auditando información y razonando..."):
+                # A) Obtener contexto y lecciones
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-                
-                # B) Obtener el borrador actual en formato texto
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
                 
-                # C) Construir el paquete de mensajes para la IA (HISTORIAL COMPLETO)
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
@@ -324,14 +321,14 @@ with t1:
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
-                # D) Llamada a OpenAI
+                # B) Llamada a OpenAI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=mensajes_api,
                     temperature=0
                 )
 
-                # E) Procesamiento del JSON
+                # C) Procesamiento del JSON
                 raw_txt = response.choices[0].message.content
                 res_txt = extraer_json(raw_txt)
                 
@@ -341,8 +338,7 @@ with t1:
 
                 res_json = json.loads(res_txt)
                 
-
-                # F) Actualización de la Tabla
+                # D) Actualización de la Tabla
                 nuevos_items = res_json.get("items", [])
                 if nuevos_items:
                     st.session_state.draft = nuevos_items
@@ -350,9 +346,9 @@ with t1:
                 st.session_state.status = res_json.get("status", "READY")
                 st.session_state.missing_info = res_json.get("missing_info", "")
 
-                # G) Respuesta de LAIA en el chat
-                confirmacion = "✅ Todo registrado. He actualizado la tabla."
-                msg_laia = f"🤖 {st.session_state.missing_info if st.session_state.missing_info else confirmacion}{info_correo}"
+                # E) Respuesta de LAIA (CORREGIDO: Sin error de info_correo)
+                confirmacion = "✅ Borrador actualizado con éxito."
+                msg_laia = f"🤖 {st.session_state.missing_info if st.session_state.missing_info else confirmacion}"
                 
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
@@ -363,7 +359,7 @@ with t1:
         except Exception as e:
             st.error(f"❌ Fallo crítico de IA: {str(e)}")
 
-    # 3. Tabla de Edición en Vivo
+    # 3. Tabla de Edición y Botón GLPI
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Borrador de Movimientos (Antes de Guardar)")
@@ -390,7 +386,31 @@ with t1:
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # 4. Botones de Acción
+        # --- SECCIÓN GLPI PING-PONG ---
+        st.write("---")
+        if st.button("🔍 CONSULTAR FICHA TÉCNICA EN GLPI (OFICINA)", type="secondary"):
+            # Buscar la primera serie válida en el borrador para consultar
+            serie_a_consultar = next((item.get('serie') for item in st.session_state.draft if item.get('serie') and item.get('serie') != "N/A"), None)
+            
+            if serie_a_consultar:
+                with st.spinner(f"Enviando solicitud de serie {serie_a_consultar} a la oficina..."):
+                    if solicitar_busqueda_glpi(serie_a_consultar):
+                        st.toast("Pedido enviado a GitHub. Esperando respuesta...", icon="📡")
+                        
+                        # Esperamos unos segundos a que la PC en la oficina responda
+                        time.sleep(8) 
+                        
+                        respuesta = revisar_respuesta_glpi()
+                        if respuesta:
+                            st.success(f"✅ Respuesta de Oficina: {respuesta.get('info')}")
+                        else:
+                            st.warning("⏳ La PC de la oficina aún no ha respondido. Revisa en 10 segundos.")
+                    else:
+                        st.error("No se pudo conectar con el buzón de pedidos en GitHub.")
+            else:
+                st.warning("Escribe una serie primero para poder consultarla.")
+
+        # 4. Botones de Acción Final
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
@@ -412,6 +432,7 @@ with t1:
                 st.session_state.draft = []
                 st.session_state.messages = []
                 st.rerun()
+
 with t2:
     st.subheader("📊 Control de Stock e Historial")
      
