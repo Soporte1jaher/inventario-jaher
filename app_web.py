@@ -68,7 +68,45 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 #     return False, str(e)
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
+def solicitar_busqueda_glpi(serie):
+    """ LAIA deja una nota en GitHub para que la PC de la oficina la lea """
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pedido.json"
+    
+    # 1. Obtenemos el SHA para poder actualizar el archivo
+    resp = requests.get(url, headers=HEADERS)
+    if resp.status_code == 200:
+        p_data = resp.json()
+        sha = p_data['sha']
+        
+        # 2. Creamos el pedido para tu PC
+        pedido = {
+            "serie_a_buscar": serie,
+            "info": "",
+            "estado": "pendiente"
+        }
+        
+        # 3. Subimos el pedido a GitHub
+        payload = {
+            "message": f"LAIA: Pedido de búsqueda serie {serie}",
+            "content": base64.b64encode(json.dumps(pedido).encode()).decode(),
+            "sha": sha
+        }
+        r = requests.put(url, headers=HEADERS, json=payload)
+        return r.status_code in [200, 201]
+    return False
 
+def revisar_respuesta_glpi():
+    """ LAIA revisa si la PC de la oficina ya respondió en GitHub """
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pedido.json"
+    resp = requests.get(url, headers=HEADERS)
+    if resp.status_code == 200:
+        p_data = resp.json()
+        contenido = json.loads(base64.b64decode(p_data['content']).decode('utf-8'))
+        
+        # Si el estado es 'completado', es que tu PC ya escribió la respuesta
+        if contenido.get("estado") == "completado":
+            return contenido
+    return None
 
 # --- FUNCIONES DE GITHUB Y JSON ---
 
