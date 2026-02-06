@@ -556,3 +556,9 @@ with t3:
                         st.warning("El script local eliminará estos registros en unos segundos.")
             except Exception as e:
                 st.error(f"Error: {e}")
+if st.button("🔌 Probar Conexión GLPI"):
+    headers, mensaje = conectar_glpi_jaher()
+    if headers:
+        st.success(f"¡Conectado! Perfil activo cambiado a Soporte Técnico.")
+    else:
+        st.error(f"Fallo: {mensaje}")
