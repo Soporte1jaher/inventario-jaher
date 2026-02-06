@@ -59,23 +59,15 @@ def enviar_correo_outlook(destinatario, asunto, cuerpo):
         msg['Subject'] = asunto
         msg.attach(MIMEText(cuerpo, 'plain'))
         
-        # PROBAMOS CON EL SERVIDOR OFICIAL DE OFFICE 365
         server = smtplib.SMTP('smtp.office365.com', 587)
         server.starttls()
-        
-        try:
-            server.login(remitente, password)
-        except Exception as auth_error:
-            # ESTO NOS DIRÁ EL ERROR REAL EN PANTALLA
-            st.error(f"❌ Error de Microsoft: {str(auth_error)}")
-            return False
-            
+        server.login(remitente, password)
         server.send_message(msg)
         server.quit()
-        return True
+        return True, "OK"
     except Exception as e:
-        st.error(f"❌ Error técnico: {str(e)}")
-        return False
+        # Devolvemos el error real para que LAIA lo muestre
+        return False, str(e)
 def extraer_json(texto):
     try:
         texto = texto.replace("```json", "").replace("```", "").strip()
@@ -338,24 +330,25 @@ with t1:
                 # ==========================================
                 # NUEVA LÓGICA: ENVÍO DE CORREO AUTOMÁTICO
                 # ==========================================
-                info_correo = ""
+                  info_correo = ""
                 if res_json.get("enviar_email") is True:
                     e_data = res_json.get("email_data", {})
                     dest = e_data.get("destinatario")
                     
                     if dest:
-                        with st.spinner(f"📧 Enviando correo formal a {dest}..."):
-                            # Llamamos a la función auxiliar (debes tenerla definida arriba)
-                            exito = enviar_correo_outlook(
+                        with st.spinner(f"📧 Enviando correo..."):
+                            # CAPTURAMOS EL ÉXITO Y EL MENSAJE DE ERROR REAL
+                            exito, mensaje_tecnico = enviar_correo_outlook(
                                 destinatario=dest,
-                                asunto=e_data.get("asunto", "Notificación de Inventario - Jaher"),
+                                asunto=e_data.get("asunto", "Notificación"),
                                 cuerpo=e_data.get("cuerpo", "")
                             )
                             if exito:
                                 info_correo = f"\n\n📧 **Correo enviado con éxito a:** {dest}"
-                                st.toast(f"Correo enviado a {dest}", icon="✅")
+                                st.toast(f"Correo enviado!", icon="✅")
                             else:
-                                info_correo = f"\n\n❌ **Fallo al enviar el correo.** Revisa las credenciales."
+                                # AQUÍ MOSTRAREMOS EL ERROR QUE NOS DA MICROSOFT
+                                info_correo = f"\n\n❌ **Error de Microsoft:** {mensaje_tecnico}"
                 # ==========================================
 
                 # F) Actualización de la Tabla
