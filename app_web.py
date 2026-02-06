@@ -71,7 +71,7 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 def conectar_glpi_jaher():
     """ Inicia sesión en GLPI y cambia al perfil de Soporte Técnico """
-    base_url = "https://ayuda.jaher.com.ec/apirest.php"
+    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
     # Token de Julián Estrella (soporte1)
     u_token = "ZzDYafRp64b4gcuaPQ3qOcQCDfjcl3wX4Pq62Fov"
     
