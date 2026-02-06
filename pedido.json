@@ -1,5 +1,1 @@
-{
-    "serie_a_buscar": "5CG1365VW1",
-    "info": "",
-    "estado": "pendiente"
-}
+{"serie": "5CG1365VW1", "info": "Equipo Encontrado", "specs": {"reporte": "\u26a0\ufe0f Serie 5CG1365VW1 existe en GLPI pero no pude abrir su ficha."}, "estado": "completado"}
