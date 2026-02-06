@@ -69,25 +69,29 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
 def conectar_glpi_jaher():
-    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
-    session = requests.Session()
+    """ Obtiene la URL de GitHub e intenta login como humano """
+    # 1. Traer la URL que el script de tu PC subió a GitHub
+    config, _ = obtener_github("config_glpi.json")
+    if not config or "url_glpi" not in config:
+        return None, "Fallo: Tu PC de la oficina no ha reportado una URL aún."
     
-    # User-Agent para parecer un navegador real
+    base_url = config["url_glpi"] # Ejemplo: https://xxxx.trycloudflare.com
+    session = requests.Session()
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     })
 
+    # IMPORTANTE: Estas son tus credenciales web
     usuario = "soporte1"
-    clave = ""
+    clave = "Cpktnwt1986@*." # Asegúrate de que esta clave esté bien
 
     try:
-        # 1. Obtener Token CSRF
-        login_page = session.get(f"{base_url}/front/login.php", timeout=15)
+        # 2. Login de Guerrilla
+        login_page = session.get(f"{base_url}/front/login.php", timeout=10)
         import re
         csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
         csrf_token = csrf_match.group(1) if csrf_match else ""
 
-        # 2. Intentar Login (CORREGIDO allow_redirects)
         payload = {
             'login_name': usuario,
             'login_password': clave,
@@ -95,48 +99,38 @@ def conectar_glpi_jaher():
             'submit': 'Enviar'
         }
         
-        # Aquí cambiamos follow_redirects por allow_redirects
         response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
 
-        # 3. ¿Estamos en la página de seleccionar perfil?
+        # 3. Manejo de Perfiles
         if "selectprofile.php" in response.url:
-            # Buscamos el ID del perfil "Soporte Técnico"
-            profile_id_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
-            
-            if profile_id_match:
-                p_id = profile_id_match.group(1)
-                session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
-            else:
-                # Intento genérico si no lo encuentra por nombre
-                session.get(f"{base_url}/front/selectprofile.php?profiles_id=4")
+            p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
+            p_id = p_match.group(1) if p_match else "4"
+            session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
 
-        # 4. Verificación Final
         if session.cookies.get('glpi_session'):
-            return session, "OK"
-        else:
-            return None, "Fallo: No se generó cookie de sesión. Revisa el login."
-
+            return session, base_url # Devolvemos la sesión y la URL base
+        return None, "Fallo: No se pudo crear sesión web."
     except Exception as e:
-        return None, f"Error de red: {str(e)}"
+        return None, f"Error: {str(e)}"
+
 def consultar_datos_glpi(serie):
-    """ Busca la ficha técnica real en GLPI por serie """
-    headers, msg = conectar_glpi_jaher()
-    if not headers: return None
+    """ Busca datos navegando en el panel global (ya que la API está deshabilitada) """
+    session, base_url = conectar_glpi_jaher()
+    if not session:
+        return None
     
-    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com/apirest.php"
-    # Buscamos en computadoras (campo 5 es serial)
-    url = f"{base_url}/search/Computer?criteria[0][field]=5&criteria[0][searchtype]=equals&criteria[0][value]={serie}"
+    # Buscamos en el buscador global de GLPI
+    url_busqueda = f"{base_url}/front/allassets.php?contains%5B0%5D={serie}&itemtype=all"
     
     try:
-        res = requests.get(url, headers=headers).json()
-        if res.get('data'):
-            # Sacamos el ID del equipo para traer sus detalles
-            item_id = res['data'][0]['1'] 
-            detalle = requests.get(f"{base_url}/Computer/{item_id}", headers=headers).json()
-            return detalle
+        resp = session.get(url_busqueda, timeout=10)
+        if serie.lower() in resp.text.lower():
+            # Si la serie aparece en el HTML, es que el equipo existe
+            return {"status": "Encontrado", "msg": f"Equipo {serie} detectado en GLPI"}
         return None
     except:
         return None
+
 # --- FUNCIONES DE GITHUB Y JSON ---
 
 def extraer_json(texto):
