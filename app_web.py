@@ -41,124 +41,161 @@ FILE_HISTORICO = "historico.json"
 FILE_LECCIONES = "lecciones.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
+
 # ==========================================
 # 3. FUNCIONES AUXILIARES
 # ==========================================
-#import smtplib
-#from email.mime.text import MIMEText
-#from email.mime.multipart import MIMEMultipart
+# import smtplib
+# from email.mime.text import MIMEText
+# from email.mime.multipart import MIMEMultipart
 
-#def enviar_correo_outlook(destinatario, asunto, cuerpo):
-   # try:
-       # remitente = st.secrets["EMAIL_USER"]
-        #password = st.secrets["EMAIL_PASS"]
-        
-       # msg = MIMEMultipart()
-        #msg['From'] = remitente
-       # msg['To'] = destinatario
-        #msg['Subject'] = asunto
-        #msg.attach(MIMEText(cuerpo, 'plain'))
-        
-        #server = smtplib.SMTP('smtp.office365.com', 587)
-       # server.starttls()
-        #server.login(remitente, password)
-        #server.send_message(msg)
-        #server.quit()
-        #return True, "OK"
-    #except Exception as e:
-        # Devolvemos el error real para que LAIA lo muestre
-        #return False, str(e)
-def extraer_json(texto):
+# def enviar_correo_outlook(destinatario, asunto, cuerpo):
+#   try:
+#     remitente = st.secrets["EMAIL_USER"]
+#     password = st.secrets["EMAIL_PASS"]
+#     msg = MIMEMultipart()
+#     msg['From'] = remitente
+#     msg['To'] = destinatario
+#     msg['Subject'] = asunto
+#     msg.attach(MIMEText(cuerpo, 'plain'))
+#     server = smtplib.SMTP('smtp.office365.com', 587)
+#     server.starttls()
+#     server.login(remitente, password)
+#     server.send_message(msg)
+#     server.quit()
+#     return True, "OK"
+#   except Exception as e:
+#     return False, str(e)
+
+# --- NUEVAS FUNCIONES GLPI JAHER ---
+
+def conectar_glpi_jaher():
+    """ Inicia sesión en GLPI y cambia al perfil de Soporte Técnico """
+    base_url = "https://ayuda.jaher.com.ec/apirest.php"
+    # Token de Julián Estrella (soporte1)
+    u_token = "ZzDYafRp64b4gcuaPQ3qOcQCDfjcl3wX4Pq62Fov"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "user_token": u_token
+        # Si el servidor pide App-Token, habría que agregarlo aquí.
+    }
+    
     try:
-        texto = texto.replace("```json", "").replace("```", "").strip()
-        inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
-        if inicio != -1 and fin > inicio:
-            return texto[inicio:fin].strip()
-        return ""
+        # 1. Iniciar Sesión (initSession)
+        resp = requests.get(f"{base_url}/initSession", headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None, f"Error GLPI: {resp.status_code}"
+            
+        session_token = resp.json().get("session_token")
+        headers["session_token"] = session_token
+        
+        # 2. Buscar Perfil de Soporte Técnico
+        perfiles = requests.get(f"{base_url}/getMyProfiles", headers=headers).json()
+        id_soporte = None
+        
+        # Recorremos tus perfiles para hallar el ID de Soporte Tecnico
+        for p in perfiles.get('myprofiles', []):
+            if "Soporte" in p['name']:
+                id_soporte = p['id']
+                break
+        
+        # 3. Si se encuentra, cambiamos el perfil activo
+        if id_soporte:
+            requests.post(f"{base_url}/changeActiveProfile", 
+                          headers=headers, 
+                          json={"profiles_id": id_soporte})
+            
+        return headers, "Conexión Exitosa"
+        
+    except Exception as e:
+        return None, str(e)
+
+def buscar_equipo_glpi(serie):
+    """ Busca un equipo en GLPI por número de serie """
+    headers, msg = conectar_glpi_jaher()
+    if not headers:
+        return f"Error: {msg}"
+        
+    base_url = "https://ayuda.jaher.com.ec/apirest.php"
+    # Buscamos en el inventario de Computadoras por el campo 'serial'
+    url_search = f"{base_url}/search/Computer?criteria[0][field]=5&criteria[0][searchtype]=contains&criteria[0][value]={serie}"
+    
+    try:
+        resp = requests.get(url_search, headers=headers)
+        return resp.json()
     except:
-        return ""
+        return "No se pudo consultar el equipo."
+
+# --- FUNCIONES DE GITHUB Y JSON ---
+
+def extraer_json(texto):
+  try:
+    texto = texto.replace("```json", "").replace("```", "").strip()
+    inicio = texto.find("{")
+    fin = texto.rfind("}") + 1
+    if inicio != -1 and fin > inicio:
+      return texto[inicio:fin].strip()
+    return ""
+  except:
+    return ""
 
 def obtener_github(archivo):
-    timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"    
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=10)
-        
-        if resp.status_code == 200:
-            d = resp.json()
-            contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
-            
-            try:
-                # Intentamos leer el JSON
-                return json.loads(contenido_decodificado), d['sha']
-            except json.JSONDecodeError:
-                # 🛑 AQUÍ ESTÁ EL CAMBIO: Si falla, devolvemos None, None.
-                # Esto activa la alarma en la función de enviar.
-                st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {archivo} está CORRUPTO en GitHub. Se ha bloqueado el sistema para evitar borrar datos.")
-                return None, None
-                
-        elif resp.status_code == 404:
-            # Si no existe, devolvemos lista vacía (esto sí es seguro)
-            return [], None
-        else:
-            st.error(f"❌ Error GitHub {resp.status_code}: {resp.text}")
-            return None, None
-            
-    except Exception as e:
-        st.error(f"❌ Error de conexión: {str(e)}")
+  timestamp = int(time.time())
+  url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"   
+  try:
+    resp = requests.get(url, headers=HEADERS, timeout=10)
+    if resp.status_code == 200:
+      d = resp.json()
+      contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
+      try:
+        return json.loads(contenido_decodificado), d['sha']
+      except json.JSONDecodeError:
+        st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {archivo} está CORRUPTO en GitHub.")
         return None, None
+    elif resp.status_code == 404:
+      return [], None
+    else:
+      st.error(f"❌ Error GitHub {resp.status_code}: {resp.text}")
+      return None, None
+  except Exception as e:
+    st.error(f"❌ Error de conexión: {str(e)}")
+    return None, None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
-    # 1. Obtenemos lo que hay con cache-busting fuerte
-    actuales, sha = obtener_github(archivo)
-    
-    # --- CANDADO ANTIBORRADO ---
-    if actuales is None:
-        st.error("❌ ERROR CRÍTICO: No se pudo leer la base de datos. Intento de guardado abortado para proteger los datos existentes.")
-        return False
-
-    # 2. Aseguramos que actuales sea una lista
-    if not isinstance(actuales, list):
-        actuales = []
-
-    # 3. Añadimos lo nuevo al final (NO SOBRESCRIBIMOS)
-    if isinstance(datos, list):
-        actuales.extend(datos)
-    else:
-        actuales.append(datos)
-
-    # 4. Subimos
-    payload = {
-        "message": mensaje,
-        "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
-        "sha": sha if sha else None
-    }
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}"
-    resp = requests.put(url, headers=HEADERS, json=payload)
-    return resp.status_code in [200, 201]
+  actuales, sha = obtener_github(archivo)
+  if actuales is None:
+    st.error("❌ ERROR CRÍTICO: No se pudo leer la base de datos.")
+    return False
+  if not isinstance(actuales, list):
+    actuales = []
+  if isinstance(datos, list):
+    actuales.extend(datos)
+  else:
+    actuales.append(datos)
+  payload = {
+    "message": mensaje,
+    "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
+    "sha": sha if sha else None
+  }
+  url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}"
+  resp = requests.put(url, headers=HEADERS, json=payload)
+  return resp.status_code in [200, 201]
 
 def aprender_leccion(error, correccion):
-    lecciones, sha = obtener_github(FILE_LECCIONES)
-    
-    # Si lecciones es None (error de lectura), no intentamos guardar para no romper nada.
-    if lecciones is None and sha is None:
-         # Excepción: Si es la primera vez (404), obtener_github devuelve [], None. 
-         # Si devuelve None, None es error crítico.
-         return False
-
-    if lecciones is None: lecciones = [] # Si era 404, iniciamos lista
-
-    nueva = {
-        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "lo_que_hizo_mal": error,
-        "como_debe_hacerlo": correccion
-    }
-    lecciones.append(nueva)
-    
-    if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
-        return True
+  lecciones, sha = obtener_github(FILE_LECCIONES)
+  if lecciones is None and sha is None:
     return False
+  if lecciones is None: lecciones = []
+  nueva = {
+    "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    "lo_que_hizo_mal": error,
+    "como_debe_hacerlo": correccion
+  }
+  lecciones.append(nueva)
+  if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
+    return True
+  return False
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
