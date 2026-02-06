@@ -330,7 +330,7 @@ with t1:
                 # ==========================================
                 # NUEVA LÓGICA: ENVÍO DE CORREO AUTOMÁTICO
                 # ==========================================
-                  info_correo = ""
+                info_correo = ""
                 if res_json.get("enviar_email") is True:
                     e_data = res_json.get("email_data", {})
                     dest = e_data.get("destinatario")
