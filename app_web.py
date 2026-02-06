@@ -90,39 +90,26 @@ def obtener_github(archivo):
         st.error(f"❌ Error de conexión GitHub: {str(e)}")
         return None, None
 
-def enviar_github(archivo, datos, mensaje="LAIA Update"):
-    """ Sube o actualiza archivos en GitHub """
-    actuales, sha = obtener_github(archivo)
-    if actuales is None and sha is not None: # Error de lectura crítico
-        return False
-    
-    # Si 'actuales' es una lista, añadimos. Si es un objeto (como pedido.json), reemplazamos.
-    if isinstance(actuales, list):
-        if isinstance(datos, list): actuales.extend(datos)
-        else: actuales.append(datos)
-        contenido_final = actuales
-    else:
-        contenido_final = datos # Reemplazo total para archivos de config/pedido
-
+def enviar_github_directo(archivo, datos, mensaje="LAIA Update"):
+    """ ESTA FUNCIÓN SOBREESCRIBE EL ARCHIVO (Para pedidos y configuración) """
+    _, sha = obtener_github(archivo)
     payload = {
         "message": mensaje,
-        "content": base64.b64encode(json.dumps(contenido_final, indent=4).encode()).decode(),
+        "content": base64.b64encode(json.dumps(datos, indent=4).encode()).decode(),
         "sha": sha if sha else None
     }
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     resp = requests.put(url, headers=HEADERS, json=payload)
     return resp.status_code in [200, 201]
 
-# --- 2. LÓGICA GLPI PING-PONG (PUENTE CON LA OFICINA) ---
-
 def solicitar_busqueda_glpi(serie):
-    """ Escribe un pedido en GitHub para que la PC local lo procese """
+    """ Ahora usa la función de sobreescribir para no crear listas locas """
     pedido = {
         "serie_a_buscar": serie,
         "info": "",
         "estado": "pendiente"
     }
-    return enviar_github("pedido.json", pedido, f"LAIA: Solicitud serie {serie}")
+    return enviar_github_directo("pedido.json", pedido, f"LAIA: Solicitud serie {serie}")
 
 def revisar_respuesta_glpi():
     """ Lee el archivo de pedido para ver si la PC local ya respondió """
