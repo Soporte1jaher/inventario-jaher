@@ -363,7 +363,7 @@ with t1:
                 else:
                     st.warning("⚠️ No hay una serie válida para buscar.")
         
-          with col_glpi2:
+        with col_glpi2:
             if st.button("🔄 REVISAR Y AUTORELLENAR"):
                 res_glpi = revisar_respuesta_glpi()
                 
