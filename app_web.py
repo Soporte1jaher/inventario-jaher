@@ -41,142 +41,122 @@ FILE_HISTORICO = "historico.json"
 FILE_LECCIONES = "lecciones.json"
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
+# ==========================================
+# 3. FUNCIONES AUXILIARES (BACKEND & GITHUB)
+# ==========================================
 
-# ==========================================
-# 3. FUNCIONES AUXILIARES
-# ==========================================
+# --- [BLOQUE DE CORREO - RESERVADO] ---
 # import smtplib
 # from email.mime.text import MIMEText
 # from email.mime.multipart import MIMEMultipart
-
 # def enviar_correo_outlook(destinatario, asunto, cuerpo):
-#   try:
-#     remitente = st.secrets["EMAIL_USER"]
-#     password = st.secrets["EMAIL_PASS"]
-#     msg = MIMEMultipart()
-#     msg['From'] = remitente
-#     msg['To'] = destinatario
-#     msg['Subject'] = asunto
-#     msg.attach(MIMEText(cuerpo, 'plain'))
-#     server = smtplib.SMTP('smtp.office365.com', 587)
-#     server.starttls()
-#     server.login(remitente, password)
-#     server.send_message(msg)
-#     server.quit()
-#     return True, "OK"
-#   except Exception as e:
-#     return False, str(e)
+#     try:
+#         remitente = st.secrets["EMAIL_USER"]
+#         password = st.secrets["EMAIL_PASS"]
+#         msg = MIMEMultipart()
+#         msg['From'] = remitente
+#         msg['To'] = destinatario
+#         msg['Subject'] = asunto
+#         msg.attach(MIMEText(cuerpo, 'plain'))
+#         server = smtplib.SMTP('smtp.office365.com', 587)
+#         server.starttls()
+#         server.login(remitente, password)
+#         server.send_message(msg)
+#         server.quit()
+#         return True, "OK"
+#     except Exception as e:
+#         return False, str(e)
 
-# --- NUEVAS FUNCIONES GLPI JAHER ---
-def solicitar_busqueda_glpi(serie):
-    """ LAIA deja una nota en GitHub para que la PC de la oficina la lea """
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pedido.json"
-    
-    # 1. Obtenemos el SHA para poder actualizar el archivo
-    resp = requests.get(url, headers=HEADERS)
-    if resp.status_code == 200:
-        p_data = resp.json()
-        sha = p_data['sha']
-        
-        # 2. Creamos el pedido para tu PC
-        pedido = {
-            "serie_a_buscar": serie,
-            "info": "",
-            "estado": "pendiente"
-        }
-        
-        # 3. Subimos el pedido a GitHub
-        payload = {
-            "message": f"LAIA: Pedido de búsqueda serie {serie}",
-            "content": base64.b64encode(json.dumps(pedido).encode()).decode(),
-            "sha": sha
-        }
-        r = requests.put(url, headers=HEADERS, json=payload)
-        return r.status_code in [200, 201]
-    return False
-
-def revisar_respuesta_glpi():
-    """ LAIA revisa si la PC de la oficina ya respondió en GitHub """
-    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pedido.json"
-    resp = requests.get(url, headers=HEADERS)
-    if resp.status_code == 200:
-        p_data = resp.json()
-        contenido = json.loads(base64.b64decode(p_data['content']).decode('utf-8'))
-        
-        # Si el estado es 'completado', es que tu PC ya escribió la respuesta
-        if contenido.get("estado") == "completado":
-            return contenido
-    return None
-
-# --- FUNCIONES DE GITHUB Y JSON ---
-
-def extraer_json(texto):
-  try:
-    texto = texto.replace("```json", "").replace("```", "").strip()
-    inicio = texto.find("{")
-    fin = texto.rfind("}") + 1
-    if inicio != -1 and fin > inicio:
-      return texto[inicio:fin].strip()
-    return ""
-  except:
-    return ""
+# --- 1. UTILIDADES DE GITHUB (NÚCLEO) ---
 
 def obtener_github(archivo):
-  timestamp = int(time.time())
-  url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"   
-  try:
-    resp = requests.get(url, headers=HEADERS, timeout=10)
-    if resp.status_code == 200:
-      d = resp.json()
-      contenido_decodificado = base64.b64decode(d['content']).decode('utf-8')
-      try:
-        return json.loads(contenido_decodificado), d['sha']
-      except json.JSONDecodeError:
-        st.error(f"⛔ ¡PELIGRO CRÍTICO! El archivo {archivo} está CORRUPTO en GitHub.")
+    """ Descarga y decodifica archivos JSON desde GitHub """
+    timestamp = int(time.time())
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"  
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        if resp.status_code == 200:
+            d = resp.json()
+            contenido = base64.b64decode(d['content']).decode('utf-8')
+            try:
+                return json.loads(contenido), d['sha']
+            except json.JSONDecodeError:
+                st.error(f"⛔ Error: El archivo {archivo} está corrupto.")
+                return None, None
+        elif resp.status_code == 404:
+            return [], None
         return None, None
-    elif resp.status_code == 404:
-      return [], None
-    else:
-      st.error(f"❌ Error GitHub {resp.status_code}: {resp.text}")
-      return None, None
-  except Exception as e:
-    st.error(f"❌ Error de conexión: {str(e)}")
-    return None, None
+    except Exception as e:
+        st.error(f"❌ Error de conexión GitHub: {str(e)}")
+        return None, None
 
 def enviar_github(archivo, datos, mensaje="LAIA Update"):
-  actuales, sha = obtener_github(archivo)
-  if actuales is None:
-    st.error("❌ ERROR CRÍTICO: No se pudo leer la base de datos.")
-    return False
-  if not isinstance(actuales, list):
-    actuales = []
-  if isinstance(datos, list):
-    actuales.extend(datos)
-  else:
-    actuales.append(datos)
-  payload = {
-    "message": mensaje,
-    "content": base64.b64encode(json.dumps(actuales, indent=4).encode()).decode(),
-    "sha": sha if sha else None
-  }
-  url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_BUZON}"
-  resp = requests.put(url, headers=HEADERS, json=payload)
-  return resp.status_code in [200, 201]
+    """ Sube o actualiza archivos en GitHub """
+    actuales, sha = obtener_github(archivo)
+    if actuales is None and sha is not None: # Error de lectura crítico
+        return False
+    
+    # Si 'actuales' es una lista, añadimos. Si es un objeto (como pedido.json), reemplazamos.
+    if isinstance(actuales, list):
+        if isinstance(datos, list): actuales.extend(datos)
+        else: actuales.append(datos)
+        contenido_final = actuales
+    else:
+        contenido_final = datos # Reemplazo total para archivos de config/pedido
+
+    payload = {
+        "message": mensaje,
+        "content": base64.b64encode(json.dumps(contenido_final, indent=4).encode()).decode(),
+        "sha": sha if sha else None
+    }
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    resp = requests.put(url, headers=HEADERS, json=payload)
+    return resp.status_code in [200, 201]
+
+# --- 2. LÓGICA GLPI PING-PONG (PUENTE CON LA OFICINA) ---
+
+def solicitar_busqueda_glpi(serie):
+    """ Escribe un pedido en GitHub para que la PC local lo procese """
+    pedido = {
+        "serie_a_buscar": serie,
+        "info": "",
+        "estado": "pendiente"
+    }
+    return enviar_github("pedido.json", pedido, f"LAIA: Solicitud serie {serie}")
+
+def revisar_respuesta_glpi():
+    """ Lee el archivo de pedido para ver si la PC local ya respondió """
+    contenido, _ = obtener_github("pedido.json")
+    if contenido and contenido.get("estado") == "completado":
+        return contenido
+    return None
+
+# --- 3. AYUDANTES DE IA Y APRENDIZAJE ---
+
+def extraer_json(texto):
+    """ Limpia la respuesta de la IA para obtener solo el JSON """
+    try:
+        texto = texto.replace("```json", "").replace("```", "").strip()
+        inicio = texto.find("{")
+        fin = texto.rfind("}") + 1
+        return texto[inicio:fin].strip() if inicio != -1 else ""
+    except:
+        return ""
 
 def aprender_leccion(error, correccion):
-  lecciones, sha = obtener_github(FILE_LECCIONES)
-  if lecciones is None and sha is None:
-    return False
-  if lecciones is None: lecciones = []
-  nueva = {
-    "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-    "lo_que_hizo_mal": error,
-    "como_debe_hacerlo": correccion
-  }
-  lecciones.append(nueva)
-  if enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida"):
-    return True
-  return False
+    """ Guarda errores previos para que la IA no los repita """
+    lecciones, _ = obtener_github(FILE_LECCIONES)
+    if lecciones is None: lecciones = []
+    
+    nueva = {
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "lo_que_hizo_mal": error,
+        "como_debe_hacerlo": correccion
+    }
+    lecciones.append(nueva)
+    # Guardamos solo las últimas 15 lecciones para no saturar el prompt
+    return enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida")
+
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
