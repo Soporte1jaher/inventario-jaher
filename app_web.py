@@ -44,6 +44,32 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 # ==========================================
 # 3. FUNCIONES AUXILIARES
 # ==========================================
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def enviar_correo_outlook(destinatario, asunto, cuerpo):
+    try:
+        remitente = st.secrets["EMAIL_USER"]
+        password = st.secrets["EMAIL_PASS"]
+
+        msg = MIMEMultipart()
+        msg['From'] = remitente
+        msg['To'] = destinatario
+        msg['Subject'] = asunto
+
+        msg.attach(MIMEText(cuerpo, 'plain'))
+
+        # Configuración del servidor Outlook
+        server = smtplib.SMTP('smtp-mail.outlook.com', 587)
+        server.starttls()
+        server.login(remitente, password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"❌ Error al enviar correo: {e}")
+        return False
 def extraer_json(texto):
     try:
         texto = texto.replace("```json", "").replace("```", "").strip()
@@ -231,7 +257,25 @@ Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movi
 - Aunque un equipo (CPU, Laptop, Servidor) vaya a "Bodega", es OBLIGATORIO registrar su Procesador, RAM y Disco.
 - No des por completado el registro (status: READY) si faltan estos datos técnicos para equipos de computo.
 
-### 5. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+### 5. NOTIFICACIONES POR CORREO:
+- Si el usuario pide enviar un correo o menciona un destinatario (ej. @jaher.com.ec), debes:
+  1. Redactar un 'asunto_correo' profesional.
+  2. Redactar un 'cuerpo_correo' formal y técnico que resuma el movimiento.
+  3. Identificar el 'destinatario'.
+
+### 6. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
+{
+ "status": "READY" o "QUESTION",
+ "missing_info": "...",
+ "items": [...],
+ "enviar_email": true/false,
+ "email_data": {
+    "destinatarios": "correo@ejemplo.com",
+    "asunto": "Notificación de Despacho Técnico - Agencia X",
+    "cuerpo": "Estimados, por medio de la presente se informa el envío de..."
+ }
+
+### 7. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY" o "QUESTION",
  "missing_info": "Mensaje corto pidiendo lo que falte",
@@ -296,10 +340,9 @@ with t1:
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA (REVISA AQUÍ ANTES DE PEDIR DATOS): {contexto_tabla}"}
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
                 
-                # Añadimos los últimos 10 mensajes del chat para que tenga memoria de la plática
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
@@ -310,20 +353,39 @@ with t1:
                     temperature=0
                 )
 
-                # E) Procesamiento SEGURO del JSON (Escudo contra Error de Contexto)
+                # E) Procesamiento del JSON
                 raw_txt = response.choices[0].message.content
                 res_txt = extraer_json(raw_txt)
                 
-                if not res_txt or res_txt.strip() == "":
-                    st.error("⚠️ LAIA no devolvió un formato válido. Por favor, intenta de nuevo con una instrucción más clara.")
+                if not res_txt:
+                    st.error("⚠️ LAIA no pudo procesar la solicitud.")
                     st.stop()
 
-                try:
-                    res_json = json.loads(res_txt)
-                except json.JSONDecodeError:
-                    st.error("❌ La respuesta de la IA está corrupta. Intenta refrescar la página.")
-                    st.stop()
+                res_json = json.loads(res_txt)
                 
+                # ==========================================
+                # NUEVA LÓGICA: ENVÍO DE CORREO AUTOMÁTICO
+                # ==========================================
+                info_correo = ""
+                if res_json.get("enviar_email") is True:
+                    e_data = res_json.get("email_data", {})
+                    dest = e_data.get("destinatario")
+                    
+                    if dest:
+                        with st.spinner(f"📧 Enviando correo formal a {dest}..."):
+                            # Llamamos a la función auxiliar (debes tenerla definida arriba)
+                            exito = enviar_correo_outlook(
+                                destinatario=dest,
+                                asunto=e_data.get("asunto", "Notificación de Inventario - Jaher"),
+                                cuerpo=e_data.get("cuerpo", "")
+                            )
+                            if exito:
+                                info_correo = f"\n\n📧 **Correo enviado con éxito a:** {dest}"
+                                st.toast(f"Correo enviado a {dest}", icon="✅")
+                            else:
+                                info_correo = f"\n\n❌ **Fallo al enviar el correo.** Revisa las credenciales."
+                # ==========================================
+
                 # F) Actualización de la Tabla
                 nuevos_items = res_json.get("items", [])
                 if nuevos_items:
@@ -333,7 +395,9 @@ with t1:
                 st.session_state.missing_info = res_json.get("missing_info", "")
 
                 # G) Respuesta de LAIA en el chat
-                msg_laia = f"🤖 {st.session_state.missing_info}" if st.session_state.missing_info else "✅ Todo registrado. He actualizado la tabla."
+                confirmacion = "✅ Todo registrado. He actualizado la tabla."
+                msg_laia = f"🤖 {st.session_state.missing_info if st.session_state.missing_info else confirmacion}{info_correo}"
+                
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
@@ -343,25 +407,21 @@ with t1:
         except Exception as e:
             st.error(f"❌ Fallo crítico de IA: {str(e)}")
 
-    # 3. Tabla de Edición en Vivo (Vista de Bodega y Stock)
+    # 3. Tabla de Edición en Vivo
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Borrador de Movimientos (Antes de Guardar)")
         
         df_editor = pd.DataFrame(st.session_state.draft)
-        
-        # Columnas obligatorias incluyendo las de BODEGA y REPORTE TÉCNICO
         cols_base = [
             "equipo", "marca", "modelo", "serie", "cantidad", "estado", 
             "tipo", "origen", "destino", "pasillo", "estante", "repisa", 
             "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"
         ]
         
-        # Aseguramos que existan todas las columnas
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
-        # Reordenar y limpiar visualmente para el usuario
         df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
 
         edited_df = st.data_editor(
@@ -371,7 +431,6 @@ with t1:
             key="editor_pro_v10"
         )
         
-        # Guardar cambios manuales si el usuario edita la celda directamente
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
@@ -380,7 +439,6 @@ with t1:
         with c1:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
                 with st.spinner("Sincronizando con GitHub..."):
-                    # Añadir marca de tiempo de registro real
                     hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in st.session_state.draft: 
                         d["fecha_registro"] = hora_ec
@@ -392,7 +450,7 @@ with t1:
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("No se pudo subir a GitHub. Revisa la conexión.")
+                        st.error("No se pudo subir a GitHub.")
         with c2:
             if st.button("🗑️ Descartar Todo"):
                 st.session_state.draft = []
