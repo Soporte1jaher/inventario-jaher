@@ -69,43 +69,58 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
 def conectar_glpi_jaher():
-    """ Intenta entrar al GLPI como un humano (sin API) """
     base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
-    session = requests.Session() 
+    session = requests.Session()
     
-    # 🛑 SEGURIDAD: Mejor usa st.secrets para la clave en el futuro
+    # User-Agent para que el servidor crea que somos Chrome de verdad
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    })
+
     usuario = "soporte1"
     clave = "Cpktnwt1986@*."
-    
+
     try:
-        # 1. Obtener el token de seguridad (CSRF) de la página de login
-        res_login_page = session.get(f"{base_url}/front/login.php", timeout=10)
+        # 1. Obtener Token CSRF
+        login_page = session.get(f"{base_url}/front/login.php", timeout=15)
         import re
-        csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', res_login_page.text)
+        csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
         csrf_token = csrf_match.group(1) if csrf_match else ""
 
-        # 2. Datos del formulario
+        # 2. Intentar Login
         payload = {
-            'noAuto': '0',
             'login_name': usuario,
             'login_password': clave,
             '_glpi_csrf_token': csrf_token,
             'submit': 'Enviar'
         }
         
-        # 3. Hacer el POST del login
-        headers = {'Referer': f"{base_url}/front/login.php"}
-        res_post = session.post(f"{base_url}/front/login.php", data=payload, headers=headers)
+        response = session.post(f"{base_url}/front/login.php", data=payload, follow_redirects=True)
 
-        # 4. Verificar si entramos (si nos mandó al panel central)
-        if "central.php" in res_post.url or session.cookies.get('glpi_session'):
+        # 3. ¿Estamos en la página de seleccionar perfil?
+        if "selectprofile.php" in response.url:
+            # Buscamos el ID del perfil "Soporte Tecnico" en el código de la página
+            # Normalmente los perfiles están en un formulario o links
+            profile_id_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
+            
+            if profile_id_match:
+                p_id = profile_id_match.group(1)
+                # Forzamos el cambio de perfil
+                session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
+            else:
+                # Si no lo hallamos por nombre, intentamos con el ID que suele ser el 4 o 5
+                session.get(f"{base_url}/front/selectprofile.php?profiles_id=4")
+
+        # 4. Verificación Final: ¿Hay cookie de sesión?
+        if session.cookies.get('glpi_session'):
             return session, "OK"
         else:
-            return None, "Fallo: Credenciales incorrectas o GLPI bloqueó el acceso."
+            # Si falla, te mostraré un trozo de lo que ve LAIA para saber qué pasó
+            debug_info = response.text[:200].replace("<", "[") 
+            return None, f"Bloqueado. GLPI muestra: {debug_info}"
 
     except Exception as e:
-        return None, f"Error de conexión: {str(e)}"
-
+        return None, f"Error de red: {str(e)}"
 def consultar_datos_glpi(serie):
     """ Busca la ficha técnica real en GLPI por serie """
     headers, msg = conectar_glpi_jaher()
