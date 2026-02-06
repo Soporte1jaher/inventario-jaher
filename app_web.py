@@ -68,65 +68,56 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 #     return False, str(e)
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
-
 def conectar_glpi_jaher():
-    """ Inicia sesión en GLPI y cambia al perfil de Soporte Técnico """
-    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
-    # Token de Julián Estrella (soporte1)
+    """ Inicia sesión en GLPI usando el túnel de Cloudflare """
+    # LA URL DE TU TÚNEL ACTUAL:
+    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com/apirest.php"
     u_token = "ZzDYafRp64b4gcuaPQ3qOcQCDfjcl3wX4Pq62Fov"
     
     headers = {
         "Content-Type": "application/json",
         "user_token": u_token
-        # Si el servidor pide App-Token, habría que agregarlo aquí.
     }
     
     try:
-        # 1. Iniciar Sesión (initSession)
+        # 1. Iniciar Sesión
         resp = requests.get(f"{base_url}/initSession", headers=headers, timeout=10)
         if resp.status_code != 200:
-            return None, f"Error GLPI: {resp.status_code}"
+            return None, f"Error de Sesión: {resp.status_code}"
             
         session_token = resp.json().get("session_token")
         headers["session_token"] = session_token
         
-        # 2. Buscar Perfil de Soporte Técnico
+        # 2. Cambiar a Perfil de Soporte (para tener permisos)
         perfiles = requests.get(f"{base_url}/getMyProfiles", headers=headers).json()
-        id_soporte = None
+        id_soporte = next((p['id'] for p in perfiles.get('myprofiles', []) if "Soporte" in p['name']), None)
         
-        # Recorremos tus perfiles para hallar el ID de Soporte Tecnico
-        for p in perfiles.get('myprofiles', []):
-            if "Soporte" in p['name']:
-                id_soporte = p['id']
-                break
-        
-        # 3. Si se encuentra, cambiamos el perfil activo
         if id_soporte:
-            requests.post(f"{base_url}/changeActiveProfile", 
-                          headers=headers, 
-                          json={"profiles_id": id_soporte})
+            requests.post(f"{base_url}/changeActiveProfile", headers=headers, json={"profiles_id": id_soporte})
             
-        return headers, "Conexión Exitosa"
-        
+        return headers, "OK"
     except Exception as e:
         return None, str(e)
 
-def buscar_equipo_glpi(serie):
-    """ Busca un equipo en GLPI por número de serie """
+def consultar_datos_glpi(serie):
+    """ Busca la ficha técnica real en GLPI por serie """
     headers, msg = conectar_glpi_jaher()
-    if not headers:
-        return f"Error: {msg}"
-        
-    base_url = "https://ayuda.jaher.com.ec/apirest.php"
-    # Buscamos en el inventario de Computadoras por el campo 'serial'
-    url_search = f"{base_url}/search/Computer?criteria[0][field]=5&criteria[0][searchtype]=contains&criteria[0][value]={serie}"
+    if not headers: return None
+    
+    base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com/apirest.php"
+    # Buscamos en computadoras (campo 5 es serial)
+    url = f"{base_url}/search/Computer?criteria[0][field]=5&criteria[0][searchtype]=equals&criteria[0][value]={serie}"
     
     try:
-        resp = requests.get(url_search, headers=headers)
-        return resp.json()
+        res = requests.get(url, headers=headers).json()
+        if res.get('data'):
+            # Sacamos el ID del equipo para traer sus detalles
+            item_id = res['data'][0]['1'] 
+            detalle = requests.get(f"{base_url}/Computer/{item_id}", headers=headers).json()
+            return detalle
+        return None
     except:
-        return "No se pudo consultar el equipo."
-
+        return None
 # --- FUNCIONES DE GITHUB Y JSON ---
 
 def extraer_json(texto):
