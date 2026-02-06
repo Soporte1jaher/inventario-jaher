@@ -68,37 +68,43 @@ HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"
 #     return False, str(e)
 
 # --- NUEVAS FUNCIONES GLPI JAHER ---
-def conectar_glpi_guerrilla(usuario, password):
-    # USAMOS LA URL DEL TÚNEL
+def conectar_glpi_jaher():
+    """ Intenta entrar al GLPI como un humano (sin API) """
     base_url = "https://manufacture-appears-assessments-nil.trycloudflare.com"
-    session = requests.Session() # Para mantener las cookies
+    session = requests.Session() 
+    
+    # 🛑 SEGURIDAD: Mejor usa st.secrets para la clave en el futuro
+    usuario = "soporte1"
+    clave = "Cpktnwt1986@*."
     
     try:
-        # 1. Entrar a la página de login para sacar el token CSRF
+        # 1. Obtener el token de seguridad (CSRF) de la página de login
         res_login_page = session.get(f"{base_url}/front/login.php", timeout=10)
-        # Buscamos el token oculto que GLPI pide para loguearse
         import re
         csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', res_login_page.text)
         csrf_token = csrf_match.group(1) if csrf_match else ""
 
-        # 2. Intentar el login como si fuera un humano
+        # 2. Datos del formulario
         payload = {
-            'login_name': soporte1,
-            'login_password': "Cpktnwt1986@*.",
+            'noAuto': '0',
+            'login_name': usuario,
+            'login_password': clave,
             '_glpi_csrf_token': csrf_token,
             'submit': 'Enviar'
         }
         
+        # 3. Hacer el POST del login
         headers = {'Referer': f"{base_url}/front/login.php"}
         res_post = session.post(f"{base_url}/front/login.php", data=payload, headers=headers)
 
-        if "central.php" in res_post.url:
-            return session, "Conectado como Humano"
+        # 4. Verificar si entramos (si nos mandó al panel central)
+        if "central.php" in res_post.url or session.cookies.get('glpi_session'):
+            return session, "OK"
         else:
-            return None, "Error: Usuario o Clave incorrectos en la web"
+            return None, "Fallo: Credenciales incorrectas o GLPI bloqueó el acceso."
 
     except Exception as e:
-        return None, f"Fallo de conexión: {str(e)}"
+        return None, f"Error de conexión: {str(e)}"
 
 def consultar_datos_glpi(serie):
     """ Busca la ficha técnica real en GLPI por serie """
