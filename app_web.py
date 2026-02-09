@@ -367,16 +367,16 @@ with t1:
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
                 if "items" in res_json and res_json["items"]:
-            st.session_state.draft.extend(res_json["items"])
+                    st.session_state.draft.extend(res_json["items"])
             
             # Avisamos diferente según el estado
-            if st.session_state.status == "READY":
-                st.success("✅ Datos completos agregados.")
-            else:
-                st.warning("⚠️ Datos agregados incompletos. Por favor rellena lo que falta en la tabla.")
+                    if st.session_state.status == "READY":
+                        st.success("✅ Datos completos agregados.")
+                    else:
+                        st.warning("⚠️ Datos agregados incompletos. Por favor rellena lo que falta en la tabla.")
             
-            time.sleep(1.5) 
-            st.rerun()
+                    time.sleep(1.5) 
+                    st.rerun()
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
