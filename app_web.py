@@ -292,8 +292,8 @@ with t1:
          
         mensajes_api = [
           {"role": "system", "content": SYSTEM_PROMPT},
-          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
+          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
+          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {}"}
         ]
          
         for m in st.session_state.messages[-10:]:
@@ -305,34 +305,31 @@ with t1:
           temperature=0
         )
 
-        # --- LÓGICA ANTI-TRABA (Blindaje de JSON) ---
         raw_content = response.choices[0].message.content
         res_txt = extraer_json(raw_content)
         
+        # --- LÓGICA DE PROTECCIÓN DE DATOS ---
         try:
             res_json = json.loads(res_txt)
-            # Si el JSON es válido, pero la IA olvidó los items por error:
-            if "items" not in res_json:
-                res_json["items"] = st.session_state.draft
-        except Exception:
-            # Si la IA responde puras tonteras sin JSON:
-            res_json = {
-                "status": "QUESTION",
-                "missing_info": raw_content.strip(),
-                "items": st.session_state.draft 
-            }
-         
-        st.session_state.draft = res_json.get("items", [])
-        st.session_state.status = res_json.get("status", "READY")
-        st.session_state.missing_info = res_json.get("missing_info", "")
+            # Si la IA manda items nuevos, los usamos. 
+            # Si manda una lista vacía pero el usuario está hablando de hardware, mantenemos lo anterior
+            nuevos_items = res_json.get("items", [])
+            if nuevos_items:
+                st.session_state.draft = nuevos_items
+            
+            st.session_state.status = res_json.get("status", "QUESTION")
+            st.session_state.missing_info = res_json.get("missing_info", "")
 
-        # E) Respuesta de LAIA (Adaptada para respuestas frías)
-        if st.session_state.status == "QUESTION":
-          # Si la IA está pidiendo algo o respondiendo un saludo, se muestra directo y frío
-          msg_laia = f"🤖 {st.session_state.missing_info}"
-        else:
-          # Solo cuando ya reconoció hardware y todo está completo
+        except Exception:
+            # Si no hay JSON (es charla fría), NO borramos la tabla
+            st.session_state.status = "QUESTION"
+            st.session_state.missing_info = raw_content.strip()
+         
+        # E) Respuesta visual
+        if st.session_state.status == "READY":
           msg_laia = "🤖 ✅ **AUDITORÍA LISTA:** Todos los campos obligatorios están llenos."
+        else:
+          msg_laia = f"🤖 {st.session_state.missing_info}"
          
         with st.chat_message("assistant"):
           st.markdown(msg_laia)
@@ -341,6 +338,7 @@ with t1:
 
     except Exception as e:
       st.error(f"❌ Fallo crítico de IA: {str(e)}")
+
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
