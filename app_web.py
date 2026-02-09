@@ -362,7 +362,7 @@ with t1:
                      st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
             
                      time.sleep(1)
-                      st.rerun()
+                     st.rerun()
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
