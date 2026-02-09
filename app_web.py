@@ -366,12 +366,17 @@ with t1:
                     st.markdown(msg_laia)
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
-                if res_json.get("status") == "READY":
-                    if "items" in res_json and res_json["items"]:
-                        st.session_state.draft.extend(res_json["items"])
-                        st.success("✅ Datos agregados a la tabla temporal.")
-                        time.sleep(1) # Pequeña pausa para ver el mensaje verde
-                        st.rerun() # Recargar para ver la tabla actualizada abajo
+                if "items" in res_json and res_json["items"]:
+            st.session_state.draft.extend(res_json["items"])
+            
+            # Avisamos diferente según el estado
+            if st.session_state.status == "READY":
+                st.success("✅ Datos completos agregados.")
+            else:
+                st.warning("⚠️ Datos agregados incompletos. Por favor rellena lo que falta en la tabla.")
+            
+            time.sleep(1.5) 
+            st.rerun()
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
