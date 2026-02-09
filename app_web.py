@@ -290,56 +290,69 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-  # 1. Mostrar historial de chat
-  for m in st.session_state.messages:
-    with st.chat_message(m["role"]):
-      st.markdown(m["content"])
+    # 1. Mostrar historial de chat
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
-  # 2. Entrada de Chat
-  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-      st.markdown(prompt)
+    # 2. Entrada de Chat
+    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+        # Guardar y mostrar mensaje del usuario
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-    try:
-      with st.spinner("LAIA auditando información..."):
-        lecciones, _ = obtener_github(FILE_LECCIONES)
-        memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-        contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
-         
-        mensajes_api = [
-          {"role": "system", "content": SYSTEM_PROMPT},
-          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
-        ]
-         
-        for m in st.session_state.messages[-10:]:
-          mensajes_api.append(m)
+        # 3. Lógica de LAIA (Bloque protegido)
+        try:
+            with st.spinner("LAIA auditando información..."):
+                # Preparar contexto
+                lecciones, _ = obtener_github(FILE_LECCIONES)
+                memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
+                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
+                
+                mensajes_api = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
+                ]
+                
+                # Añadir historial reciente
+                for m in st.session_state.messages[-10:]:
+                    mensajes_api.append(m)
 
-        response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=mensajes_api,
-        temperature=0
-    )
+                # Llamada a OpenAI
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=mensajes_api,
+                    temperature=0
+                )
 
-    raw_content = response.choices[0].message.content
-    res_txt = extraer_json(raw_content) # Tu función auxiliar
-    
-    # --- CORRECCIÓN ANTI-BUG ---
-    # Si res_txt viene vacío o falla el json.loads, construimos un JSON manual
-    # para que el programa no explote.
-    try:
-        if not res_txt:
-            raise ValueError("No JSON found")
-        res_json = json.loads(res_txt)
-    except Exception:
-        # SI FALLA EL JSON (porque la IA habló texto plano),
-        # USAMOS EL TEXTO COMO 'missing_info' Y GENERAMOS TABLA VACÍA
-        res_json = {
-            "status": "QUESTION",
-            "missing_info": raw_content, # El texto plano que dijo la IA
-            "items": []
-        }
+                # Obtener respuesta cruda
+                raw_content = response.choices[0].message.content
+                
+                # Intentar extraer JSON
+                res_txt = extraer_json(raw_content) 
+
+                # --- VALIDACIÓN DEL JSON ---
+                try:
+                    if not res_txt:
+                        raise ValueError("No JSON found")
+                    res_json = json.loads(res_txt)
+                except Exception:
+                    # Si falla el JSON, usamos el texto crudo como respuesta
+                    res_json = {
+                        "status": "QUESTION",
+                        "missing_info": raw_content, 
+                        "items": []
+                    }
+
+                # Aquí deberías agregar la lógica para guardar 'res_json' en session_state 
+                # o mostrar la respuesta de la IA. Por ejemplo:
+                # st.session_state.last_response = res_json
+
+        except Exception as e:
+            # ESTE ES EL EXCEPT QUE FALTABA PARA EL PRIMER TRY
+            st.error(f"Error crítico en el sistema: {e}")
     
     # --- LÓGICA DE APLICACIÓN ---
     nuevos_items = res_json.get("items", [])
