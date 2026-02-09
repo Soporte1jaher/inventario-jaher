@@ -202,47 +202,35 @@ def calcular_stock_web(df):
 SYSTEM_PROMPT = """
 # ROLE: LAIA v10.0 – Auditora Técnica Senior (Hardware & Logística)
 
-Eres Laia, una experta en gestión de inventarios y hardware. Tu perfil es **burocrático, seco, eficiente y altamente lógico**. Tu única meta es la integridad de la base de datos y la organización de la bodega.
+Eres Laia. Tu perfil es **burocrático, seco y eficiente**. 
+Tu objetivo es completar la tabla de inventario con PRECISIÓN TOTAL.
 
 ---
 
-### 1. PROTOCOLO DE INTERACCIÓN (PERSONALIDAD Y TONO)
-*   **Tono General:** Profesional, distante y directo. Cero emojis, cero introducciones innecesarias ("Hola", "Claro", "Aquí tienes").
-*   **Manejo de Temas Personales (NUEVO):**
-    *   Si el usuario menciona temas emocionales o personales (ej. problemas familiares, rupturas), responde con **una sola frase de empatía breve y respetuosa**. No des consejos ni profundices.
-    *   **INMEDIATAMENTE** después de esa frase, redirige la conversación al trabajo solicitando una instrucción o dato técnico.
-    *   *Ejemplo:* "Lamento escuchar eso, espero que mejore. Por favor, indícame el número de serie del lote pendiente."
-*   **Consultas fuera de rol:** Si te preguntan algo ajeno a tu labor, responde verazmente pero corta la charla de inmediato para volver al inventario.
+### 1. PROTOCOLO DE INTERACCIÓN
+* **Personalidad:** Distante. Cero saludos.
+* **Empatía (Flash):** Si el usuario cuenta problemas personales, responde 1 frase de cortesía y pide INMEDIATAMENTE el dato técnico.
+* **Foco:** Si faltan datos, PÍDELOS. No asumas nada.
 
 ---
 
-### 2. REGLAS CRÍTICAS DE PROCESAMIENTO
-#### A. REGLA DE OBEDIENCIA (OVERRIDE SUPREMO)
-El criterio del usuario es absoluto.
-*   Si faltan datos (guía, serie, fecha) pero el usuario dice frases como: *"No tengo la guía", "Así nomás", "Sin esos datos", "Procesa lo que tengas"* o *"Inventa"*:
-    *   **ACCIÓN:** Ignora la falta de datos.
-    *   **RESULTADO:** Marca el `status` como **"READY"**.
-    *   **NOTA:** El mandato humano anula la validación técnica.
+### 2. REGLAS DE ESTADO (CRÍTICO)
+Para marcar "status": "READY", DEBES tener obligatoriamente:
+1. [ ] Qué equipo es (CPU, Monitor, etc.)
+2. [ ] Marca y Modelo (o "Genérico")
+3. [ ] Serie (para CPUs/Laptops/Monitores)
+4. [ ] **GUÍA DE REMISIÓN** (Si no la dan, PREGUNTA)
+5. [ ] **FECHA DE LLEGADA** (Si no la dan, PREGUNTA)
+6. [ ] **ORIGEN** (Ciudad/Agencia)
 
-#### B. MAPEO DE DATOS
-*   **Marca:** Siempre el fabricante real.
-*   **Origen:** Ciudad o Sede de procedencia.
-*   **Ubicación:** Debe ser precisa (Pasillo, Estante, Repisa).
-*   **Lotes:** Si se procesa un lote, aplica los datos globales (Guía, Fecha, Origen) a todos los ítems de ese grupo automáticamente.
-
-#### C. LÓGICA TÉCNICA
-*   **Hardware Obsoleto:** Intel 4ta Gen o inferior → Estado: "Obsoleto" (Pendiente Chatarrización).
-*   **Almacenamiento:** Sugiere cambio a SSD si detectas equipos modernos con HDD.
-*   **Clasificación:**
-    *   Periféricos → Destino: "Stock".
-    *   CPUs/Laptops/Monitores → Destino: "Bodega".
+**EXCEPCIÓN SUPREMA (OVERRIDE):**
+SOLO si el usuario escribe explícitamente: "No tengo guía", "Sin fecha", "Inventa los datos", "Pásalo así" -> ENTONCES ignora los faltantes y pon "status": "READY".
+**SI EL USUARIO NO USA ESAS FRASES MÁGICAS, TU OBLIGACIÓN ES PREGUNTAR POR LA GUÍA Y EL ORIGEN.**
 
 ---
 
-### 3. GESTIÓN DE MEMORIA (ANTIBORRADO)
-Recibirás el 'BORRADOR ACTUAL' de la tabla.
-*   **PROHIBIDO BORRAR:** Nunca elimines registros existentes a menos que se te ordene explícitamente ("Borra la línea X").
-*   Agrega los nuevos ítems a la lista existente.
+### 3. GESTIÓN DE MEMORIA
+* Recibes el 'BORRADOR ACTUAL'. NO BORRES NADA existente. Añade lo nuevo.
 
 ---
 
@@ -310,14 +298,13 @@ with t1:
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
                 
-                # Construir mensajes para la API
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
                     {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
                 
-                # Añadir historial reciente (últimos 10 mensajes)
+                # Añadir historial reciente
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
@@ -328,10 +315,7 @@ with t1:
                     temperature=0
                 )
 
-                # Obtener respuesta cruda
                 raw_content = response.choices[0].message.content
-                
-                # Intentar extraer JSON (asumiendo que tienes la función extraer_json definida arriba)
                 res_txt = extraer_json(raw_content)
 
                 # --- VALIDACIÓN DEL JSON ---
@@ -340,39 +324,31 @@ with t1:
                         raise ValueError("No JSON found")
                     res_json = json.loads(res_txt)
                 except Exception:
-                    # Si falla el JSON, usamos el texto crudo como 'missing_info'
                     res_json = {
                         "status": "QUESTION",
-                        "missing_info": raw_content,
+                        "missing_info": raw_content, # Usamos el texto plano si falla el JSON
                         "items": []
                     }
                 
-                # --- PROCESAMIENTO DE RESPUESTA ---
-                if res_json.get("status") == "READY":
-                    # AQUÍ ES DONDE SE GUARDAN LOS DATOS
-                    # Si tienes una función merge_data, úsala aquí:
-                    # merge_data(res_json["items"]) 
-                    
-                    # Si no, al menos actualiza el borrador visualmente:
-                    if "items" in res_json:
-                        st.session_state.draft.extend(res_json["items"])
-                    
-                    st.success("✅ Datos procesados correctamente.")
+                # --- PASO 1: MOSTRAR RESPUESTA DE LAIA SIEMPRE ---
+                # (Esto soluciona que se quede callada)
+                msg_laia = res_json.get("missing_info", "Procesando...")
                 
-                # Mostrar respuesta de LAIA
-                msg_laia = res_json.get("missing_info", "Proceso completado.")
-                
-                # Guardar en historial
+                # Guardar y mostrar
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-                
-                # Mostrar en pantalla
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
+                # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
+                if res_json.get("status") == "READY":
+                    if "items" in res_json and res_json["items"]:
+                        st.session_state.draft.extend(res_json["items"])
+                        st.success("✅ Datos agregados a la tabla temporal.")
+                        time.sleep(1) # Pequeña pausa para ver el mensaje verde
+                        st.rerun() # Recargar para ver la tabla actualizada abajo
+
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
-            # Opcional: imprimir el error en consola para depurar
-            print(f"ERROR CRÍTICO: {e}")
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
