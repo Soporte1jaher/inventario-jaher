@@ -361,7 +361,7 @@ with t1:
                     else:
                      st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
             
-                   time.sleep(1)
+                     time.sleep(1)
                       st.rerun()
 
         except Exception as e:
