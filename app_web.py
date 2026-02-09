@@ -306,8 +306,8 @@ with t1:
          
         mensajes_api = [
           {"role": "system", "content": SYSTEM_PROMPT},
-          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
-          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {}"}
+          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
         ]
          
         for m in st.session_state.messages[-10:]:
