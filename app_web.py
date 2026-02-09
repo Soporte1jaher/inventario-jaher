@@ -290,40 +290,48 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # 1. Mostrar historial de chat
+    # A. Mostrar historial
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # 2. Entrada de Chat
+    # B. Entrada de usuario
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+        # Guardar mensaje usuario
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # INICIO DEL BLOQUE SEGURO
+        # C. Bloque Seguro de Procesamiento
         try:
             with st.spinner("LAIA auditando información..."):
+                # Preparar contexto
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
                 
+                # Construir mensajes para la API
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
                     {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
                 
+                # Añadir historial reciente (últimos 10 mensajes)
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
+                # Llamada a OpenAI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=mensajes_api,
                     temperature=0
                 )
 
+                # Obtener respuesta cruda
                 raw_content = response.choices[0].message.content
+                
+                # Intentar extraer JSON (asumiendo que tienes la función extraer_json definida arriba)
                 res_txt = extraer_json(raw_content)
 
                 # --- VALIDACIÓN DEL JSON ---
@@ -332,6 +340,7 @@ with t1:
                         raise ValueError("No JSON found")
                     res_json = json.loads(res_txt)
                 except Exception:
+                    # Si falla el JSON, usamos el texto crudo como 'missing_info'
                     res_json = {
                         "status": "QUESTION",
                         "missing_info": raw_content,
@@ -339,21 +348,31 @@ with t1:
                     }
                 
                 # --- PROCESAMIENTO DE RESPUESTA ---
-                if res_json["status"] == "READY":
-                    # Aquí va tu lógica de guardado (merge_data, etc)
-                    # Por ahora solo simulamos que avisa
-                    st.success("Datos listos para procesar.")
-                    # merge_data(res_json["items"]) <--- Descomenta si tienes esta función lista
+                if res_json.get("status") == "READY":
+                    # AQUÍ ES DONDE SE GUARDAN LOS DATOS
+                    # Si tienes una función merge_data, úsala aquí:
+                    # merge_data(res_json["items"]) 
+                    
+                    # Si no, al menos actualiza el borrador visualmente:
+                    if "items" in res_json:
+                        st.session_state.draft.extend(res_json["items"])
+                    
+                    st.success("✅ Datos procesados correctamente.")
                 
-                # Guardar respuesta de LAIA en el chat
+                # Mostrar respuesta de LAIA
                 msg_laia = res_json.get("missing_info", "Proceso completado.")
+                
+                # Guardar en historial
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                
+                # Mostrar en pantalla
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
-
+            # Opcional: imprimir el error en consola para depurar
+            print(f"ERROR CRÍTICO: {e}")
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
