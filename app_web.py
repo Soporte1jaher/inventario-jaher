@@ -241,6 +241,12 @@ Para que el status sea "READY", DEBES tener obligatoriamente estos datos en movi
 - Aunque un equipo (CPU, Laptop, Servidor) vaya a "Bodega", es OBLIGATORIO registrar su Procesador, RAM y Disco.
 - No des por completado el registro (status: READY) si faltan estos datos técnicos para equipos de computo.
 
+### 6. REGLA DE INTERACCIÓN HUMANA (CRÍTICO):
+- Si el usuario te saluda (hola, holi, qué tal), responde de forma seca y profesional: "Hola. Muy bien. Indique su requerimiento de inventario o envíe los datos del equipo."
+- Si el usuario intenta hablar de temas personales, sentimientos o temas ajenos al trabajo (ej. "me dejó mi novia"), responde: "Entiendo la situación, pero no estoy capacitada para entablar conversaciones personales. Mi función es la gestión de hardware. ¿Qué requerimiento técnico tiene hoy?"
+- NUNCA uses emojis adicionales, solo los técnicos permitidos.
+- Mantén un tono burocrático, eficiente y orientado a datos.
+
 ### 5. FORMATO DE SALIDA (ESTRICTAMENTE JSON):
 {
  "status": "READY" o "QUESTION",
@@ -281,58 +287,73 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # 1. Mostrar historial de chat
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+  # 1. Mostrar historial de chat
+  for m in st.session_state.messages:
+    with st.chat_message(m["role"]):
+      st.markdown(m["content"])
 
-    # 2. Entrada de Chat
-    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+  # 2. Entrada de Chat
+  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+      st.markdown(prompt)
 
+    try:
+      with st.spinner("LAIA auditando información..."):
+        lecciones, _ = obtener_github(FILE_LECCIONES)
+        memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
+        contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
+         
+        mensajes_api = [
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
+          {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {}"}
+        ]
+         
+        for m in st.session_state.messages[-10:]:
+          mensajes_api.append(m)
+
+        response = client.chat.completions.create(
+          model="gpt-4o-mini",
+          messages=mensajes_api,
+          temperature=0
+        )
+
+        # --- LÓGICA ANTI-TRABA (Blindaje de JSON) ---
+        raw_content = response.choices[0].message.content
+        res_txt = extraer_json(raw_content)
+        
         try:
-            with st.spinner("LAIA auditando información..."):
-                lecciones, _ = obtener_github(FILE_LECCIONES)
-                memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
-                
-                mensajes_api = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
-                ]
-                
-                for m in st.session_state.messages[-10:]:
-                    mensajes_api.append(m)
+            # Intentamos leer el JSON normal
+            res_json = json.loads(res_txt)
+        except Exception:
+            # Si la IA no mandó JSON (ej: un saludo frío o rechazo de charla), 
+            # forzamos este formato para que el código siga funcionando.
+            res_json = {
+                "status": "QUESTION",
+                "missing_info": raw_content.strip(), # Aquí va el mensaje frío de la IA
+                "items": st.session_state.draft      # Mantenemos lo que ya estaba en la tabla
+            }
+         
+        st.session_state.draft = res_json.get("items", [])
+        st.session_state.status = res_json.get("status", "READY")
+        st.session_state.missing_info = res_json.get("missing_info", "")
 
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=mensajes_api,
-                    temperature=0
-                )
+        # E) Respuesta de LAIA (Adaptada para respuestas frías)
+        if st.session_state.status == "QUESTION":
+          # Si la IA está pidiendo algo o respondiendo un saludo, se muestra directo y frío
+          msg_laia = f"🤖 {st.session_state.missing_info}"
+        else:
+          # Solo cuando ya reconoció hardware y todo está completo
+          msg_laia = "🤖 ✅ **AUDITORÍA LISTA:** Todos los campos obligatorios están llenos."
+         
+        with st.chat_message("assistant"):
+          st.markdown(msg_laia)
+        st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+        st.rerun()
 
-                res_txt = extraer_json(response.choices[0].message.content)
-                res_json = json.loads(res_txt)
-                
-                st.session_state.draft = res_json.get("items", [])
-                st.session_state.status = res_json.get("status", "READY")
-                st.session_state.missing_info = res_json.get("missing_info", "")
-
-                # E) Respuesta de LAIA (Más visual)
-                if st.session_state.status == "QUESTION":
-                    msg_laia = f"🤖 ⚠️ **AUDITORÍA INCOMPLETA:** {st.session_state.missing_info}"
-                else:
-                    msg_laia = "🤖 ✅ **AUDITORÍA LISTA:** Todos los campos obligatorios están llenos."
-                
-                with st.chat_message("assistant"):
-                    st.markdown(msg_laia)
-                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-                st.rerun()
-
-        except Exception as e:
-            st.error(f"❌ Fallo crítico de IA: {str(e)}")
+    except Exception as e:
+      st.error(f"❌ Fallo crítico de IA: {str(e)}")
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
