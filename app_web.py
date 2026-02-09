@@ -297,15 +297,13 @@ with t1:
 
     # 2. Entrada de Chat
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-        # Guardar y mostrar mensaje del usuario
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 3. Lógica de LAIA (Bloque protegido)
+        # INICIO DEL BLOQUE SEGURO
         try:
             with st.spinner("LAIA auditando información..."):
-                # Preparar contexto
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
@@ -316,22 +314,17 @@ with t1:
                     {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
                 
-                # Añadir historial reciente
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
-                # Llamada a OpenAI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=mensajes_api,
                     temperature=0
                 )
 
-                # Obtener respuesta cruda
                 raw_content = response.choices[0].message.content
-                
-                # Intentar extraer JSON
-                res_txt = extraer_json(raw_content) 
+                res_txt = extraer_json(raw_content)
 
                 # --- VALIDACIÓN DEL JSON ---
                 try:
@@ -339,50 +332,27 @@ with t1:
                         raise ValueError("No JSON found")
                     res_json = json.loads(res_txt)
                 except Exception:
-                    # Si falla el JSON, usamos el texto crudo como respuesta
                     res_json = {
                         "status": "QUESTION",
-                        "missing_info": raw_content, 
+                        "missing_info": raw_content,
                         "items": []
                     }
-
-                # Aquí deberías agregar la lógica para guardar 'res_json' en session_state 
-                # o mostrar la respuesta de la IA. Por ejemplo:
-                # st.session_state.last_response = res_json
+                
+                # --- PROCESAMIENTO DE RESPUESTA ---
+                if res_json["status"] == "READY":
+                    # Aquí va tu lógica de guardado (merge_data, etc)
+                    # Por ahora solo simulamos que avisa
+                    st.success("Datos listos para procesar.")
+                    # merge_data(res_json["items"]) <--- Descomenta si tienes esta función lista
+                
+                # Guardar respuesta de LAIA en el chat
+                msg_laia = res_json.get("missing_info", "Proceso completado.")
+                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                with st.chat_message("assistant"):
+                    st.markdown(msg_laia)
 
         except Exception as e:
-            # ESTE ES EL EXCEPT QUE FALTABA PARA EL PRIMER TRY
             st.error(f"Error crítico en el sistema: {e}")
-    
-    # --- LÓGICA DE APLICACIÓN ---
-    nuevos_items = res_json.get("items", [])
-    
-    # Solo actualizamos la tabla si hay items nuevos reales.
-    # Si items viene vacío [], mantenemos el borrador anterior (st.session_state.draft)
-    # o lo limpiamos solo si el usuario pidió borrar (eso lo maneja la pestaña 3).
-    if nuevos_items:
-        # Opción A: Agregar a lo existente (Append)
-        # st.session_state.draft.extend(nuevos_items)
-        
-        # Opción B: Reemplazar con lo que diga la IA (Tu lógica actual parece ser esta)
-        st.session_state.draft = nuevos_items
-
-    st.session_state.status = res_json.get("status", "QUESTION")
-    st.session_state.missing_info = res_json.get("missing_info", "")
-     
-    # E) Respuesta visual
-    if st.session_state.status == "READY":
-        msg_laia = "🤖 ✅ **AUDITORÍA LISTA:** Todos los campos obligatorios están llenos."
-    else:
-        msg_laia = f"🤖 {st.session_state.missing_info}"
-     
-    with st.chat_message("assistant"):
-        st.markdown(msg_laia)
-    st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-    st.rerun()
-
-  except Exception as e:
-      st.error(f"❌ Fallo crítico de IA: {str(e)}")
 
 
     # 3. Tabla y Botones GLPI
