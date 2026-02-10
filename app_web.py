@@ -139,14 +139,6 @@ def revisar_respuesta_glpi():
         return contenido
     return None
 # --- 3. AYUDANTES DE IA Y APRENDIZAJE ---
-def extraer_gen(proc):
-    if '10th' in proc or '11th' in proc or '12th' in proc or '13th' in proc:
-        return 'moderno'
-    if '8th' in proc or '9th' in proc or '7th' in proc or '6th' in proc:
-        return 'obsoleto'
-    return 'desconocido'
-
-df_c['gen_cpu'] = df_c['procesador'].apply(extraer_gen)
 
 def extraer_json(texto_completo):
     """ Separa el texto hablado del bloque JSON """
@@ -176,6 +168,18 @@ def aprender_leccion(error, correccion):
     # Guardamos solo las últimas 15 lecciones para no saturar el prompt
     return enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida")
 
+# ==========================================
+# UTILIDAD CPU (CLASIFICACIÓN GENERACIONAL)
+# ==========================================
+def extraer_gen(proc):
+    if not proc:
+        return 'desconocido'
+    p = str(proc).lower()
+    if any(x in p for x in ['10th', '11th', '12th', '13th', '14th']):
+        return 'moderno'
+    if any(x in p for x in ['8th', '9th', '7th', '6th', '5th', '4th']):
+        return 'obsoleto'
+    return 'desconocido'
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
