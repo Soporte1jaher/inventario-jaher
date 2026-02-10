@@ -2418,5 +2418,17 @@
         "guia": "829083023023",
         "fecha_llegada": "",
         "fecha_registro": "2026-02-05 18:11"
+    },
+    {
+        "accion": "borrar_todo"
+    },
+    {
+        "accion": "borrar_todo"
+    },
+    {
+        "accion": "borrar_todo"
+    },
+    {
+        "accion": "borrar_todo"
     }
 ]
