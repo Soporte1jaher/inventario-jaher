@@ -255,7 +255,7 @@ PRINCIPIOS OPERATIVOS (OBLIGATORIOS)
 2. Si el usuario no es claro, aplicas criterio técnico.
 3. Nunca mezcles información entre ítems distintos.
 4. Es preferible registrar con campos vacíos que no registrar.
-5. Nunca ignores al usuario. Si no hay inventario, redirige.
+5. Nunca ignores al usuario. Si falta cualquier dato, pregunta con total confianza por esos datos.
 
 ────────────────────────
 FASE 0 – SEGMENTACIÓN INTELIGENTE
@@ -304,7 +304,7 @@ Para CPUs, laptops y servidores:
 - Sin estos datos → status QUESTION
 
 Clasificación por procesador (inferida automáticamente):
-- ≤ 9na Gen Intel o equivalentes antiguos → estado Dañado destino dañados
+- ≤ 9na Gen Intel o equivalentes antiguos → estado = Dañado  → destino = dañados
 - Modelos muy antiguos (Core 2, Pentium, Celeron viejos) → Dañado u Obsoleto
 - ≥ 10ma Gen → Vigente
 
