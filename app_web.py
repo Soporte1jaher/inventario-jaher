@@ -152,7 +152,7 @@ def extraer_json(texto_completo):
             return texto_hablado, json_puro
         return texto_completo.strip(), ""
     except:
-        return texto_completo.strip(), ""
+        return texto_completo.strip(), 
 
 def aprender_leccion(error, correccion):
     """ Guarda errores previos para que la IA no los repita """
@@ -172,16 +172,20 @@ def aprender_leccion(error, correccion):
 # UTILIDAD CPU (CLASIFICACIÓN GENERACIONAL)
 # ==========================================
 def extraer_gen(proc):
-    if not proc:
-        return 'desconocido'
+    if not proc: return 'desconocido'
     p = str(proc).lower()
-    if any(x in p for x in ['10th', '11th', '12th', '13th', '14th']):
-        return 'moderno'
-    if any(x in p for x in ['9th', '8th', '7th', '6th', '5th', '4th']):
+    
+    # Lista de términos para equipos antiguos (4ta hasta 9na generación)
+    obsoletos = ['4th', '5th', '6th', '7th', '8th', '9th', '4ta', '5ta', '6ta', '7ta', '8va', '9na', 'gen 8', 'gen 9']
+    if any(x in p for x in obsoletos):
         return 'obsoleto'
+    
+    # Lista de términos para equipos modernos (10ma en adelante)
+    modernos = ['10th', '11th', '12th', '13th', '14th', '10ma', '11va', '12va', '13va', '14va', 'gen 10']
+    if any(x in p for x in modernos):
+        return 'moderno'
+    
     return 'desconocido'
-
-
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
@@ -301,14 +305,11 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
 5) OVERRIDE:
  - Si el usuario dice "enviar así" o "rellena N/A", pon status = READY y completa con "N/A".
 
-6) NORMALIZACIÓN DE PROCESADORES (ESTRICTO):
- - No extraigas solo el nombre (Ej: "Core i5"). DEBES incluir la generación siempre que se mencione.
- - Formatea SIEMPRE así: "Intel Core [i3/i5/i7/i9] - [X]th Gen".
- - Traduce términos humanos: 
-   * "8va", "8va gen", "generacion 8" -> "8th Gen".
-   * "10ma", "10ma gen", "generacion 10" -> "10th Gen".
- - Ejemplo de salida: "Intel Core i5 - 8th Gen". 
- - Esta información es el motor de la REGLA 1 (CLASIFICACIÓN TÉCNICA Y DESTINO), por lo que perder la generación es un error crítico de auditoría.
+6) NORMALIZACIÓN DE PROCESADORES (REGLA DE ORO):
+- Si el usuario dice "i5 de 8va", DEBES escribir en el JSON: "Intel Core i5 - 8th Gen". 
+- Es OBLIGATORIO capturar la generación. Si no la pones, el sistema no puede clasificar el equipo.
+- Si ves "8va", "8", "octava" -> "8th Gen".
+- Si ves "10ma", "10", "decima" -> "10th Gen".
 
 ## FORMATO DE SALIDA
 
