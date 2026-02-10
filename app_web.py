@@ -177,9 +177,11 @@ def extraer_gen(proc):
     p = str(proc).lower()
     if any(x in p for x in ['10th', '11th', '12th', '13th', '14th']):
         return 'moderno'
-    if any(x in p for x in ['8th', '9th', '7th', '6th', '5th', '4th']):
+    if any(x in p for x in ['9th', '8th', '7th', '6th', '5th', '4th']):
         return 'obsoleto'
     return 'desconocido'
+
+
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
@@ -196,8 +198,14 @@ def calcular_stock_web(df):
     
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
+    # ✅ AQUÍ VA LA LÍNEA QUE FALTABA (CRÍTICA)
+    df_c['gen_cpu'] = df_c['procesador'].apply(extraer_gen)
+
     # Definiciones de tipos
-    perifericos_list = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'parlante', 'herramienta']
+    perifericos_list = [
+        'mouse', 'teclado', 'cable', 'hdmi', 'limpiador',
+        'cargador', 'toner', 'tinta', 'parlante', 'herramienta'
+    ]
     
     # Máscaras Booleanas (Filtros Reales)
     es_periferico = df_c['equipo'].str.contains('|'.join(perifericos_list), na=False)
@@ -209,30 +217,35 @@ def calcular_stock_web(df):
     if not df_p.empty:
         def procesar_saldo(row):
             t = row['tipo']
-            if any(x in t for x in ['recibido', 'ingreso', 'entrada', 'llegó']): return row['cant_n']
-            if any(x in t for x in ['enviado', 'salida', 'despacho', 'egreso', 'envio']): return -row['cant_n']
+            if any(x in t for x in ['recibido', 'ingreso', 'entrada', 'llegó']):
+                return row['cant_n']
+            if any(x in t for x in ['enviado', 'salida', 'despacho', 'egreso', 'envio']):
+                return -row['cant_n']
             return 0
+
         df_p['val'] = df_p.apply(procesar_saldo, axis=1)
-        st_res = df_p.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
+        st_res = (
+            df_p.groupby(['equipo', 'marca', 'modelo'])
+            .agg({'val': 'sum'})
+            .reset_index()
+        )
         st_res = st_res[st_res['val'] > 0]
     else:
         st_res = pd.DataFrame(columns=['equipo', 'marca', 'modelo', 'val'])
 
-    # --- 2. BODEGA (Solo Equipos Operativos en Bodega) ---
-    # REGLA: Destino Bodega + NO Periférico + NO Dañado
+    # --- 2. BODEGA (Solo Equipos MODERNOS en Bodega) ---
     bod_res = df_c[
-    es_destino_bodega &
-    ~es_periferico &
-    ~es_dañado &
-    (df_c['gen_cpu'] == 'moderno')
-].copy()
+        es_destino_bodega &
+        ~es_periferico &
+        ~es_dañado &
+        (df_c['gen_cpu'] == 'moderno')
+    ].copy()
 
-
-    # --- 3. DAÑADOS (El Cementerio) ---
-    # REGLA: Cualquier cosa con estado Dañado/Obsoleto
-    danados_res = df_c[es_dañado].copy()
+    # --- 3. DAÑADOS / OBSOLETOS ---
+    danados_res = df_c[es_dañado | (df_c['gen_cpu'] == 'obsoleto')].copy()
 
     return st_res, bod_res, danados_res, df_c
+
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
 # ==========================================
