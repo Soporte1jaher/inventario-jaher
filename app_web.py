@@ -442,17 +442,21 @@ with t1:
                     st.markdown(msg_laia)
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
-                if "items" in res_json and res_json["items"]:
-                     st.session_state.draft = res_json["items"]
+    if "items" in res_json and res_json["items"]:
+            # Cambiamos .extend por asignación directa para evitar duplicados
+            st.session_state.draft = res_json["items"]
             
-            # Mensaje visual para ti
-                if res_json.get("status") == "READY":
-                    st.success("✅ Datos completos.")
-                    else:
-                     st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
+            # Actualizamos el estado global para habilitar el botón de guardado
+            st.session_state.status = res_json.get("status", "QUESTION")
+
+            # Mensajes visuales de estado
+            if st.session_state.status == "READY":
+                st.success("✅ Datos completos.")
+            else:
+                st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
             
-                     time.sleep(1)
-                     st.rerun()
+            time.sleep(1)
+            st.rerun()
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
