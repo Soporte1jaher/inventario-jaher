@@ -397,15 +397,24 @@ with t1:
             with st.spinner("LAIA auditando información..."):
                 # Preparar contexto
                 lecciones, _ = obtener_github(FILE_LECCIONES)
-                memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
-                
+                memoria_err = (
+                    "\n".join(
+                        [f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]
+                    )
+                    if lecciones else ""
+                )
+
+                contexto_tabla = (
+                    json.dumps(st.session_state.draft, ensure_ascii=False)
+                    if st.session_state.draft else "[]"
+                )
+
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
                     {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
                 ]
-                
+
                 # Añadir historial reciente
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
@@ -428,38 +437,38 @@ with t1:
                 except Exception:
                     res_json = {
                         "status": "QUESTION",
-                        "missing_info": raw_content, # Usamos el texto plano si falla el JSON
+                        "missing_info": raw_content,
                         "items": []
                     }
-                
+
                 # --- PASO 1: MOSTRAR RESPUESTA DE LAIA SIEMPRE ---
-                # (Esto soluciona que se quede callada)
                 msg_laia = res_json.get("missing_info", "Procesando...")
-                
-                # Guardar y mostrar
-                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": msg_laia}
+                )
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
-     if "items" in res_json and res_json["items"]:
-            # Cambiamos .extend por asignación directa para evitar duplicados
-            st.session_state.draft = res_json["items"]
-            
-            # Actualizamos el estado global para habilitar el botón de guardado
-            st.session_state.status = res_json.get("status", "QUESTION")
+                if "items" in res_json and res_json["items"]:
+                    # Evitar duplicados
+                    st.session_state.draft = res_json["items"]
 
-            # Mensajes visuales de estado
-            if st.session_state.status == "READY":
-                st.success("✅ Datos completos.")
-            else:
-                st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
-            
-            time.sleep(1)
-            st.rerun()
+                    # Estado global
+                    st.session_state.status = res_json.get("status", "QUESTION")
+
+                    if st.session_state.status == "READY":
+                        st.success("✅ Datos completos.")
+                    else:
+                        st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
+
+                    time.sleep(1)
+                    st.rerun()
 
         except Exception as e:
             st.error(f"Error crítico en el sistema: {e}")
+
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
