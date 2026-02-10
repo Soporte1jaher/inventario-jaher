@@ -301,7 +301,7 @@ ESTADOS DE SALIDA
 ────────────────────────
 READY     → Todo completo
 QUESTION  → Faltan datos críticos
-IDLE      → No se mencionó inventario
+
 
 ────────────────────────
 FORMATO DE SALIDA
