@@ -246,7 +246,7 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
 1) CLASIFICACIÓN TÉCNICA Y DESTINO (JERARQUÍA MÁXIMA):
  - Si detectas Intel ≤ 9na Generación:
    * ESTADO = "Obsoleto / Pendiente Chatarrización".
-   * DESTINO = "CHATARRA / BAJA" (Obligatorio, ignora si el usuario dice bodega).
+   * DESTINO = "CHATARRA / BAJA" 
  - Si detectas Intel ≥ 10ma Generación:
    * ESTADO = "Bueno" o "Nuevo".
    * DESTINO = El indicado por el usuario (Bodega o Agencia).
