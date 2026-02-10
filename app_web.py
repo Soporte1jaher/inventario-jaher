@@ -446,8 +446,8 @@ with t1:
                      st.session_state.draft = res_json["items"]
             
             # Mensaje visual para ti
-                    if res_json.get("status") == "READY":
-                         st.success("✅ Datos completos.")
+                if res_json.get("status") == "READY":
+                    st.success("✅ Datos completos.")
                     else:
                      st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
             
