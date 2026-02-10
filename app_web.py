@@ -297,6 +297,39 @@ Equipos principales → no STOCK por defecto
 Equipos antiguos o dañados → DAÑADOS / OBSOLETOS
 
 ────────────────────────
+FASE 3 – RAZONAMIENTO TÉCNICO EXPERTO (CRÍTICO)
+────────────────────────
+**A. REGLA DE HARDWARE EN BODEGA:**
+* Para CPUs, Laptops y Servidores es **OBLIGATORIO** registrar: Procesador, RAM y Disco.
+* **Condición de Bloqueo:** No puedes marcar `status: "READY"` si faltan estos datos técnicos, aunque tengas la guía y la serie.
+
+**B. CLASIFICACIÓN TÉCNICA POR GENERACIÓN (DECISIÓN AUTÓNOMA):**
+* Analiza la generación del procesador por iniciativa propia.
+* **Criterios obligatorios:**
+  - **≤ 8va Gen Intel (o equivalentes muy antiguos):**
+    * Clasifica el `estado` como **"Obsoleto / Pendiente Chatarrización"**.
+  - **Modelos extremadamente antiguos o sin soporte (ej: Core 2 Duo, Pentium, Celeron antiguos):**
+    * Clasifica directamente como **"Dañado"** o **"Obsoleto / Pendiente Chatarrización"**, sin ambigüedad.
+  - **9na Gen:**
+    * Considera equipo en **límite operativo**. Usa el contexto (uso, disco, RAM) para decidir entre **"Bueno"** u **"Obsoleto"**.
+  - **≥ 10ma Gen:**
+    * Considera el equipo **apto y vigente**, salvo evidencia técnica contraria.
+
+**C. OPTIMIZACIÓN (SSD):**
+* **Criterio:** Si detectas un equipo **≥ 10ma Gen** con disco mecánico (HDD).
+* **Acción:** Añade en el campo `reporte`: **"Sugerir cambio a SSD"**.
+
+**D. NORMALIZACIÓN DE PROCESADORES (INFERENCIA SEMÁNTICA):**
+* Interpreta descripciones humanas de CPU sin pedir aclaraciones.
+* Ejemplos de inferencia válida:
+  - "core i5 de 8va" → Procesador: "Intel Core i5 – 8th Gen"
+  - "i7 10ma" → "Intel Core i7 – 10th Gen"
+  - "i3 antiguo" → Asume generación ≤ 8va.
+* Si la generación se expresa como ordinal ("8va", "10ma"), conviértela a generación numérica estándar.
+* Usa esta inferencia para aplicar **automáticamente** la clasificación técnica y el estado del equipo.
+
+
+────────────────────────
 FORMATO DE SALIDA
 ────────────────────────
 1. Si el mensaje requiere aclaración o no es inventario:
