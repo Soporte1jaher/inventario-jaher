@@ -371,34 +371,32 @@ with t1:
 
                 # Llamada a OpenAI
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=mensajes_api,
-                    temperature=0
-                )
+          model="gpt-4o-mini",
+          messages=mensajes_api,
+          temperature=0
+        )
 
-                raw_content = response.choices[0].message.content
-                res_txt = extraer_json(raw_content)
+        raw_content = response.choices[0].message.content
+        
+        # --- NUEVA LÓGICA DE EXTRACCIÓN ---
+        texto_fuera, res_txt = extraer_json(raw_content)
 
-                # --- VALIDACIÓN DEL JSON ---
-                try:
-                    if not res_txt:
-                        raise ValueError("No JSON found")
-                    res_json = json.loads(res_txt)
-                except Exception:
-                    res_json = {
-                        "status": "QUESTION",
-                        "missing_info": raw_content,
-                        "items": []
-                    }
+        try:
+          res_json = json.loads(res_txt) if res_txt else {}
+        except:
+          res_json = {}
 
-                # --- PASO 1: MOSTRAR RESPUESTA DE LAIA SIEMPRE ---
-                msg_laia = res_json.get("missing_info", "Procesando...")
+        # Unimos las dos fuentes de voz (lo de afuera y lo de adentro del JSON)
+        voz_interior = res_json.get("missing_info", "")
+        msg_laia = f"{texto_fuera}\n{voz_interior}".strip()
+        
+        if not msg_laia: 
+            msg_laia = "Instrucción recibida. Procesando datos técnicos..."
 
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": msg_laia}
-                )
-                with st.chat_message("assistant"):
-                    st.markdown(msg_laia)
+        # --- MOSTRAR RESPUESTA ---
+        st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+        with st.chat_message("assistant"):
+          st.markdown(msg_laia)
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
                 if "items" in res_json and res_json["items"]:
