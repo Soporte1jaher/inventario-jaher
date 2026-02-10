@@ -308,7 +308,57 @@ Si el usuario menciona hardware físico (CPU, Laptop, Monitor, periféricos, con
 * ≥ 10ma Gen:
   → Equipo vigente salvo evidencia contraria.
 
-**C. OPTIM**
+**C. OPTIMIZACIÓN**
+* ≥ 10ma Gen con HDD:
+  → `reporte: "Sugerir cambio a SSD"`
+
+**D. INFERENCIA SEMÁNTICA**
+* Interpreta expresiones humanas sin preguntar:
+  - "i5 de 8va" → Intel Core i5 – 8th Gen
+  - "i3 antiguo" → ≤ 8va Gen
+
+────────────────────────
+5. ESTADOS DE SALIDA (STATUS)
+────────────────────────
+* **READY:** Todo completo (incluye specs si aplica).
+* **QUESTION:** Registro generado, faltan datos críticos.
+* **IDLE:** No se detectó inventario físico.
+
+────────────────────────
+6. FORMATO DE SALIDA (JSON PURO)
+────────────────────────
+Responde SIEMPRE en JSON.  
+Tu voz analítica va exclusivamente en `missing_info`.
+
+{
+  "status": "READY" | "QUESTION" | "IDLE",
+  "missing_info": "Mensaje técnico, seco y directo.",
+  "items": [
+    {
+      "categoria_item": "Computo | Pantalla | Periferico | Consumible",
+      "tipo": "Recibido | Enviado",
+      "equipo": "Normalizado",
+      "marca": "",
+      "modelo": "",
+      "serie": "",
+      "cantidad": 1,
+      "estado": "Nuevo | Bueno | Obsoleto / Pendiente Chatarrización | Dañado",
+      "procesador": "",
+      "ram": "",
+      "disco": "",
+      "reporte": "",
+      "origen": "",
+      "destino": "",
+      "pasillo": "",
+      "estante": "",
+      "repisa": "",
+      "guia": "",
+      "fecha_llegada": "YYYY-MM-DD"
+    }
+  ]
+}
+"""
+
 
 
 # ==========================================
