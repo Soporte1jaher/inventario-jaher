@@ -90,6 +90,26 @@ def obtener_github(archivo):
         st.error(f"❌ Error de conexión GitHub: {str(e)}")
         return None, None
 
+def enviar_github(archivo, datos_nuevos, mensaje="Actualización LAIA"):
+    """ Agrega datos a una lista existente en GitHub (APPEND) """
+    contenido_actual, sha = obtener_github(archivo)
+    if contenido_actual is None: contenido_actual = []
+    
+    # Si datos_nuevos es lista, extendemos; si es dict, append
+    if isinstance(datos_nuevos, list):
+        contenido_actual.extend(datos_nuevos)
+    else:
+        contenido_actual.append(datos_nuevos)
+    
+    payload = {
+        "message": mensaje,
+        "content": base64.b64encode(json.dumps(contenido_actual, indent=4).encode()).decode(),
+        "sha": sha if sha else None
+    }
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
+    resp = requests.put(url, headers=HEADERS, json=payload)
+    return resp.status_code in [200, 201]
+
 def enviar_github_directo(archivo, datos, mensaje="LAIA Update"):
     """ ESTA FUNCIÓN SOBREESCRIBE EL ARCHIVO (Para pedidos y configuración) """
     _, sha = obtener_github(archivo)
