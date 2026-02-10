@@ -359,7 +359,7 @@ with t1:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # B. Entrada de usuario (Asegúrate de que este 'if' esté alineado con el 'for' de arriba)
+    # B. Entrada de usuario
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -367,7 +367,6 @@ with t1:
 
         try:
             with st.spinner("LAIA auditando información..."):
-                # 1. Preparar contexto y memoria
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
@@ -378,11 +377,9 @@ with t1:
                     {"role": "system", "content": f"ESTADO ACTUAL: {contexto_tabla}"}
                 ]
 
-                # Añadir historial reciente para que LAIA no pierda el hilo
                 for m in st.session_state.messages[-10:]:
                     mensajes_api.append(m)
 
-                # 2. Llamada a OpenAI
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=mensajes_api,
@@ -390,30 +387,23 @@ with t1:
                 )
 
                 raw_content = response.choices[0].message.content
-                
-                # 3. Procesar Voz y Datos usando la función extraer_json
                 texto_fuera, res_txt = extraer_json(raw_content)
-                
                 try:
                     res_json = json.loads(res_txt) if res_txt else {}
                 except:
                     res_json = {}
 
-                # Unir el habla de LAIA (lo que dice fuera y dentro del JSON)
                 voz_interna = res_json.get("missing_info", "")
                 msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
                 if not msg_laia: msg_laia = "Instrucción técnica procesada."
 
-                # Guardar y mostrar mensaje de LAIA
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
-                # 4. Actualizar el borrador si hay ítems nuevos o cambios
                 if "items" in res_json and res_json["items"]:
                     st.session_state.draft = res_json["items"]
                     st.session_state.status = res_json.get("status", "QUESTION")
-
                     if st.session_state.status == "READY":
                         st.success("✅ Datos auditados. Listo para guardar.")
                     
@@ -429,7 +419,8 @@ with t1:
         st.subheader("📊 Borrador de Movimientos")
         
         df_editor = pd.DataFrame(st.session_state.draft)
-        cols_base = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino", "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
+        cols_base = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
+                     "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
@@ -439,7 +430,7 @@ with t1:
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # --- SECCIÓN GLPI MEJORADA ---
+        # --- GLPI ---
         col_glpi1, col_glpi2 = st.columns([2, 1])
         with col_glpi1:
             if st.button("🔍 SOLICITAR BÚSQUEDA EN OFICINA"):
@@ -447,7 +438,7 @@ with t1:
                 if serie_valida:
                     if solicitar_busqueda_glpi(serie_valida):
                         st.toast(f"Pedido enviado para serie {serie_valida}", icon="📡")
-                        time.sleep(10) # Aumentamos a 10 segundos para GitHub
+                        time.sleep(10)
                         st.rerun()
                 else:
                     st.warning("⚠️ No hay una serie válida para buscar.")
@@ -455,19 +446,13 @@ with t1:
         with col_glpi2:
             if st.button("🔄 REVISAR Y AUTORELLENAR"):
                 res_glpi = revisar_respuesta_glpi()
-                
-                # Si la PC ya respondió y mandó la ficha técnica (specs)
                 if res_glpi and res_glpi.get("estado") == "completado":
                     specs_oficina = res_glpi.get("specs", {})
                     serie_buscada = res_glpi.get("serie")
-                    
-                    # Buscamos la fila en la tabla y la actualizamos
                     encontrado = False
                     nuevo_borrador = []
-                    
                     for item in st.session_state.draft:
                         if item.get("serie") == serie_buscada:
-                            # ACTUALIZAMOS LOS CAMPOS CON LO QUE MANDÓ LA PC
                             item["marca"] = specs_oficina.get("marca", item["marca"])
                             item["modelo"] = specs_oficina.get("modelo", item["modelo"])
                             item["ram"] = specs_oficina.get("ram", item["ram"])
@@ -476,22 +461,28 @@ with t1:
                             item["reporte"] = specs_oficina.get("reporte", item["reporte"])
                             encontrado = True
                         nuevo_borrador.append(item)
-                    
                     if encontrado:
                         st.session_state.draft = nuevo_borrador
                         st.success(f"✨ ¡Datos de serie {serie_buscada} cargados en la tabla!")
                         time.sleep(1)
-                        st.rerun() # Refrescamos para que se vea el cambio
+                        st.rerun()
                 else:
                     st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
-
-        # 4. Botones de Acción
+        # 4. Botones de acción
         c1, c2 = st.columns([1, 4])
         with c1:
-            # BLOQUEO DE GUARDADO SI NO ESTÁ READY
             if st.session_state.status == "READY":
                 if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
+                    # 🔒 AUTOCORRECCIÓN POR CPU OBSOLETA
+                    for d in st.session_state.draft:
+                        proc = d.get("procesador", "")
+                        gen = extraer_gen(proc)
+                        if gen == "obsoleto":
+                            d["estado"] = "Obsoleto / Pendiente Chatarrización"
+                            d["destino"] = "CHATARRA / BAJA"
+                            d["origen"] = d.get("origen", "Bodega")
+
                     hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                     for d in st.session_state.draft: d["fecha_registro"] = hora_ec
                     if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
@@ -506,6 +497,7 @@ with t1:
                 st.session_state.draft = []
                 st.session_state.messages = []
                 st.rerun()
+
 
 with t2:
   st.subheader("📊 Control de Stock e Historial")
