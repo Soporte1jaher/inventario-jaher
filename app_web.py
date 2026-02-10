@@ -139,6 +139,14 @@ def revisar_respuesta_glpi():
         return contenido
     return None
 # --- 3. AYUDANTES DE IA Y APRENDIZAJE ---
+def extraer_gen(proc):
+    if '10th' in proc or '11th' in proc or '12th' in proc or '13th' in proc:
+        return 'moderno'
+    if '8th' in proc or '9th' in proc or '7th' in proc or '6th' in proc:
+        return 'obsoleto'
+    return 'desconocido'
+
+df_c['gen_cpu'] = df_c['procesador'].apply(extraer_gen)
 
 def extraer_json(texto_completo):
     """ Separa el texto hablado del bloque JSON """
@@ -208,7 +216,13 @@ def calcular_stock_web(df):
 
     # --- 2. BODEGA (Solo Equipos Operativos en Bodega) ---
     # REGLA: Destino Bodega + NO Periférico + NO Dañado
-    bod_res = df_c[es_destino_bodega & ~es_periferico & ~es_dañado].copy()
+    bod_res = df_c[
+    es_destino_bodega &
+    ~es_periferico &
+    ~es_dañado &
+    (df_c['gen_cpu'] == 'moderno')
+].copy()
+
 
     # --- 3. DAÑADOS (El Cementerio) ---
     # REGLA: Cualquier cosa con estado Dañado/Obsoleto
