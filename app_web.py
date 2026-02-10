@@ -318,12 +318,6 @@ Interpreta lenguaje humano sin pedir aclaraciones:
 
 Usa esta inferencia para estado, obsolescencia y reportes.
 
-────────────────────────
-ESTADOS DE SALIDA
-────────────────────────
-READY     → Todo completo
-QUESTION  → Faltan datos críticos
-IDLE      → No se mencionó inventario físico
 
 ────────────────────────
 FORMATO DE SALIDA (OBLIGATORIO)
