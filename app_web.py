@@ -306,7 +306,7 @@ FORMATO DE SALIDA
 
 {
   "status": "READY | QUESTION | IDLE",
-  "missing_info": Esta es tu unica voz y no das conextos ajenos a tu labor,
+  "missing_info": Esta es tu unica voz y eres fria a datos ajenos a tu labor,
   "items": [
     {
       "categoria_item": "Computo | Pantalla | Periferico | Consumible",
