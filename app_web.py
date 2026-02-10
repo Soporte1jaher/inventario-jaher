@@ -337,40 +337,27 @@ with t1:
 
     # B. Entrada de usuario
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-        # Guardar mensaje usuario
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+      st.markdown(prompt)
 
-        # C. Bloque Seguro de Procesamiento
-        try:
-            with st.spinner("LAIA auditando información..."):
-                # Preparar contexto
-                lecciones, _ = obtener_github(FILE_LECCIONES)
-                memoria_err = (
-                    "\n".join(
-                        [f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]
-                    )
-                    if lecciones else ""
-                )
+    # C. Bloque Seguro de Procesamiento
+    try: # <--- Aquí empieza el bloque que daba error
+      with st.spinner("LAIA auditando información..."):
+        lecciones, _ = obtener_github(FILE_LECCIONES)
+        memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
+        contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
 
-                contexto_tabla = (
-                    json.dumps(st.session_state.draft, ensure_ascii=False)
-                    if st.session_state.draft else "[]"
-                )
+        mensajes_api = [
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
+          {"role": "system", "content": f"ESTADO ACTUAL: {}"}
+        ]
+        
+        for m in st.session_state.messages[-10:]:
+          mensajes_api.append(m)
 
-                mensajes_api = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL DE LA TABLA: {contexto_tabla}"}
-                ]
-
-                # Añadir historial reciente
-                for m in st.session_state.messages[-10:]:
-                    mensajes_api.append(m)
-
-                # Llamada a OpenAI
-                response = client.chat.completions.create(
+        response = client.chat.completions.create(
           model="gpt-4o-mini",
           messages=mensajes_api,
           temperature=0
@@ -378,44 +365,37 @@ with t1:
 
         raw_content = response.choices[0].message.content
         
-        # --- NUEVA LÓGICA DE EXTRACCIÓN ---
+        # --- PROCESAR VOZ Y DATOS ---
         texto_fuera, res_txt = extraer_json(raw_content)
-
-        try:
-          res_json = json.loads(res_txt) if res_txt else {}
-        except:
-          res_json = {}
-
-        # Unimos las dos fuentes de voz (lo de afuera y lo de adentro del JSON)
-        voz_interior = res_json.get("missing_info", "")
-        msg_laia = f"{texto_fuera}\n{voz_interior}".strip()
         
-        if not msg_laia: 
-            msg_laia = "Instrucción recibida. Procesando datos técnicos..."
+        try:
+            res_json = json.loads(res_txt) if res_txt else {}
+        except:
+            res_json = {}
 
-        # --- MOSTRAR RESPUESTA ---
+        # Unir mensaje de LAIA
+        voz_interna = res_json.get("missing_info", "")
+        msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
+        if not msg_laia: msg_laia = "Datos procesados."
+
+        # Mostrar mensaje
         st.session_state.messages.append({"role": "assistant", "content": msg_laia})
         with st.chat_message("assistant"):
           st.markdown(msg_laia)
 
-                # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
-                if "items" in res_json and res_json["items"]:
-                    # Evitar duplicados
-                    st.session_state.draft = res_json["items"]
+        # Actualizar tabla
+        if "items" in res_json and res_json["items"]:
+          st.session_state.draft = res_json["items"]
+          st.session_state.status = res_json.get("status", "QUESTION")
 
-                    # Estado global
-                    st.session_state.status = res_json.get("status", "QUESTION")
+          if st.session_state.status == "READY":
+            st.success("✅ Listo para guardar.")
+          
+          time.sleep(1)
+          st.rerun()
 
-                    if st.session_state.status == "READY":
-                        st.success("✅ Datos completos.")
-                    else:
-                        st.warning("⚠️ Datos cargados. Faltan detalles (Revisa la tabla).")
-
-                    time.sleep(1)
-                    st.rerun()
-
-        except Exception as e:
-            st.error(f"Error crítico en el sistema: {e}")
+    except Exception as e: # <--- Este es el block que faltaba
+      st.error(f"Error crítico: {str(e)}")
 
 
     # 3. Tabla y Botones GLPI
