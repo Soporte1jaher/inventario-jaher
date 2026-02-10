@@ -168,25 +168,25 @@ def aprender_leccion(error, correccion):
 # 4. MOTOR DE STOCK
 # ==========================================
 def calcular_stock_web(df):
-    # 1. Si no hay datos, devolvemos dataframes vacíos con estructura correcta
+    # 1. Si no hay datos, devolvemos dataframes vacíos (4 ahora: stock, bodega, dañados, historial)
     if df is None or df.empty: 
-        return pd.DataFrame(columns=['equipo', 'marca', 'modelo', 'val']), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
     df_c = df.copy()
     df_c.columns = df_c.columns.str.lower().str.strip()
     
-    # 2. Aseguramos columnas básicas
-    cols_necesarias = ['equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad', 'destino', 'serie']
+    # 2. Aseguramos columnas básicas y limpieza
+    cols_necesarias = ['equipo', 'marca', 'modelo', 'estado', 'tipo', 'cantidad', 'destino', 'serie', 'origen']
     for col in cols_necesarias:
         if col not in df_c.columns: 
             df_c[col] = "n/a"
         else:
             df_c[col] = df_c[col].astype(str).str.lower().str.strip().replace(['nan', 'none', '', 'nan'], 'n/a')
     
-    # Cantidad a número
+    # Cantidad a número para cálculos
     df_c['cant_n'] = pd.to_numeric(df_c['cantidad'], errors='coerce').fillna(0)
 
-    # --- LÓGICA 1: PERIFÉRICOS (Saldos) ---
+    # --- LÓGICA 1: PERIFÉRICOS (Saldos en Stock) ---
     perifericos = ['mouse', 'teclado', 'cable', 'hdmi', 'limpiador', 'cargador', 'toner', 'tinta', 'parlante', 'herramienta']
     mask_perifericos = df_c['equipo'].str.contains('|'.join(perifericos), na=False)
     df_p = df_c[mask_perifericos].copy()
@@ -195,25 +195,30 @@ def calcular_stock_web(df):
         def procesar_saldo(row):
             t = str(row['tipo'])
             c = row['cant_n']
+            # Suma si entra, resta si sale
             if any(x in t for x in ['recibido', 'ingreso', 'entrada', 'llegó']): return c
             if any(x in t for x in ['enviado', 'salida', 'despacho', 'egreso', 'envio']): return -c
             return 0
         
         df_p['val'] = df_p.apply(procesar_saldo, axis=1)
         st_res = df_p.groupby(['equipo', 'marca', 'modelo']).agg({'val': 'sum'}).reset_index()
-        st_res = st_res[st_res['val'] > 0]
+        st_res = st_res[st_res['val'] > 0] # Solo lo que tiene saldo positivo
     else:
-        # Estructura vacía para evitar que la métrica de Streamlit falle
         st_res = pd.DataFrame(columns=['equipo', 'marca', 'modelo', 'val'])
 
-    # --- LÓGICA 2: BODEGA ---
-    bod_res = df_c[df_c['destino'].str.contains('bodega', na=False)].copy()
-    if not bod_res.empty:
-        # Solo columnas que interesan para la hoja bodega
-        cols_b = [c for c in ['equipo', 'marca', 'modelo', 'serie', 'cantidad', 'estado', 'pasillo', 'estante', 'repisa', 'procesador', 'ram', 'disco'] if c in bod_res.columns]
-        bod_res = bod_res[cols_b]
+    # --- LÓGICA 2: BODEGA (Equipos individuales operativos) ---
+    # Entra aquí TODO lo que tenga destino "bodega", tenga o no tipo definido
+    # Pero filtramos que NO esté dañado para que sea bodega operativa
+    bod_res = df_c[
+        (df_c['destino'].str.contains('bodega', na=False)) & 
+        (~df_c['estado'].str.contains('dañado|obsoleto', na=False))
+    ].copy()
 
-    return st_res, bod_res, df_c
+    # --- LÓGICA 3: DAÑADOS Y OBSOLETOS ---
+    danados_res = df_c[df_c['estado'].str.contains('dañado|obsoleto|chatarrización', na=False)].copy()
+
+    # Devolvemos: 1. Stock Periféricos, 2. Equipos Bodega, 3. Dañados, 4. Historial Completo
+    return st_res, bod_res, danados_res, df_c
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
 # ==========================================
@@ -266,13 +271,25 @@ Cada respuesta debe acercar al registro, validación o auditoría del inventario
 ────────────────────────
 CRITERIO DE DATOS FALTANTES
 ────────────────────────
-Para equipos de cómputo (CPU, laptop, servidor):
-- procesador, ram y disco son obligatorios.
-- Si falta alguno → status = QUESTION
-- Indica claramente qué datos faltan.
+ORIGEN Y DESTINO: Son OBLIGATORIOS. El origen indica de dónde SALE el equipo y el destino a dónde LLEGA.
 
+Si el movimiento es RECIBIDO, el origen suele ser proveedor, sucursal externa o tercero, y el destino la bodega u otra área interna.
+
+Si el movimiento es ENVIADO, el origen suele ser la bodega u área interna y el destino un usuario, sucursal o tercero.
+Si el usuario no especifica claramente de dónde viene o a dónde va, pregunta:
+“¿Cuál es el origen y destino del movimiento?”
+
+UBICACIÓN BODEGA: Aplica solo cuando el destino sea “Bodega” (casos típicos de RECIBIDO). En ese caso debes pedir o asignar pasillo, estante y repisa.
+Si falta cualquiera de estos datos, el status = QUESTION.
+
+FECHA DE LLEGADA: Aplica únicamente cuando el movimiento sea RECIBIDO (cuando el equipo ingresa).
+La fecha_llegada es OBLIGATORIA.
+
+Si el usuario no menciona una fecha, asigna por defecto la fecha actual en formato YYYY-MM-DD o solicítala si es necesario.
+
+EQUIPOS DAÑADOS / OBSOLETOS: Si el estado del equipo es “Dañado” u “Obsoleto”, el movimiento se considera de salida definitiva, por lo que el destino debe ser automáticamente “CHATARRA / BAJA”, independientemente del origen o del tipo de movimiento indicado por el usuario.
 Para periféricos:
-- modelo o cantidad es obligatorio.
+Normalmente deben ir a stocksi el usuario especifico y el tipo = Recibido.
 
 ────────────────────────
 FASE 0 – DETECCIÓN DE ÍTEMS
@@ -555,63 +572,57 @@ with t1:
                 st.rerun()
 
 with t2:
-    st.subheader("📊 Control de Stock e Historial")
+  st.subheader("📊 Control de Stock e Historial")
+   
+  if st.button("🔄 Sincronizar Datos de GitHub"):
+    st.rerun()
+
+  hist, _ = obtener_github(FILE_HISTORICO)
+   
+  if hist:
+    df_h_raw = pd.DataFrame(hist)
      
-    # 1. Botón para sincronizar
-    if st.button("🔄 Sincronizar Datos de GitHub"):
-        st.rerun()
-
-    # 2. Obtenemos el histórico real
-    hist, _ = obtener_github(FILE_HISTORICO)
+    # --- AQUÍ ES EL CAMBIO: Recibimos 4 variables ahora ---
+    st_res, bod_res, danados_res, df_h = calcular_stock_web(df_h_raw)
      
-    if hist:
-        # --- AQUÍ CREAMOS df_h PARA QUE NO DE NAMEERROR ---
-        df_h_raw = pd.DataFrame(hist)
-        
-        # 3. Calculamos stock usando la nueva función v10.0
-        # La función nos devuelve: saldos, bodega e historial limpio
-        st_res, bod_res, df_h = calcular_stock_web(df_h_raw)
-         
-        # 4. Mostramos métricas
-        k1, k2 = st.columns(2)
-        # Usamos 'val' para la métrica
-        total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
-        k1.metric("📦 Periféricos en Stock", total_stock)
-        k2.metric("🚚 Movimientos Totales", len(df_h))
+    # 4. Mostramos métricas
+    k1, k2 = st.columns(2)
+    total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
+    k1.metric("📦 Periféricos en Stock", total_stock)
+    k2.metric("🚚 Movimientos Totales", len(df_h))
 
-        # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
-        import io
-        buffer = io.BytesIO()
-        
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            # HOJA 1: Historial Completo
-            df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
-            
-            # HOJA 2: Stock Saldos
-            if not st_res.empty:
-                st_res_excel = st_res.copy()
-                st_res_excel.columns = ['equipo', 'marca', 'modelo', 'variacion']
-                st_res_excel.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
-            
-            # HOJA 3: BODEGA
-            if not bod_res.empty:
-                bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
-         
-        st.download_button(
-            label="📥 DESCARGAR EXCEL SINCRONIZADO (3 HOJAS)",
-            data=buffer.getvalue(),
-            file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary" 
-        )
-        # ----------------------------------------
+    # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
+    import io
+    buffer = io.BytesIO()
+     
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+      # HOJA 1: Historial Completo
+      df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
+       
+      # HOJA 2: Stock Saldos
+      if not st_res.empty:
+        st_res.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
+       
+      # HOJA 3: BODEGA
+      if not bod_res.empty:
+        bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
 
-        # 5. Mostrar la tabla en la web
-        st.write("### 📜 Últimos Movimientos en el Histórico")
-        st.dataframe(df_h.tail(20), use_container_width=True) 
-         
-    else:
-        st.warning("⚠️ No se encontraron datos en el histórico. Verifica el archivo en GitHub.")
+      # HOJA 4: DAÑADOS
+      if not danados_res.empty:
+        danados_res.to_excel(writer, index=False, sheet_name='DAÑADOS')
+     
+    st.download_button(
+      label="📥 DESCARGAR EXCEL SINCRONIZADO (4 HOJAS)",
+      data=buffer.getvalue(),
+      file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
+      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      type="primary" 
+    )
+
+    # 5. Mostrar la tabla en la web (el historial)
+    st.write("### 📜 Últimos Movimientos en el Histórico")
+    st.dataframe(df_h.tail(20), use_container_width=True) 
+      
 with t3:
     st.subheader("🗑️ Limpieza Inteligente con Análisis de Historial")
     st.info("Ejemplo: 'Borra la laptop ProBook', 'Limpia lo que llegó de Latacunga'")
