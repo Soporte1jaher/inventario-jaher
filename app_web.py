@@ -330,75 +330,74 @@ if "missing_info" not in st.session_state: st.session_state.missing_info = ""
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
-    # A. Mostrar historial
+    # A. Mostrar historial de mensajes
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
-    # B. Entrada de usuario
-  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
-    # Todo lo que sigue abajo tiene que tener al menos 2 o 4 espacios de margen
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # B. Entrada de usuario (Asegúrate de que este 'if' esté alineado con el 'for' de arriba)
+    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-    try:
-      with st.spinner("LAIA auditando información..."):
-        # Preparar contexto
-        lecciones, _ = obtener_github(FILE_LECCIONES)
-        memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-        contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
-
-        mensajes_api = [
-          {"role": "system", "content": SYSTEM_PROMPT},
-          {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
-          {"role": "system", "content": f"ESTADO ACTUAL: {}"}
-        ]
-
-        # Añadir historial reciente
-        for m in st.session_state.messages[-10:]:
-          mensajes_api.append(m)
-
-        # Llamada a OpenAI
-        response = client.chat.completions.create(
-          model="gpt-4o-mini",
-          messages=mensajes_api,
-          temperature=0
-        )
-
-        raw_content = response.choices[0].message.content
-        
-        # --- PROCESAR VOZ Y DATOS ---
-        texto_fuera, res_txt = extraer_json(raw_content)
-        
         try:
-            res_json = json.loads(res_txt) if res_txt else {}
-        except:
-            res_json = {}
+            with st.spinner("LAIA auditando información..."):
+                # 1. Preparar contexto y memoria
+                lecciones, _ = obtener_github(FILE_LECCIONES)
+                memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
+                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
 
-        # Unir mensaje de LAIA (Voz interna y externa)
-        voz_interna = res_json.get("missing_info", "")
-        msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
-        if not msg_laia: msg_laia = "Instrucción procesada."
+                mensajes_api = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL: {}"}
+                ]
 
-        # Mostrar mensaje de LAIA en el chat
-        st.session_state.messages.append({"role": "assistant", "content": msg_laia})
-        with st.chat_message("assistant"):
-          st.markdown(msg_laia)
+                # Añadir historial reciente para que LAIA no pierda el hilo
+                for m in st.session_state.messages[-10:]:
+                    mensajes_api.append(m)
 
-        # Actualizar tabla de borrador
-        if "items" in res_json and res_json["items"]:
-          st.session_state.draft = res_json["items"]
-          st.session_state.status = res_json.get("status", "QUESTION")
+                # 2. Llamada a OpenAI
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=mensajes_api,
+                    temperature=0
+                )
 
-          if st.session_state.status == "READY":
-            st.success("✅ Datos validados por LAIA.")
-          
-          time.sleep(1)
-          st.rerun()
+                raw_content = response.choices[0].message.content
+                
+                # 3. Procesar Voz y Datos usando la función extraer_json
+                texto_fuera, res_txt = extraer_json(raw_content)
+                
+                try:
+                    res_json = json.loads(res_txt) if res_txt else {}
+                except:
+                    res_json = {}
 
-    except Exception as e:
-      st.error(f"Error en el motor de auditoría: {str(e)}")
+                # Unir el habla de LAIA (lo que dice fuera y dentro del JSON)
+                voz_interna = res_json.get("missing_info", "")
+                msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
+                if not msg_laia: msg_laia = "Instrucción técnica procesada."
+
+                # Guardar y mostrar mensaje de LAIA
+                st.session_state.messages.append({"role": "assistant", "content": msg_laia})
+                with st.chat_message("assistant"):
+                    st.markdown(msg_laia)
+
+                # 4. Actualizar el borrador si hay ítems nuevos o cambios
+                if "items" in res_json and res_json["items"]:
+                    st.session_state.draft = res_json["items"]
+                    st.session_state.status = res_json.get("status", "QUESTION")
+
+                    if st.session_state.status == "READY":
+                        st.success("✅ Datos auditados. Listo para guardar.")
+                    
+                    time.sleep(1)
+                    st.rerun()
+
+        except Exception as e:
+            st.error(f"Error en el motor de LAIA: {str(e)}")
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
