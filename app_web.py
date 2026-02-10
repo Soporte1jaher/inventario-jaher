@@ -283,7 +283,7 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
 ## FORMATO DE SALIDA
 
 Devuelve SIEMPRE JSON.
-Si hay que aclarar algo, escribe una sola frase técnica antes del JSON.
+Puedes hablar, tu voz es "missing_info" antes del JSON.
 
 {
   "status": "READY | QUESTION | IDLE",
