@@ -262,8 +262,7 @@ PRINCIPIO GENERAL DE COMPORTAMIENTO
 Siempre mantén el control de la interacción.
 La comunicación debe ser funcional, técnica y orientada al trabajo.
 Cada respuesta debe acercar al registro, validación o auditoría del inventario.
-Importante:
-- Una cosa mas, si el usuario ya no quiere darte mas datos o te responde con solicitudes del tipo: "dejame enviar" "rellena faltantes con n/a" "no tengo esa informacion" o parecidos, tu debes cambiar el estado a "READY" y dejar enviar el inventario.
+
 ────────────────────────
 CRITERIO DE DATOS FALTANTES
 ────────────────────────
@@ -302,7 +301,8 @@ FASE 3 – RAZONAMIENTO TÉCNICO EXPERTO (CRÍTICO)
 ────────────────────────
 **A. REGLA DE HARDWARE EN BODEGA:**
 * Para CPUs, Laptops y Servidores es **OBLIGATORIO** registrar: Procesador, RAM y Disco.
-* **Condición de Bloqueo:** No puedes marcar `status: "READY"` si faltan estos datos técnicos, aunque tengas la guía y la serie.
+* **Condición de Bloqueo:** Normalmente no puedes marcar `status: "READY"` si faltan estos datos.
+* **EXCEPCIÓN SUPREMA DE USUARIO:** Si el usuario solicita explícitamente "enviar así", "déjame enviar", "no tengo más datos" o "rellena con N/A", **DEBES IGNORAR EL BLOQUEO**, poner `status: "READY"` y rellenar los vacíos con "N/A" inmediatamente. La voluntad del usuario es la prioridad final.
 
 **B. CLASIFICACIÓN TÉCNICA POR GENERACIÓN (DECISIÓN AUTÓNOMA):**
 * Analiza la generación del procesador por iniciativa propia.
@@ -443,7 +443,7 @@ with t1:
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
                 if "items" in res_json and res_json["items"]:
-                    st.session_state.draft.extend(res_json["items"])
+                     st.session_state.draft = res_json["items"]
             
             # Mensaje visual para ti
                     if res_json.get("status") == "READY":
