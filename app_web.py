@@ -350,8 +350,8 @@ with t1:
 
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
-                    {"role": "system", "content": f"ESTADO ACTUAL: {}"}
+                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL: {contexto_tabla}"}
                 ]
 
                 # Añadir historial reciente para que LAIA no pierda el hilo
