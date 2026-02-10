@@ -414,21 +414,28 @@ with t1:
             st.error(f"Error en el motor de LAIA: {str(e)}")
 
     # 3. Tabla y Botones GLPI
-    if st.session_state.draft:
-        st.divider()
-        st.subheader("📊 Borrador de Movimientos")
-        
-        df_editor = pd.DataFrame(st.session_state.draft)
-        cols_base = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
-                     "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
-        for c in cols_base:
-            if c not in df_editor.columns: df_editor[c] = ""
-        
-        df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
-        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="editor_v11")
-        
-        if not df_editor.equals(edited_df):
-            st.session_state.draft = edited_df.to_dict("records")
+    # 3. Tabla y Botones GLPI
+if st.session_state.draft:
+    st.divider()
+    st.subheader("📊 Borrador de Movimientos")
+    
+    # 🔒 AUTOCORRECCIÓN EN TIEMPO REAL (ANTES DE CREAR df_editor)
+    for d in st.session_state.draft:
+        proc = d.get("procesador", "")
+        gen = extraer_gen(proc)
+        if gen == "obsoleto":
+            d["estado"] = "Obsoleto / Pendiente Chatarrización"
+            d["destino"] = "CHATARRA / BAJA"
+            d["origen"] = d.get("origen", "Bodega")
+
+    df_editor = pd.DataFrame(st.session_state.draft)
+    cols_base = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
+                 "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
+    for c in cols_base:
+        if c not in df_editor.columns: df_editor[c] = ""
+    
+    df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
+    edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="editor_v11")
 
         # --- GLPI ---
         col_glpi1, col_glpi2 = st.columns([2, 1])
