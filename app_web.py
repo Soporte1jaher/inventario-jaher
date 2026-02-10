@@ -140,15 +140,19 @@ def revisar_respuesta_glpi():
     return None
 # --- 3. AYUDANTES DE IA Y APRENDIZAJE ---
 
-def extraer_json(texto):
-    """ Limpia la respuesta de la IA para obtener solo el JSON """
+def extraer_json(texto_completo):
+    """ Separa el texto hablado del bloque JSON """
     try:
-        texto = texto.replace("```json", "").replace("```", "").strip()
-        inicio = texto.find("{")
-        fin = texto.rfind("}") + 1
-        return texto[inicio:fin].strip() if inicio != -1 else ""
+        inicio = texto_completo.find("{")
+        fin = texto_completo.rfind("}") + 1
+        
+        if inicio != -1:
+            texto_hablado = texto_completo[:inicio].strip()
+            json_puro = texto_completo[inicio:fin].strip()
+            return texto_hablado, json_puro
+        return texto_completo.strip(), ""
     except:
-        return ""
+        return texto_completo.strip(), ""
 
 def aprender_leccion(error, correccion):
     """ Guarda errores previos para que la IA no los repita """
