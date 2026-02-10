@@ -442,7 +442,7 @@ with t1:
                     st.markdown(msg_laia)
 
                 # --- PASO 2: PROCESAR DATOS SI ESTÁ READY ---
-    if "items" in res_json and res_json["items"]:
+        if "items" in res_json and res_json["items"]:
             # Cambiamos .extend por asignación directa para evitar duplicados
             st.session_state.draft = res_json["items"]
             
