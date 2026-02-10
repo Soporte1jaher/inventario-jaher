@@ -336,14 +336,15 @@ with t1:
             st.markdown(m["content"])
 
     # B. Entrada de usuario
-    if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+  if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+    # Todo lo que sigue abajo tiene que tener al menos 2 o 4 espacios de margen
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
-      st.markdown(prompt)
+        st.markdown(prompt)
 
-    # C. Bloque Seguro de Procesamiento
-    try: # <--- Aquí empieza el bloque que daba error
+    try:
       with st.spinner("LAIA auditando información..."):
+        # Preparar contexto
         lecciones, _ = obtener_github(FILE_LECCIONES)
         memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
         contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
@@ -353,10 +354,12 @@ with t1:
           {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
           {"role": "system", "content": f"ESTADO ACTUAL: {}"}
         ]
-        
+
+        # Añadir historial reciente
         for m in st.session_state.messages[-10:]:
           mensajes_api.append(m)
 
+        # Llamada a OpenAI
         response = client.chat.completions.create(
           model="gpt-4o-mini",
           messages=mensajes_api,
@@ -373,30 +376,29 @@ with t1:
         except:
             res_json = {}
 
-        # Unir mensaje de LAIA
+        # Unir mensaje de LAIA (Voz interna y externa)
         voz_interna = res_json.get("missing_info", "")
         msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
-        if not msg_laia: msg_laia = "Datos procesados."
+        if not msg_laia: msg_laia = "Instrucción procesada."
 
-        # Mostrar mensaje
+        # Mostrar mensaje de LAIA en el chat
         st.session_state.messages.append({"role": "assistant", "content": msg_laia})
         with st.chat_message("assistant"):
           st.markdown(msg_laia)
 
-        # Actualizar tabla
+        # Actualizar tabla de borrador
         if "items" in res_json and res_json["items"]:
           st.session_state.draft = res_json["items"]
           st.session_state.status = res_json.get("status", "QUESTION")
 
           if st.session_state.status == "READY":
-            st.success("✅ Listo para guardar.")
+            st.success("✅ Datos validados por LAIA.")
           
           time.sleep(1)
           st.rerun()
 
-    except Exception as e: # <--- Este es el block que faltaba
-      st.error(f"Error crítico: {str(e)}")
-
+    except Exception as e:
+      st.error(f"Error en el motor de auditoría: {str(e)}")
 
     # 3. Tabla y Botones GLPI
     if st.session_state.draft:
