@@ -304,9 +304,8 @@ Para CPUs, laptops y servidores:
 - Sin estos datos → status QUESTION
 
 Clasificación por procesador (inferida automáticamente):
-- ≤ 8va Gen Intel o equivalentes antiguos → Obsoleto
+- ≤ 9na Gen Intel o equivalentes antiguos → estado Dañado destino dañados
 - Modelos muy antiguos (Core 2, Pentium, Celeron viejos) → Dañado u Obsoleto
-- 9na Gen → Límite operativo (decide según contexto)
 - ≥ 10ma Gen → Vigente
 
 Optimización:
