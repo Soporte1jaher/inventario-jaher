@@ -23,7 +23,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CREDENCIALES
+# 2. CREDENCIALEs
 # ==========================================
 try:
     API_KEY = st.secrets["GPT_API_KEY"]
@@ -299,7 +299,7 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
 ## FORMATO DE SALIDA
 
 Devuelve SIEMPRE JSON.
-Puedes escribir una breve frase técnica antes del JSON y también usar el campo "missing_info" dentro del JSON para detallar lo que falta.
+Puedes escribir una breve frase técnica antes del JSON pero no puedes dar detalles de todo lo que entendiste, eso queda en ti y también usar el campo "missing_info" dentro del JSON para detallar lo que falta.
 REGLA DE VOZ: No listes datos que el usuario YA ingresó. En 'missing_info' solo menciona lo que realmente falta para que el status sea READY.
 
 {
