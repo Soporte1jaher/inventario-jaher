@@ -79,10 +79,12 @@ t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"
 # TAB 1 — CHAT
 # =================================================
 with t1:
+    # A. Mostrar historial de mensajes
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
 
+    # B. Entrada de usuario
     if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -90,16 +92,14 @@ with t1:
 
         try:
             with st.spinner("LAIA auditando información..."):
-                # Obtener contexto de lecciones
                 lecciones, _ = obtener_github(FILE_LECCIONES)
                 memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
                 contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
 
-                # Configurar mensajes para la API
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"}, # <--- Ahora sí incluye la variable
-                    {"role": "system", "content": f"ESTADO ACTUAL: {}"}     # <--- Ahora sí incluye la variable
+                    {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+                    {"role": "system", "content": f"ESTADO ACTUAL: {contexto_tabla}"}
                 ]
 
                 for m in st.session_state.messages[-10:]:
@@ -113,104 +113,155 @@ with t1:
 
                 raw_content = response.choices[0].message.content
                 texto_fuera, res_txt = extraer_json(raw_content)
-                
                 try:
                     res_json = json.loads(res_txt) if res_txt else {}
                 except:
                     res_json = {}
 
-                msg_laia = texto_fuera if texto_fuera else "Instrucción procesada."
+                voz_interna = res_json.get("missing_info", "")
+                msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
+                if not msg_laia: msg_laia = "Instrucción técnica procesada."
+
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
-                # Lógica de Fusión del Draft
                 if "items" in res_json and res_json["items"]:
                     nuevos_items = res_json["items"]
+            
+            # Si el borrador está vacío, simplemente lo llenamos
                     if not st.session_state.draft:
-                        st.session_state.draft = nuevos_items
-                    else:
-                        # Usar serie/modelo/equipo como llave única
+                      st.session_state.draft = nuevos_items
+                else:
+                # LÓGICA DE FUSIÓN: 
+                # Creamos un diccionario usando la 'serie' como clave para actualizar
+                # Si el item no tiene serie, lo agregamos como nuevo
                         dict_actual = { (i.get('serie') or i.get('modelo') or i.get('equipo')): i for i in st.session_state.draft }
+                
                         for item in nuevos_items:
-                            key = item.get('serie') or item.get('modelo') or item.get('equipo')
-                            dict_actual[key] = item
-                        st.session_state.draft = list(dict_actual.values())
-                    
-                    st.session_state.status = res_json.get("status", "QUESTION")
-                    if st.session_state.status == "READY":
-                        st.success("✅ Datos auditados. Listo para guardar.")
-                        time.sleep(1)
-                        st.rerun()
-                        
+                         key = item.get('serie') or item.get('modelo') or item.get('equipo')
+                         dict_actual[key] = item # Esto actualiza si existe o agrega si es nuevo
+                
+                         st.session_state.draft = list(dict_actual.values())
+        
+                         st.session_state.status = res_json.get("status", "QUESTION")
+            
+                         if st.session_state.status == "READY":
+                          st.success("✅ Datos auditados. Listo para guardar.")
+            
+                          time.sleep(1)
+                          st.rerun()
         except Exception as e:
             st.error(f"Error en el motor de LAIA: {str(e)}")
 
-    # 3. Tabla de Edición
+    # 3. Tabla y Botones GLPI
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Borrador de Movimientos")
         
-        # Autocorrección de obsolescencia
+        # 🔒 AUTOCORRECCIÓN EN TIEMPO REAL (ANTES DE CREAR df_editor)
         for d in st.session_state.draft:
-            gen = extraer_gen(d.get("procesador", ""))
+            proc = d.get("procesador", "")
+            gen = extraer_gen(proc)
             if gen == "obsoleto":
                 d["estado"] = "Obsoleto / Pendiente Chatarrización"
                 d["destino"] = "CHATARRA / BAJA"
+                d["origen"] = d.get("origen", "Bodega")
 
         df_editor = pd.DataFrame(st.session_state.draft)
         cols_base = ["categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
                      "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
-        
-        # Asegurar que todas las columnas existan
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
         
         df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
-        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="editor_v1")
+        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="editor_v11")
 
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-        # Botones GLPI
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
+        # --- GLPI ---
+        col_glpi1, col_glpi2 = st.columns([2, 1])
+        with col_glpi1:
             if st.button("🔍 SOLICITAR BÚSQUEDA EN OFICINA"):
-                serie_v = next((i.get('serie') for i in st.session_state.draft if i.get('serie') and i.get('serie') != "N/A"), None)
-                if serie_v and solicitar_busqueda_glpi(serie_v):
-                    st.toast(f"Búsqueda iniciada para: {serie_v}", icon="📡")
+                serie_valida = next((item.get('serie') for item in st.session_state.draft if item.get('serie') and item.get('serie') != "N/A"), None)
+                if serie_valida:
+                    if solicitar_busqueda_glpi(serie_valida):
+                        st.toast(f"Pedido enviado para serie {serie_valida}", icon="📡")
+                        time.sleep(10)
+                        st.rerun()
+                else:
+                    st.warning("⚠️ No hay una serie válida para buscar.")
         
-        with col_g2:
+        with col_glpi2:
             if st.button("🔄 REVISAR Y AUTORELLENAR"):
                 res_glpi = revisar_respuesta_glpi()
                 if res_glpi and res_glpi.get("estado") == "completado":
-                    # Lógica de actualización de draft... (tu código original aquí está bien)
-                    st.success("¡Datos cargados!")
-                    st.rerun()
-
-        # Botones de Acción Final
-        st.divider()
-        c1, c2 = st.columns([1, 4])
-        with c1:
-            forzar = st.checkbox("🔓 Forzar")
-        with c2:
-            if st.session_state.status == "READY" or forzar:
-                if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
-                    # Timestamp
-                    ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    for d in st.session_state.draft: d["fecha_registro"] = ahora
-                    
-                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
-                        st.success("✅ ¡Guardado!")
-                        st.session_state.draft = []
-                        st.session_state.messages = []
-                        st.session_state.status = "NEW"
+                    specs_oficina = res_glpi.get("specs", {})
+                    serie_buscada = res_glpi.get("serie")
+                    encontrado = False
+                    nuevo_borrador = []
+                    for item in st.session_state.draft:
+                        if item.get("serie") == serie_buscada:
+                            item["marca"] = specs_oficina.get("marca", item["marca"])
+                            item["modelo"] = specs_oficina.get("modelo", item["modelo"])
+                            item["ram"] = specs_oficina.get("ram", item["ram"])
+                            item["disco"] = specs_oficina.get("disco", item["disco"])
+                            item["procesador"] = specs_oficina.get("procesador", item["procesador"])
+                            item["reporte"] = specs_oficina.get("reporte", item["reporte"])
+                            encontrado = True
+                        nuevo_borrador.append(item)
+                    if encontrado:
+                        st.session_state.draft = nuevo_borrador
+                        st.success(f"✨ ¡Datos de serie {serie_buscada} cargados en la tabla!")
                         time.sleep(1)
                         st.rerun()
-            else:
-                st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
+                else:
+                    st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
+        # 4. Botones de acción
+    c1, c2 = st.columns([1, 4]) # Aquí creamos c1 y c2
 
+    with c1:
+        # 1. Creamos la casilla para forzar el guardado
+        forzar = st.checkbox("🔓 Forzar")
+
+    with c2:
+        # 2. El botón se activa si la IA dice READY o si marcas "Forzar"
+        if st.session_state.status == "READY" or forzar:
+            if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
+                
+                # --- Lógica de chatarrización ---
+                for d in st.session_state.draft:
+                    proc = d.get("procesador", "")
+                    if extraer_gen(proc) == "obsoleto":
+                        d["estado"] = "Obsoleto / Pendiente Chatarrización"
+                        d["destino"] = "CHATARRA / BAJA"
+                        d["origen"] = d.get("origen", "Bodega")
+
+                # --- Sellar con fecha ---
+                ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                for d in st.session_state.draft: 
+                    d["fecha_registro"] = ahora
+                
+                # --- Guardar ---
+                if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
+                    st.success("✅ ¡Guardado con éxito!")
+                    st.session_state.draft = []
+                    st.session_state.messages = []
+                    st.session_state.status = "NEW"
+                    time.sleep(1)
+                    st.rerun()
+        else:
+            # Botón bloqueado si no hay nada
+            st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
+
+    # Botón de descartar (puedes ponerlo abajo o en otra columna)
+    if st.button("🗑️ Descartar Todo"):
+        st.session_state.draft = []
+        st.session_state.messages = []
+        st.session_state.status = "NEW"
+        st.rerun()
 
 with t2:
   st.subheader("📊 Control de Stock e Historial")
