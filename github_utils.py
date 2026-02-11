@@ -4,7 +4,7 @@ import base64
 import json
 import time
 
-# Constantes de GitHub
+# Credenciales y Configuración de GitHub
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
@@ -51,7 +51,7 @@ def enviar_github(archivo, datos_nuevos, mensaje="Actualización LAIA"):
     return resp.status_code in [200, 201]
 
 def enviar_github_directo(archivo, datos, mensaje="LAIA Update"):
-    """ ESTA FUNCIÓN SOBREESCRIBE EL ARCHIVO """
+    """ ESTA FUNCIÓN SOBREESCRIBE EL ARCHIVO (Para pedidos y configuración) """
     _, sha = obtener_github(archivo)
     payload = {
         "message": mensaje,
