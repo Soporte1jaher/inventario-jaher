@@ -1,5 +1,6 @@
 {
-    "serie_a_buscar": "099209",
-    "info": "",
-    "estado": "pendiente"
+    "serie": "099209",
+    "info": "OK",
+    "specs": {},
+    "estado": "completado"
 }
