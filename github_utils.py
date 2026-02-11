@@ -11,7 +11,7 @@ HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Cache-Control": "no-cache"
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{}/{}/contents/{}?t={}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}?t={timestamp}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code == 200:
@@ -24,7 +24,8 @@ def obtener_github(archivo):
 
 def enviar_github(archivo, datos_nuevos, mensaje="LAIA Update"):
     contenido_actual, sha = obtener_github(archivo)
-    if contenido_actual is None: contenido_actual = []
+    if contenido_actual is None:
+        contenido_actual = []
     if isinstance(datos_nuevos, list):
         contenido_actual.extend(datos_nuevos)
     else:
@@ -34,7 +35,7 @@ def enviar_github(archivo, datos_nuevos, mensaje="LAIA Update"):
         "content": base64.b64encode(json.dumps(contenido_actual, indent=4).encode()).decode(),
         "sha": sha if sha else None
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     resp = requests.put(url, headers=HEADERS, json=payload)
     return resp.status_code in [200, 201]
 
@@ -45,6 +46,7 @@ def enviar_github_directo(archivo, datos, mensaje="LAIA Direct"):
         "content": base64.b64encode(json.dumps(datos, indent=4).encode()).decode(),
         "sha": sha if sha else None
     }
-    url = f"https://api.github.com/repos/{}/{}/contents/{}"
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{archivo}"
     resp = requests.put(url, headers=HEADERS, json=payload)
     return resp.status_code in [200, 201]
+
