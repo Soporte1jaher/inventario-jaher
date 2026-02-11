@@ -506,7 +506,7 @@ with t1:
                     st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
         # 4. Botones de acción
-        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
     
     with col_btn1:
         # Ahora col_btn1 ya existe, por lo que no dará NameError
