@@ -1,1 +1,24 @@
-[]
+[
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Enviado",
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 9,
+        "estado": "Bueno",
+        "procesador": "N/A",
+        "ram": "N/A",
+        "disco": "N/A",
+        "reporte": "N/A",
+        "origen": "Bodega",
+        "destino": "Pedernales",
+        "pasillo": "N/A",
+        "estante": "N/A",
+        "repisa": "N/A",
+        "guia": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-02-11 11:25"
+    }
+]
