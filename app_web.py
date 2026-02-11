@@ -677,7 +677,7 @@ with t3:
             st.error("❌ No se pudo enviar la orden a GitHub.")
 
       except Exception as e:
-        st.error(f"Error en el motor de limpieza: {}")
+        st.error(f"Error en el motor de limpieza: {e}")
     else:
       st.warning("Escribe una instrucción antes de presionar el botón.")
 
