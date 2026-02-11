@@ -1,7 +1,11 @@
-import sys
 import os
+import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# 🔥 Forzar root del proyecto al PYTHONPATH
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 import streamlit as st
 from config.settings import CUSTOM_CSS
 from ui.chat_tab import ChatTab
