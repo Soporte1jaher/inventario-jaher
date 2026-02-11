@@ -21,39 +21,53 @@ class GitHubHandler:
     # =====================================================
 
     def _get_file(self, path):
-        url = f"{self.base_url}/{path}?ref={self.branch}"
-        r = requests.get(url, headers=self.headers)
+        try:
+            url = f"{self.base_url}/{path}?ref={self.branch}"
+            r = requests.get(url, headers=self.headers)
 
-        if r.status_code == 200:
-            data = r.json()
-            content = base64.b64decode(data["content"]).decode("utf-8")
-            return json.loads(content), data["sha"]
+            if r.status_code == 200:
+                data = r.json()
+                content = base64.b64decode(data["content"]).decode("utf-8")
+                return json.loads(content), data.get("sha")
 
-        return [], None
+            return [], None
+
+        except Exception as e:
+            st.error(f"Error leyendo {path}: {str(e)}")
+            return [], None
 
     def _update_file(self, path, content, sha=None, message="Update file"):
-        url = f"{self.base_url}/{path}"
+        try:
+            url = f"{self.base_url}/{path}"
 
-        encoded = base64.b64encode(
-            json.dumps(content, indent=2).encode()
-        ).decode()
+            encoded = base64.b64encode(
+                json.dumps(content, indent=2).encode()
+            ).decode()
 
-        payload = {
-            "message": message,
-            "content": encoded,
-            "branch": self.branch
-        }
+            payload = {
+                "message": message,
+                "content": encoded,
+                "branch": self.branch
+            }
 
-        if sha:
-            payload["sha"] = sha
+            if sha:
+                payload["sha"] = sha
 
-        r = requests.put(url, headers=self.headers, json=payload)
+            r = requests.put(url, headers=self.headers, json=payload)
 
-        return r.status_code in [200, 201]
+            return r.status_code in [200, 201]
+
+        except Exception as e:
+            st.error(f"Error actualizando {path}: {str(e)}")
+            return False
 
     # =====================================================
     # HISTORICO
     # =====================================================
+
+    def obtener_historico(self):
+        data, _ = self._get_file("historico.json")
+        return data if isinstance(data, list) else []
 
     def guardar_borrador(self, nuevos_items):
         historico, sha = self._get_file("historico.json")
@@ -96,4 +110,4 @@ class GitHubHandler:
 
     def revisar_respuesta_glpi(self):
         data, _ = self._get_file("buzon.json")
-        return data
+        return data if isinstance(data, dict) else {}
