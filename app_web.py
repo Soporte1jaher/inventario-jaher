@@ -305,7 +305,7 @@ Ejemplo 2: si el usuario especifica que le llego un periferico delt tipo "impres
  - "envio a [Lugar]": origen = "Bodega", destino = "[Lugar]", tipo = "Enviado".
  - "me llego": destino = "Bodega", tipo = "Recibido". (Exige fecha).
  - Solo sugiere SSD si es ≥ 10ma Gen Y el disco dice "HDD".
-
+REGLA: Los teclados, mouses, cables e impresoras SIEMPRE pertenecen a la categoría 'Periferico' y su destino inicial por defecto es 'Stock'.
 5) OVERRIDE (CRÍTICO):
  - Si el usuario dice "enviar así", "guarda eso", "no importa" o "así está bien", DEBES:
    a) Cambiar el status a "READY" obligatoriamente.
@@ -458,7 +458,7 @@ with t1:
                 d["origen"] = d.get("origen", "Bodega")
 
         df_editor = pd.DataFrame(st.session_state.draft)
-        cols_base = ["equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
+        cols_base = ["categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
                      "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
         for c in cols_base:
             if c not in df_editor.columns: df_editor[c] = ""
