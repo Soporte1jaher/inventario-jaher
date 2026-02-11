@@ -172,20 +172,23 @@ def aprender_leccion(error, correccion):
 # UTILIDAD CPU (CLASIFICACIÓN GENERACIONAL)
 # ==========================================
 def extraer_gen(proc):
-    if not proc: return 'desconocido'
+    if not proc or str(proc).strip().lower() in ['n/a', '', 'nan']: 
+        return 'moderno' # Si no sabemos, lo tratamos como moderno para que no desaparezca
+    
     p = str(proc).lower()
     
-    # Lista de términos para equipos antiguos (4ta hasta 9na generación)
+    # Lista de términos para equipos antiguos
     obsoletos = ['4th', '5th', '6th', '7th', '8th', '9th', '4ta', '5ta', '6ta', '7ta', '8va', '9na', 'gen 8', 'gen 9']
     if any(x in p for x in obsoletos):
         return 'obsoleto'
     
-    # Lista de términos para equipos modernos (10ma en adelante)
-    modernos = ['10th', '11th', '12th', '13th', '14th', '10ma', '11va', '12va', '13va', '14va', 'gen 10']
+    # Si detecta 10, 11, 12, 13, 14 es moderno
+    modernos = ['10th', '11th', '12th', '13th', '14th', '10ma', '11va', '12va', '13va', '14va', 'gen 10', 'gen 11', 'gen 12']
     if any(x in p for x in modernos):
         return 'moderno'
     
-    return 'desconocido'
+    return 'moderno' # Por defecto, si hay algo escrito y no es obsoleto, es moderno
+
 # ==========================================
 # 4. MOTOR DE STOCK
 # ==========================================
