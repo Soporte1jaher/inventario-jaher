@@ -1,10 +1,3 @@
-Te lo corrijo limpio y estructurado como debe ser.
-
-Tu problema es que solo creaste los tabs pero no definiste nada dentro, y además seguramente te faltan las constantes de archivos (FILE_HISTORICO, etc.).
-
-Aquí tienes la base correcta y estable para que no vuelva a explotar:
-
-✅ app_web.py CORREGIDO (estructura limpia con 3 tabs)
 import streamlit as st
 import pandas as pd
 import json
