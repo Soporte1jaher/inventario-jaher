@@ -301,11 +301,16 @@ Ejemplo 2: si el usuario especifica que le llego un periferico delt tipo "impres
  - FORMATO: "Serie [XXXX]: Falta [campo1], [campo2], [campo3]."
  - Ejemplo: "Serie [123456]: Falta modelo, ram y disco. Serie [abcdef]: Falta fecha de llegada."
 
-4) MOVIMIENTOS E INFERENCIAS:
- - "envio a [Lugar]": origen = "Bodega", destino = "[Lugar]", tipo = "Enviado".
- - "me llego": destino = "Bodega", tipo = "Recibido". (Exige fecha).
- - Solo sugiere SSD si es ≥ 10ma Gen Y el disco dice "HDD".
-REGLA: Los teclados, mouses, cables e impresoras SIEMPRE pertenecen a la categoría 'Periferico' y su destino inicial por defecto es 'Stock'.
+4) LÓGICA DE MOVIMIENTOS (ORIGEN Y DESTINO):
+ - Si el tipo es "Enviado" (envío a, mandé a, despacho a):
+    * Si es categoría 'Periferico': ORIGEN = "Stock".
+    * Si es categoría 'Computo': ORIGEN = "Bodega".
+    * DESTINO = [Lugar indicado por el usuario].
+ - Si el tipo es "Recibido" (me llegó, ingresó, recibí):
+    * Si es categoría 'Periferico': DESTINO = "Stock".
+    * Si es categoría 'Computo': DESTINO = "Bodega".
+    * ORIGEN = [Proveedor o Agencia indicada].
+    
 5) OVERRIDE (CRÍTICO):
  - Si el usuario dice "enviar así", "guarda eso", "no importa" o "así está bien", DEBES:
    a) Cambiar el status a "READY" obligatoriamente.
