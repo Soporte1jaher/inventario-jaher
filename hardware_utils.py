@@ -1,6 +1,6 @@
 def extraer_gen(proc):
     if not proc or str(proc).strip().lower() in ['n/a', '', 'nan']: 
-        return 'moderno' 
+        return 'moderno' # Si no sabemos, lo tratamos como moderno para que no desaparezca
     
     p = str(proc).lower()
     
@@ -14,4 +14,4 @@ def extraer_gen(proc):
     if any(x in p for x in modernos):
         return 'moderno'
     
-    return 'moderno' 
+    return 'moderno' # Por defecto, si hay algo escrito y no es obsoleto, es moderno
