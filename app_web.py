@@ -506,17 +506,18 @@ with t1:
                     st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
         # 4. Botones de acción
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
-    
-    with col_btn1:
-        # Aquí ya no dará NameError porque col_btn1 se creó arriba
+    c1, c2 = st.columns([1, 4]) # Aquí creamos c1 y c2
+
+    with c1:
+        # 1. Creamos la casilla para forzar el guardado
         forzar = st.checkbox("🔓 Forzar")
 
-    with col_btn2:
-        # Se activa si la IA dice READY o si marcas el checkbox de forzar
+    with c2:
+        # 2. El botón se activa si la IA dice READY o si marcas "Forzar"
         if st.session_state.status == "READY" or forzar:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
-                # Aplicamos lógica de chatarrización por CPU
+                
+                # --- Lógica de chatarrización ---
                 for d in st.session_state.draft:
                     proc = d.get("procesador", "")
                     if extraer_gen(proc) == "obsoleto":
@@ -524,12 +525,12 @@ with t1:
                         d["destino"] = "CHATARRA / BAJA"
                         d["origen"] = d.get("origen", "Bodega")
 
-                # Sellar con fecha y hora
+                # --- Sellar con fecha ---
                 ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 for d in st.session_state.draft: 
                     d["fecha_registro"] = ahora
                 
-                # Intentar enviar a GitHub
+                # --- Guardar ---
                 if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
                     st.success("✅ ¡Guardado con éxito!")
                     st.session_state.draft = []
@@ -537,18 +538,16 @@ with t1:
                     st.session_state.status = "NEW"
                     time.sleep(1)
                     st.rerun()
-                else:
-                    st.error("❌ Error al guardar en GitHub.")
         else:
-            # Botón bloqueado si no hay READY ni Forzar
+            # Botón bloqueado si no hay nada
             st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
 
-    with col_btn3:
-        if st.button("🗑️ Descartar Todo", use_container_width=True):
-            st.session_state.draft = []
-            st.session_state.messages = []
-            st.session_state.status = "NEW"
-            st.rerun()
+    # Botón de descartar (puedes ponerlo abajo o en otra columna)
+    if st.button("🗑️ Descartar Todo"):
+        st.session_state.draft = []
+        st.session_state.messages = []
+        st.session_state.status = "NEW"
+        st.rerun()
 
 
 with t2:
