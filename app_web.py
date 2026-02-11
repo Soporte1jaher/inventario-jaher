@@ -509,7 +509,7 @@ with t1:
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
     
     with col_btn1:
-        # Ahora col_btn1 ya existe, por lo que no dará NameError
+        # Aquí ya no dará NameError porque col_btn1 se creó arriba
         forzar = st.checkbox("🔓 Forzar")
 
     with col_btn2:
@@ -524,7 +524,7 @@ with t1:
                         d["destino"] = "CHATARRA / BAJA"
                         d["origen"] = d.get("origen", "Bodega")
 
-                # Sellar con fecha y hora (Asegúrate de tener importado datetime)
+                # Sellar con fecha y hora
                 ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 for d in st.session_state.draft: 
                     d["fecha_registro"] = ahora
