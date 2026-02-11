@@ -706,7 +706,7 @@ def conectar_glpi_jaher():
 
   try:
     # 1. Obtener Token CSRF para el Login
-    login_page = session.get(f"{}/front/login.php", timeout=10)
+    login_page = session.get(f"{base_url}/front/login.php", timeout=10)
     import re
     csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
     csrf_token = csrf_match.group(1) if csrf_match else ""
