@@ -303,8 +303,12 @@ Ejemplo 2: si el usuario especifica que le llego un periferico delt tipo "impres
  - "me llego": destino = "Bodega", tipo = "Recibido". (Exige fecha).
  - Solo sugiere SSD si es ≥ 10ma Gen Y el disco dice "HDD".
 
-5) OVERRIDE:
- - Si el usuario dice "enviar así" o "rellena N/A", pon status = READY y completa con "N/A".
+5) OVERRIDE (CRÍTICO):
+ - Si el usuario dice "enviar así", "guarda eso", "no importa" o "así está bien", DEBES:
+   a) Cambiar el status a "READY" obligatoriamente.
+   b) Rellenar todos los campos vacíos con "N/A".
+   c) No volver a preguntar por faltantes.
+ - Esta orden del usuario tiene más peso que cualquier regla técnica.
 
 6) NORMALIZACIÓN DE PROCESADORES (REGLA DE ORO):
 - Si el usuario dice "i5 de 8va", DEBES escribir en el JSON: "Intel Core i5 - 8th Gen". 
@@ -502,28 +506,35 @@ with t1:
                     st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
         # 4. Botones de acción
-        c1, c2 = st.columns([1, 4])
+        c1, c2, c3 = st.columns([1, 1, 3]) # Añadimos una columna más
         with c1:
-            if st.session_state.status == "READY":
-                if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
-                    # 🔒 AUTOCORRECCIÓN POR CPU OBSOLETA
-                    for d in st.session_state.draft:
-                        proc = d.get("procesador", "")
-                        gen = extraer_gen(proc)
-                        if gen == "obsoleto":
-                            d["estado"] = "Obsoleto / Pendiente Chatarrización"
-                            d["destino"] = "CHATARRA / BAJA"
-                            d["origen"] = d.get("origen", "Bodega")
-
-                    hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                    for d in st.session_state.draft: d["fecha_registro"] = hora_ec
-                    if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
-                        st.success("✅ Guardado.")
-                        st.session_state.draft = []
-                        st.session_state.messages = []
-                        st.rerun()
-            #else:
-               # st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, help="Completa todos los campos para guardar.")
+        # Si la IA dice READY, o si el usuario marca el checkbox de forzar
+        forzar_guardado = st.checkbox("Forzar desbloqueo", help="Marca esto si la IA no te deja guardar")
+        
+        if st.session_state.status == "READY" or forzar_guardado:
+            if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
+                # ... (aquí va todo tu código de guardado que ya tienes) ...
+                # Asegúrate de mantener tu lógica de "hora_ec" y "enviar_github"
+                
+                # REPETIR TU LÓGICA DE GUARDADO AQUÍ:
+                for d in st.session_state.draft:
+                    proc = d.get("procesador", "")
+                    gen = extraer_gen(proc)
+                    if gen == "obsoleto":
+                        d["estado"] = "Obsoleto / Pendiente Chatarrización"
+                        d["destino"] = "CHATARRA / BAJA"
+                
+                hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                for d in st.session_state.draft: d["fecha_registro"] = hora_ec
+                
+                if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
+                    st.success("✅ Guardado.")
+                    st.session_state.draft = []
+                    st.session_state.messages = []
+                    st.session_state.status = "NEW" # Resetear estado
+                    st.rerun()
+        else:
+            st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, help="Completa los campos o usa 'Forzar desbloqueo'")
         with c2:
             if st.button("🗑️ Descartar Todo"):
                 st.session_state.draft = []
