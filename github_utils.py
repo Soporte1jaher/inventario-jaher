@@ -4,10 +4,10 @@ import base64
 import json
 import time
 
-# Credenciales y constantes de GitHub
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+# Constantes de GitHub
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 HEADERS = {"Authorization": "token " + GITHUB_TOKEN, "Cache-Control": "no-cache"}
 
 def obtener_github(archivo):
