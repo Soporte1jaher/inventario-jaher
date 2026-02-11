@@ -408,16 +408,16 @@ with t1:
                     st.markdown(msg_laia)
 
                 if "items" in res_json and res_json["items"]:
-                  nuevos_items = res_json["items"]
+                    nuevos_items = res_json["items"]
             
             # Si el borrador está vacío, simplemente lo llenamos
                     if not st.session_state.draft:
                       st.session_state.draft = nuevos_items
-                      else:
+                else:
                 # LÓGICA DE FUSIÓN: 
                 # Creamos un diccionario usando la 'serie' como clave para actualizar
                 # Si el item no tiene serie, lo agregamos como nuevo
-                       dict_actual = { (i.get('serie') or i.get('modelo') or i.get('equipo')): i for i in st.session_state.draft }
+                        dict_actual = { (i.get('serie') or i.get('modelo') or i.get('equipo')): i for i in st.session_state.draft }
                 
                         for item in nuevos_items:
                          key = item.get('serie') or item.get('modelo') or item.get('equipo')
