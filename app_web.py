@@ -1,47 +1,45 @@
 import streamlit as st
-from openai import OpenAI
-import json
 import pandas as pd
 import datetime
 import time
-import io
+import json
+from openai import OpenAI
 
-# Importaciones de los otros archivos
-from github_utils import *
-from hardware_utils import *
-from ai_logic import *
-from glpi_utils import *
+from github_utils import obtener_github, enviar_github
+from inventory_engine import calcular_stock_web
+from hardware_utils import extraer_gen
+from ai_logic import procesar_prompt
+from glpi_utils import solicitar_busqueda_glpi, revisar_respuesta_glpi
 
-# CONFIGURACIÓN
-st.set_page_config(page_title="LAIA v91.2", page_icon="🧠", layout="wide")
+# ==========================================
+# CONFIG
+# ==========================================
 
-# Estilos simples para evitar errores de sintaxis
-st.markdown("""
-<style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
-    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="LAIA v91.2", layout="wide")
 
-# CREDENCIALES
 try:
     API_KEY = st.secrets["GPT_API_KEY"]
     client = OpenAI(api_key=API_KEY)
-    FILE_BUZON, FILE_HISTORICO, FILE_LECCIONES = "buzon.json", "historico.json", "lecciones.json"
-except Exception as e:
-    st.error(f"❌ Error de conexión GitHub: {str(e)}")
+except:
+    st.error("Configura GPT_API_KEY")
     st.stop()
 
-# ESTADO DE SESIÓN
+FILE_BUZON = "buzon.json"
+FILE_HISTORICO = "historico.json"
+
+# ==========================================
+# SESSION
+# ==========================================
+
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = []
 if "status" not in st.session_state: st.session_state.status = "NEW"
 
-t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
+# ==========================================
+# TABS
+# ==========================================
 
-# ==============================
-# TAB 1 — REGISTRO Y BORRADOR
-# ==============================
+t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
     # A. Mostrar historial de mensajes
@@ -58,14 +56,8 @@ with t1:
         try:
             with st.spinner("LAIA auditando información..."):
                 lecciones, _ = obtener_github(FILE_LECCIONES)
-
-                memoria_err = "\n".join(
-                    [f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]
-                ) if lecciones else ""
-
-                contexto_tabla = json.dumps(
-                    st.session_state.draft, ensure_ascii=False
-                ) if st.session_state.draft else "[]"
+                memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
+                contexto_tabla = json.dumps(st.session_state.draft, ensure_ascii=False) if st.session_state.draft else "[]"
 
                 mensajes_api = [
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -84,7 +76,6 @@ with t1:
 
                 raw_content = response.choices[0].message.content
                 texto_fuera, res_txt = extraer_json(raw_content)
-
                 try:
                     res_json = json.loads(res_txt) if res_txt else {}
                 except:
@@ -92,49 +83,46 @@ with t1:
 
                 voz_interna = res_json.get("missing_info", "")
                 msg_laia = f"{texto_fuera}\n{voz_interna}".strip()
-
-                if not msg_laia:
-                    msg_laia = "Instrucción técnica procesada."
+                if not msg_laia: msg_laia = "Instrucción técnica procesada."
 
                 st.session_state.messages.append({"role": "assistant", "content": msg_laia})
                 with st.chat_message("assistant"):
                     st.markdown(msg_laia)
 
-                # ================= FUSIÓN DE ITEMS =================
                 if "items" in res_json and res_json["items"]:
                     nuevos_items = res_json["items"]
-
+            
+            # Si el borrador está vacío, simplemente lo llenamos
                     if not st.session_state.draft:
-                        st.session_state.draft = nuevos_items
-                    else:
-                        dict_actual = {
-                            (i.get("serie") or i.get("modelo") or i.get("equipo")): i
-                            for i in st.session_state.draft
-                        }
-
+                      st.session_state.draft = nuevos_items
+                else:
+                # LÓGICA DE FUSIÓN: 
+                # Creamos un diccionario usando la 'serie' como clave para actualizar
+                # Si el item no tiene serie, lo agregamos como nuevo
+                        dict_actual = { (i.get('serie') or i.get('modelo') or i.get('equipo')): i for i in st.session_state.draft }
+                
                         for item in nuevos_items:
-                            key = item.get("serie") or item.get("modelo") or item.get("equipo")
-                            dict_actual[key] = item
-
-                        st.session_state.draft = list(dict_actual.values())
-
-                st.session_state.status = res_json.get("status", "QUESTION")
-
-                if st.session_state.status == "READY":
-                    st.success("✅ Datos auditados. Listo para guardar.")
-                    time.sleep(1)
-                    st.rerun()
-
+                         key = item.get('serie') or item.get('modelo') or item.get('equipo')
+                         dict_actual[key] = item # Esto actualiza si existe o agrega si es nuevo
+                
+                         st.session_state.draft = list(dict_actual.values())
+        
+                         st.session_state.status = res_json.get("status", "QUESTION")
+            
+                         if st.session_state.status == "READY":
+                          st.success("✅ Datos auditados. Listo para guardar.")
+            
+                          time.sleep(1)
+                          st.rerun()
         except Exception as e:
             st.error(f"Error en el motor de LAIA: {str(e)}")
 
-    # ================= TABLA BORRADOR =================
-
+    # 3. Tabla y Botones GLPI
     if st.session_state.draft:
         st.divider()
         st.subheader("📊 Borrador de Movimientos")
-
-        # AUTOCORRECCIÓN CPU
+        
+        # 🔒 AUTOCORRECCIÓN EN TIEMPO REAL (ANTES DE CREAR df_editor)
         for d in st.session_state.draft:
             proc = d.get("procesador", "")
             gen = extraer_gen(proc)
@@ -144,55 +132,82 @@ with t1:
                 d["origen"] = d.get("origen", "Bodega")
 
         df_editor = pd.DataFrame(st.session_state.draft)
-
-        cols_base = [
-            "categoria_item", "equipo", "marca", "modelo", "serie",
-            "cantidad", "estado", "tipo", "origen", "destino",
-            "pasillo", "estante", "repisa", "guia", "fecha_llegada",
-            "ram", "disco", "procesador", "reporte"
-        ]
-
+        cols_base = ["categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado", "tipo", "origen", "destino",
+                     "pasillo", "estante", "repisa", "guia", "fecha_llegada", "ram", "disco", "procesador", "reporte"]
         for c in cols_base:
-            if c not in df_editor.columns:
-                df_editor[c] = ""
-
+            if c not in df_editor.columns: df_editor[c] = ""
+        
         df_editor = df_editor.reindex(columns=cols_base).fillna("N/A")
-
-        edited_df = st.data_editor(
-            df_editor,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="editor_v11"
-        )
+        edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="editor_v11")
 
         if not df_editor.equals(edited_df):
             st.session_state.draft = edited_df.to_dict("records")
 
-    # ================= BOTONES GUARDADO =================
+        # --- GLPI ---
+        col_glpi1, col_glpi2 = st.columns([2, 1])
+        with col_glpi1:
+            if st.button("🔍 SOLICITAR BÚSQUEDA EN OFICINA"):
+                serie_valida = next((item.get('serie') for item in st.session_state.draft if item.get('serie') and item.get('serie') != "N/A"), None)
+                if serie_valida:
+                    if solicitar_busqueda_glpi(serie_valida):
+                        st.toast(f"Pedido enviado para serie {serie_valida}", icon="📡")
+                        time.sleep(10)
+                        st.rerun()
+                else:
+                    st.warning("⚠️ No hay una serie válida para buscar.")
+        
+        with col_glpi2:
+            if st.button("🔄 REVISAR Y AUTORELLENAR"):
+                res_glpi = revisar_respuesta_glpi()
+                if res_glpi and res_glpi.get("estado") == "completado":
+                    specs_oficina = res_glpi.get("specs", {})
+                    serie_buscada = res_glpi.get("serie")
+                    encontrado = False
+                    nuevo_borrador = []
+                    for item in st.session_state.draft:
+                        if item.get("serie") == serie_buscada:
+                            item["marca"] = specs_oficina.get("marca", item["marca"])
+                            item["modelo"] = specs_oficina.get("modelo", item["modelo"])
+                            item["ram"] = specs_oficina.get("ram", item["ram"])
+                            item["disco"] = specs_oficina.get("disco", item["disco"])
+                            item["procesador"] = specs_oficina.get("procesador", item["procesador"])
+                            item["reporte"] = specs_oficina.get("reporte", item["reporte"])
+                            encontrado = True
+                        nuevo_borrador.append(item)
+                    if encontrado:
+                        st.session_state.draft = nuevo_borrador
+                        st.success(f"✨ ¡Datos de serie {serie_buscada} cargados en la tabla!")
+                        time.sleep(1)
+                        st.rerun()
+                else:
+                    st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
-    c1, c2 = st.columns([1, 4])
+        # 4. Botones de acción
+    c1, c2 = st.columns([1, 4]) # Aquí creamos c1 y c2
 
     with c1:
+        # 1. Creamos la casilla para forzar el guardado
         forzar = st.checkbox("🔓 Forzar")
 
     with c2:
+        # 2. El botón se activa si la IA dice READY o si marcas "Forzar"
         if st.session_state.status == "READY" or forzar:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
-
+                
+                # --- Lógica de chatarrización ---
                 for d in st.session_state.draft:
-                    if extraer_gen(d.get("procesador", "")) == "obsoleto":
+                    proc = d.get("procesador", "")
+                    if extraer_gen(proc) == "obsoleto":
                         d["estado"] = "Obsoleto / Pendiente Chatarrización"
                         d["destino"] = "CHATARRA / BAJA"
                         d["origen"] = d.get("origen", "Bodega")
 
-                ahora = (
-                    datetime.datetime.now(datetime.timezone.utc)
-                    - datetime.timedelta(hours=5)
-                ).strftime("%Y-%m-%d %H:%M")
-
-                for d in st.session_state.draft:
+                # --- Sellar con fecha ---
+                ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                for d in st.session_state.draft: 
                     d["fecha_registro"] = ahora
-
+                
+                # --- Guardar ---
                 if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
                     st.success("✅ ¡Guardado con éxito!")
                     st.session_state.draft = []
@@ -201,8 +216,10 @@ with t1:
                     time.sleep(1)
                     st.rerun()
         else:
+            # Botón bloqueado si no hay nada
             st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
 
+    # Botón de descartar (puedes ponerlo abajo o en otra columna)
     if st.button("🗑️ Descartar Todo"):
         st.session_state.draft = []
         st.session_state.messages = []
@@ -210,125 +227,119 @@ with t1:
         st.rerun()
 
 
-# ==============================
-# TAB 2 — HISTORIAL Y STOCK
-# ==============================
-
 with t2:
-    st.subheader("📊 Control de Stock e Historial")
+  st.subheader("📊 Control de Stock e Historial")
+   
+  if st.button("🔄 Sincronizar Datos de GitHub"):
+    st.rerun()
 
-    if st.button("🔄 Sincronizar Datos de GitHub"):
-        st.rerun()
+  hist, _ = obtener_github(FILE_HISTORICO)
+   
+  if hist:
+    df_h_raw = pd.DataFrame(hist)
+     
+    # --- AQUÍ ES EL CAMBIO: Recibimos 4 variables ahora ---
+    st_res, bod_res, danados_res, df_h = calcular_stock_web(df_h_raw)
+     
+    # 4. Mostramos métricas
+    k1, k2 = st.columns(2)
+    total_stock = int(st_res['val'].sum()) if not st_res.empty else 0
+    k1.metric("📦 Periféricos en Stock", total_stock)
+    k2.metric("🚚 Movimientos Totales", len(df_h))
 
-    hist, _ = obtener_github(FILE_HISTORICO)
+    # --- GENERACIÓN DEL EXCEL MULTI-HOJA ---
+    import io
+    buffer = io.BytesIO()
+     
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+      # HOJA 1: Historial Completo
+      df_h.to_excel(writer, index=False, sheet_name='Enviados y Recibidos')
+       
+      # HOJA 2: Stock Saldos
+      if not st_res.empty:
+        st_res.to_excel(writer, index=False, sheet_name='Stock (Saldos)')
+       
+      # HOJA 3: BODEGA
+      if not bod_res.empty:
+        bod_res.to_excel(writer, index=False, sheet_name='BODEGA')
 
-    if hist:
-        df_h_raw = pd.DataFrame(hist)
-
-        st_res, bod_res, danados_res, df_h = calcular_stock_web(df_h_raw)
-
-        k1, k2 = st.columns(2)
-        total_stock = int(st_res["val"].sum()) if not st_res.empty else 0
-        k1.metric("📦 Periféricos en Stock", total_stock)
-        k2.metric("🚚 Movimientos Totales", len(df_h))
-
-        import io
-        buffer = io.BytesIO()
-
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            df_h.to_excel(writer, index=False, sheet_name="Enviados y Recibidos")
-
-            if not st_res.empty:
-                st_res.to_excel(writer, index=False, sheet_name="Stock (Saldos)")
-
-            if not bod_res.empty:
-                bod_res.to_excel(writer, index=False, sheet_name="BODEGA")
-
-            if not danados_res.empty:
-                danados_res.to_excel(writer, index=False, sheet_name="DAÑADOS")
-
-        st.download_button(
-            label="📥 DESCARGAR EXCEL SINCRONIZADO (4 HOJAS)",
-            data=buffer.getvalue(),
-            file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary"
-        )
-
-        st.write("### 📜 Últimos Movimientos en el Histórico")
-        st.dataframe(df_h.tail(20), use_container_width=True)
-
-
-# ==============================
-# TAB 3 — LIMPIEZA INTELIGENTE
-# ==============================
-
-with t3:
-    st.subheader("🗑️ Limpieza Inteligente del Historial")
-
-    st.markdown("""
-    Usa este panel para eliminar registros específicos mediante lenguaje natural.
-    LAIA analizará el historial para encontrar coincidencias.
-    """)
-
-    st.info("💡 Ejemplos: 'Borra lo de Latacunga', 'Elimina la serie 89238928', 'Limpia los teclados N/A'")
-
-    txt_borrar = st.text_input(
-        "¿Qué deseas eliminar?",
-        placeholder="Escribe tu instrucción aquí..."
+      # HOJA 4: DAÑADOS
+      if not danados_res.empty:
+        danados_res.to_excel(writer, index=False, sheet_name='DAÑADOS')
+     
+    st.download_button(
+      label="📥 DESCARGAR EXCEL SINCRONIZADO (4 HOJAS)",
+      data=buffer.getvalue(),
+      file_name=f"Inventario_Jaher_{datetime.datetime.now().strftime('%d_%m_%H%M')}.xlsx",
+      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      type="primary" 
     )
 
-    if st.button("🔥 BUSCAR Y GENERAR ORDEN DE BORRADO", type="secondary"):
-        if txt_borrar:
-            try:
-                with st.spinner("LAIA analizando historial..."):
+    # 5. Mostrar la tabla en la web (el historial)
+    st.write("### 📜 Últimos Movimientos en el Histórico")
+    st.dataframe(df_h.tail(20), use_container_width=True) 
+      
+with t3:
+  st.subheader("🗑️ Limpieza Inteligente del Historial")
+  st.markdown("""
+  Usa este panel para eliminar registros específicos mediante lenguaje natural. 
+  LAIA analizará el historial para encontrar coincidencias.
+  """)
+  st.info("💡 Ejemplos: 'Borra lo de Latacunga', 'Elimina la serie 89238928', 'Limpia los teclados de marca N/A'")
 
-                    hist, _ = obtener_github(FILE_HISTORICO)
-                    contexto_breve = json.dumps(hist[-40:], ensure_ascii=False) if hist else "[]"
+  txt_borrar = st.text_input("¿Qué deseas eliminar?", placeholder="Escribe tu instrucción aquí...")
 
-                    p_db = f"""
-Actúa como DBA Senior. Genera un comando de borrado en JSON.
+  if st.button("🔥 BUSCAR Y GENERAR ORDEN DE BORRADO", type="secondary"):
+    if txt_borrar:
+      try:
+        with st.spinner("LAIA analizando historial para identificar el objetivo..."):
+          # 1. Obtener contexto real del historial
+          hist, _ = obtener_github(FILE_HISTORICO)
+          # Mandamos los últimos 40 registros para que la IA vea nombres reales
+          contexto_breve = json.dumps(hist[-40:], ensure_ascii=False) if hist else "[]"
 
-COLUMNAS VÁLIDAS:
-'equipo', 'marca', 'modelo', 'serie', 'guia',
-'destino', 'origen', 'categoria_item'.
+          p_db = f"""
+          Actúa como DBA Senior. Tu objetivo es generar un comando de borrado en JSON.
+          Analiza el HISTORIAL ACTUAL para encontrar qué columna y valor coinciden con la instrucción.
 
-HISTORIAL:
-{contexto_breve}
+          COLUMNAS VÁLIDAS: 'equipo', 'marca', 'modelo', 'serie', 'guia', 'destino', 'origen', 'categoria_item'.
 
-INSTRUCCIÓN:
-"{txt_borrar}"
+          HISTORIAL ACTUAL (Muestra): {contexto_breve}
 
-Reglas:
-1. Si pide borrar todo:
-{{"accion": "borrar_todo"}}
+          INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
 
-2. Si es específico:
-{{"accion": "borrar_filtro", "columna": "...", "valor": "..."}}
+          REGLAS DE SALIDA:
+          1. Si pide borrar todo: {{"accion": "borrar_todo"}}
+          2. Si es específico:
+             - Identifica la columna que mejor encaja.
+             - Si el usuario menciona un lugar, suele ser 'destino' u 'origen'.
+             - Si menciona un código largo, es 'serie' o 'guia'.
+             - Genera: {{"accion": "borrar_filtro", "columna": "nombre_de_columna", "valor": "valor_exacto_encontrado_en_historial"}}
 
-Responde SOLO el JSON.
-"""
+          RESPONDE ÚNICAMENTE EL JSON.
+          """
 
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "system", "content": p_db}],
-                        temperature=0
-                    )
+          response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": p_db}],
+            temperature=0
+          )
 
-                    raw_res = response.choices[0].message.content.strip()
+          raw_res = response.choices[0].message.content.strip()
+          # Extraer JSON por si la IA pone texto extra
+          inicio = raw_res.find("{")
+          fin = raw_res.rfind("}") + 1
+          order = json.loads(raw_res[inicio:fin])
 
-                    inicio = raw_res.find("{")
-                    fin = raw_res.rfind("}") + 1
-                    order = json.loads(raw_res[inicio:fin])
+          # 2. Enviar la orden al buzón para que el Robot de la PC la ejecute
+          if enviar_github(FILE_BUZON, order, "Orden de Borrado Inteligente"):
+            st.success("✅ Orden de borrado enviada con éxito.")
+            st.json(order)
+            st.warning("⚠️ El Robot en tu PC procesará esto en unos segundos y actualizará el Excel y la Nube.")
+          else:
+            st.error("❌ No se pudo enviar la orden a GitHub.")
 
-                    if enviar_github(FILE_BUZON, order, "Orden de Borrado Inteligente"):
-                        st.success("✅ Orden enviada con éxito.")
-                        st.json(order)
-                        st.warning("⚠️ El robot procesará la orden en segundos.")
-                    else:
-                        st.error("❌ No se pudo enviar la orden.")
-
-            except Exception as e:
-                st.error(f"Error en limpieza: {e}")
-        else:
-            st.warning("Escribe una instrucción antes de presionar el botón.")
+      except Exception as e:
+        st.error(f"Error en el motor de limpieza: {e}")
+    else:
+      st.warning("Escribe una instrucción antes de presionar el botón.")
