@@ -617,126 +617,136 @@ with t2:
     st.dataframe(df_h.tail(20), use_container_width=True) 
       
 with t3:
-    st.subheader("🗑️ Limpieza Inteligente con Análisis de Historial")
-    st.info("Ejemplo: 'Borra la laptop ProBook', 'Limpia lo que llegó de Latacunga'")
+  st.subheader("🗑️ Limpieza Inteligente del Historial")
+  st.markdown("""
+  Usa este panel para eliminar registros específicos mediante lenguaje natural. 
+  LAIA analizará el historial para encontrar coincidencias.
+  """)
+  st.info("💡 Ejemplos: 'Borra lo de Latacunga', 'Elimina la serie 89238928', 'Limpia los teclados de marca N/A'")
 
-    txt_borrar = st.text_input("¿Qué deseas eliminar de la base de datos?", placeholder="Escribe tu instrucción aquí...")
+  txt_borrar = st.text_input("¿Qué deseas eliminar?", placeholder="Escribe tu instrucción aquí...")
 
-    if st.button("🔥 BUSCAR Y ELIMINAR", type="secondary"):
-        if txt_borrar:
-            try:
-                with st.spinner("LAIA analizando historial para identificar el objetivo..."):
-                    # 1. Obtenemos el historial real para darle contexto a la IA
-                    hist, _ = obtener_github(FILE_HISTORICO)
-                    contexto_breve = json.dumps(hist[-30:], ensure_ascii=False) if hist else "[]" # Últimos 30 registros
+  if st.button("🔥 BUSCAR Y GENERAR ORDEN DE BORRADO", type="secondary"):
+    if txt_borrar:
+      try:
+        with st.spinner("LAIA analizando historial para identificar el objetivo..."):
+          # 1. Obtener contexto real del historial
+          hist, _ = obtener_github(FILE_HISTORICO)
+          # Mandamos los últimos 40 registros para que la IA vea nombres reales
+          contexto_breve = json.dumps(hist[-40:], ensure_ascii=False) if hist else "[]"
 
-                    p_db = f"""
-                    Actúa como DBA Senior. Tu objetivo es generar un comando de borrado preciso.
-                    REVISA EL HISTORIAL ACTUAL PARA ENCONTRAR COINCIDENCIAS.
+          p_db = f"""
+          Actúa como DBA Senior. Tu objetivo es generar un comando de borrado en JSON.
+          Analiza el HISTORIAL ACTUAL para encontrar qué columna y valor coinciden con la instrucción.
 
-                    HISTORIAL ACTUAL (Muestra): {contexto_breve}
+          COLUMNAS VÁLIDAS: 'equipo', 'marca', 'modelo', 'serie', 'guia', 'destino', 'origen', 'categoria_item'.
 
-                    INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
+          HISTORIAL ACTUAL (Muestra): {}
 
-                    REGLAS DE SALIDA:
-          1. Si es algo general (ej: 'borra todo'): {"accion": "borrar_todo"}
-          2. Si es algo específico:
-             Busca la columna exacta: 'equipo', 'marca', 'modelo', 'serie', 'guia', 'destino'.
-             - Si pide borrar un lugar, usa columna 'destino'.
-             - Si pide borrar una marca, usa columna 'marca'.
-             - Si pide borrar un tipo de equipo, usa columna 'equipo'.
-             Genera: {"accion": "borrar_filtro", "columna": "nombre_columna", "valor": "valor_a_buscar"}
+          INSTRUCCIÓN DEL USUARIO: "{}"
 
-                    RESPONDE ÚNICAMENTE EL JSON.
-                    """
+          REGLAS DE SALIDA:
+          1. Si pide borrar todo: {{"accion": "borrar_todo"}}
+          2. Si es específico:
+             - Identifica la columna que mejor encaja.
+             - Si el usuario menciona un lugar, suele ser 'destino' u 'origen'.
+             - Si menciona un código largo, es 'serie' o 'guia'.
+             - Genera: {{"accion": "borrar_filtro", "columna": "nombre_de_columna", "valor": "valor_exacto_encontrado_en_historial"}}
 
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "system", "content": p_db}],
-                        temperature=0
-                    )
+          RESPONDE ÚNICAMENTE EL JSON.
+          """
 
-                    texto_ia = response.choices[0].message.content.strip()
-                    inicio, fin = texto_ia.find("{"), texto_ia.rfind("}") + 1
-                    order = json.loads(texto_ia[inicio:fin])
+          response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": p_db}],
+            temperature=0
+          )
 
-                    if enviar_github(FILE_BUZON, order, "Orden de Borrado Inteligente"):
-                        st.success(f"✅ Orden de borrado generada con éxito.")
-                        st.json(order)
-                        st.warning("El script local eliminará estos registros en unos segundos.")
-            except Exception as e:
-                st.error(f"Error: {e}")
+          raw_res = response.choices[0].message.content.strip()
+          # Extraer JSON por si la IA pone texto extra
+          inicio = raw_res.find("{")
+          fin = raw_res.rfind("}") + 1
+          order = json.loads(raw_res[inicio:fin])
+
+          # 2. Enviar la orden al buzón para que el Robot de la PC la ejecute
+          if enviar_github(FILE_BUZON, order, "Orden de Borrado Inteligente"):
+            st.success("✅ Orden de borrado enviada con éxito.")
+            st.json(order)
+            st.warning("⚠️ El Robot en tu PC procesará esto en unos segundos y actualizará el Excel y la Nube.")
+          else:
+            st.error("❌ No se pudo enviar la orden a GitHub.")
+
+      except Exception as e:
+        st.error(f"Error en el motor de limpieza: {}")
+    else:
+      st.warning("Escribe una instrucción antes de presionar el botón.")
+
+# ==========================================
+# FUNCIONES DE APOYO (GLPI Y OTROS)
+# ==========================================
+
 def conectar_glpi_jaher():
-    config, _ = obtener_github("config_glpi.json")
-    if not config or "url_glpi" not in config:
-        return None, "Fallo: El link en GitHub no existe."
-    
-    base_url = config["url_glpi"]
-    session = requests.Session()
-    
-    # HEADERS MÁS REALES (Copiados de un Chrome real)
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'es-ES,es;q=0.9',
-        'Origin': base_url,
-        'Referer': f"{base_url}/front/login.php"
-    })
+  config, _ = obtener_github("config_glpi.json")
+  if not config or "url_glpi" not in config:
+    return None, "Fallo: El link de túnel en GitHub no existe."
+   
+  base_url = config["url_glpi"]
+  session = requests.Session()
+   
+  session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'es-ES,es;q=0.9',
+    'Origin': base_url,
+    'Referer': f"{}/front/login.php"
+  })
 
-    usuario = "soporte1"
-    clave = "Cpktnwt1986@*."
+  usuario = "soporte1"
+  clave = "Cpktnwt1986@*." # Asegúrate de que esta clave sea la correcta
 
-    try:
-        # 1. Obtener Token CSRF
-        login_page = session.get(f"{base_url}/front/login.php", timeout=10)
-        import re
-        csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
-        csrf_token = csrf_match.group(1) if csrf_match else ""
+  try:
+    # 1. Obtener Token CSRF para el Login
+    login_page = session.get(f"{}/front/login.php", timeout=10)
+    import re
+    csrf_match = re.search(r'name="_glpi_csrf_token" value="([^"]+)"', login_page.text)
+    csrf_token = csrf_match.group(1) if csrf_match else ""
 
-        # 2. Intentar Login
-        payload = {
-            'noAuto': '0',
-            'login_name': usuario,
-            'login_password': clave,
-            '_glpi_csrf_token': csrf_token,
-            'submit': 'Enviar'
-        }
-        
-        response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
+    # 2. Intentar Login
+    payload = {
+      'noAuto': '0',
+      'login_name': usuario,
+      'login_password': clave,
+      '_glpi_csrf_token': csrf_token,
+      'submit': 'Enviar'
+    }
+     
+    response = session.post(f"{}/front/login.php", data=payload, allow_redirects=True)
 
-        # 3. VERIFICACIÓN DE DIAGNÓSTICO
-        if session.cookies.get('glpi_session'):
-            # Si entramos, manejamos el perfil
-            if "selectprofile.php" in response.url:
-                p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
-                p_id = p_match.group(1) if p_match else "4"
-                session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
-            return session, base_url
-        else:
-            # MOSTRAR QUÉ DICE LA PÁGINA (Para saber si es un error de clave, captcha o bloqueo)
-            if "CSRF" in response.text: error = "Error de Token CSRF (Seguridad)"
-            elif "identificador o la contraseña son incorrectos" in response.text: error = "Usuario o Clave mal escritos"
-            elif "Javascript" in response.text: error = "GLPI exige navegador con Javascript (Bloqueo de bot)"
-            else: error = "Bloqueo desconocido por el Firewall de Jaher"
-            return None, f"Fallo: {error}"
+    # 3. Verificación de sesión activa
+    if session.cookies.get('glpi_session'):
+      if "selectprofile.php" in response.url:
+        p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
+        p_id = p_match.group(1) if p_match else "4"
+        session.get(f"{}/front/selectprofile.php?profiles_id={}")
+      return session, base_url
+    else:
+      return None, "Fallo de autenticación: Credenciales o Token inválidos."
 
-    except Exception as e:
-        return None, f"Error de red: {str(e)}"
+  except Exception as e:
+    return None, f"Error de red GLPI: {str(e)}"
 
 def consultar_datos_glpi(serie):
-    """ Busca datos navegando en el panel global (ya que la API está deshabilitada) """
-    session, base_url = conectar_glpi_jaher()
-    if not session:
-        return None
-    
-    # Buscamos en el buscador global de GLPI
-    url_busqueda = f"{base_url}/front/allassets.php?contains%5B0%5D={serie}&itemtype=all"
-    
-    try:
-        resp = session.get(url_busqueda, timeout=10)
-        if serie.lower() in resp.text.lower():
-            # Si la serie aparece en el HTML, es que el equipo existe
-            return {"status": "Encontrado", "msg": f"Equipo {serie} detectado en GLPI"}
-        return None
-    except:
-        return None
+  """ Busca la existencia de un equipo en GLPI de forma visual """
+  session, base_url = conectar_glpi_jaher()
+  if not session:
+    return None
+   
+  url_busqueda = f"{}/front/allassets.php?contains%5B0%5D={}&itemtype=all"
+   
+  try:
+    resp = session.get(url_busqueda, timeout=10)
+    if serie.lower() in resp.text.lower():
+      return {"status": "Encontrado", "msg": f"Equipo {} detectado en el panel de GLPI."}
+    return None
+  except:
+    return None
