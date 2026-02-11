@@ -1,10 +1,9 @@
-import streamlit as st
 from openai import OpenAI
+import streamlit as st
 import json
 import datetime
 from github_utils import obtener_github, enviar_github
 
-# Configuración de IA
 client = OpenAI(api_key=st.secrets["GPT_API_KEY"])
 FILE_LECCIONES = "lecciones.json"
 
@@ -124,28 +123,23 @@ Devuelve SIEMPRE JSON. Prohibido hacer resúmenes fuera del JSON.
 }
 """
 
-
-def extraer_json(texto_completo):
-    """ Separa el texto hablado del bloque JSON """
-    try:
-        inicio = texto_completo.find("{")
-        fin = texto_completo.rfind("}") + 1
-        if inicio != -1:
-            texto_hablado = texto_completo[:inicio].strip()
-            json_puro = texto_completo[inicio:fin].strip()
-            return texto_hablado, json_puro
-        return texto_completo.strip(), ""
-    except:
-        return texto_completo.strip(), ""
+def extraer_json(texto):
+    inicio = texto.find("{")
+    fin = texto.rfind("}") + 1
+    if inicio != -1:
+        return texto[:inicio].strip(), texto[inicio:fin]
+    return texto, ""
 
 def aprender_leccion(error, correccion):
-    """ Guarda errores previos """
     lecciones, _ = obtener_github(FILE_LECCIONES)
-    if lecciones is None: lecciones = []
+    if lecciones is None:
+        lecciones = []
+
     nueva = {
         "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lo_que_hizo_mal": error,
         "como_debe_hacerlo": correccion
     }
+
     lecciones.append(nueva)
-    return enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida")
+    return enviar_github(FILE_LECCIONES, lecciones[-15:], "Nueva lección")
