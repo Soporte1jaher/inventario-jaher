@@ -509,28 +509,27 @@ with t1:
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
     
     with col_btn1:
-        # Esta casilla desbloquea el botón de guardado manualmente
+        # Ahora col_btn1 ya existe, por lo que no dará NameError
         forzar = st.checkbox("🔓 Forzar")
 
     with col_btn2:
-        # Se activa si la IA dice READY O si marcas la casilla de forzar
+        # Se activa si la IA dice READY o si marcas el checkbox de forzar
         if st.session_state.status == "READY" or forzar:
             if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
-                # 🔒 Lógica de limpieza antes de enviar
+                # Aplicamos lógica de chatarrización por CPU
                 for d in st.session_state.draft:
                     proc = d.get("procesador", "")
-                    gen = extraer_gen(proc)
-                    if gen == "obsoleto":
+                    if extraer_gen(proc) == "obsoleto":
                         d["estado"] = "Obsoleto / Pendiente Chatarrización"
                         d["destino"] = "CHATARRA / BAJA"
                         d["origen"] = d.get("origen", "Bodega")
 
-                # Agregar fecha de registro
-                hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+                # Sellar con fecha y hora (Asegúrate de tener importado datetime)
+                ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
                 for d in st.session_state.draft: 
-                    d["fecha_registro"] = hora_ec
+                    d["fecha_registro"] = ahora
                 
-                # Intentar envío a GitHub
+                # Intentar enviar a GitHub
                 if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
                     st.success("✅ ¡Guardado con éxito!")
                     st.session_state.draft = []
@@ -539,8 +538,9 @@ with t1:
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("❌ Error al conectar con GitHub.")
+                    st.error("❌ Error al guardar en GitHub.")
         else:
+            # Botón bloqueado si no hay READY ni Forzar
             st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
 
     with col_btn3:
