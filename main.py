@@ -105,9 +105,4 @@ with t2:
         st.download_button("📥 Descargar Excel", buffer.getvalue(), "Inventario.xlsx")
         st.dataframe(df_h.tail(20))
 
-with t3:
-    st.subheader("🗑️ Limpieza")
-    txt_borrar = st.text_input("¿Qué deseas eliminar?")
-    if st.button("🔥 Generar Orden de Borrado"):
-        # Lógica de IA para borrado...
-        st.info("Orden enviada")
+
