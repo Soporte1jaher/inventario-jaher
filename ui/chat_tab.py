@@ -7,7 +7,7 @@ import pandas as pd
 import time
 import datetime
 from modules.ai_engine import AIEngine
-from ..modules.github_handler import GitHubHandler
+from modules.github_handler import GitHubHandler
 from modules.stock_calculator import StockCalculator
 
 class ChatTab:
