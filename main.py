@@ -1,8 +1,7 @@
-"""
-main.py
-Archivo principal de LAIA - Auditora de Inventario TI
-Versión modular y escalable
-"""
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))ón modular y escalable
 import streamlit as st
 from config.settings import CUSTOM_CSS
 from ui.chat_tab import ChatTab
