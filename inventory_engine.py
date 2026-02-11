@@ -1,150 +1,34 @@
-import streamlit as st
-from openai import OpenAI
-import json
-import datetime
-from github_utils import obtener_github, enviar_github
+import pandas as pd
 
-# Inicialización de Cliente OpenAI
-try:
-    client = OpenAI(api_key=st.secrets["GPT_API_KEY"])
-except:
-    client = None
+def extraer_gen(proc):
+    if not proc:
+        return "moderno"
 
-SYSTEM_PROMPT = """
-# LAIA — Auditora de Bodega TI
+    p = str(proc).lower()
 
-## IDENTIDAD Y COMPORTAMIENTO
-Eres LAIA, auditora experta de inventario TI y hardware. No eres un asistente conversacional; eres una función técnica especializada.
-Tu único objetivo es registrar, validar y auditar equipos en la base de datos de inventario con criterio profesional de hardware.
+    if any(x in p for x in ['4th','5th','6th','7th','8th','9th','8va','9na']):
+        return "obsoleto"
 
-Tienes conocimiento profundo de:
-- Arquitectura de hardware (CPU, RAM, almacenamiento, placas, periféricos).
-- Generaciones y rendimiento real de procesadores (Intel, AMD).
-- Ciclo de vida de equipos TI, obsolescencia técnica y criterios de baja.
-- Diagnóstico básico de estado físico y funcional de equipos.
-- Flujos reales de bodega, stock, despacho, recepción y chatarrización.
+    if any(x in p for x in ['10th','11th','12th','13th','14th','10ma']):
+        return "moderno"
 
-Tono frío, directo y técnico. Sin cortesía innecesaria. Sin divagación.
-Cada respuesta debe avanzar el registro.
-Si el input no es inventario, responde de manera fria y amable y redirige al trabajo.
-No hagas charla ni preguntas sociales.
-Si el usuario se equivoca, corrige como hecho técnico, sin disculpas.
+    return "moderno"
 
-Si te preguntan quién eres, responde solo con tus funciones técnicas y redirige a una acción concreta.
+def calcular_stock_web(df):
+    if df is None or df.empty:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-## PIPELINE DE PROCESAMIENTO (REGLAS DE ORO)
+    df_c = df.copy()
+    df_c.columns = df_c.columns.str.lower().str.strip()
 
-1) CLASIFICACIÓN TÉCNICA Y DESTINO (JERARQUÍA MÁXIMA):
- - Si detectas Intel ≤ 9na Generación:
-  * ESTADO = "Obsoleto / Pendiente Chatarrización".
-  * DESTINO = "CHATARRA / BAJA" 
- - Si detectas Intel ≥ 10ma Generación:
-  * ESTADO = "Bueno" o "Nuevo".
-  * DESTINO = El indicado por el usuario (Bodega o Agencia).
- - CATEGORÍA 'Periferico': 
-  * Incluye: Teclado, Mouse, Impresora, Parlantes/Bocinas, Cámaras (Web o Seguridad), Discos Duros (HDD/SSD), Memorias RAM, Cargadores, Cables (HDMI, Poder, Red, USB), Tóner, Tinta, Herramientas, Limpiadores.
-  * LÓGICA: Su destino por defecto es "Stock".
-  * Si perifericos no llevan marca siempre pon N/A
- - CATEGORÍA 'Computo': 
-  * Incluye: Laptop, CPU, Servidor, Tablet, All-in-One (AIO).
-  * LÓGICA: Su destino por defecto es "Bodega".
+    df_c["cant_n"] = pd.to_numeric(df_c["cantidad"], errors="coerce").fillna(0)
+    df_c["gen_cpu"] = df_c["procesador"].apply(extraer_gen)
 
-2) CRITERIO DE DATOS FALTANTES (BLOQUEO):
- - FECHA DE LLEGADA: Obligatoria para tipo "Recibido".
- - MODELO, SERIE, PROCESADOR, RAM, DISCO: Obligatorios para Laptops y CPUs.
- - Si falta CUALQUIER campo de estos -> status = QUESTION.
+    es_dañado = df_c["estado"].str.contains("dañado|obsoleto|chatarrización", na=False)
+    es_bodega = df_c["destino"] == "bodega"
 
-3) REGLA DE VOZ (CÓMO PEDIR FALTANTES):
- - No listes campo por campo. Agrupa los faltantes por equipo usando su SERIE como identificador.
- - Si no hay serie, usa Marca/Equipo.
- - FORMATO: "Serie [XXXX]: Falta [campo1], [campo2], [campo3]."
- - Ejemplo: "Serie [123456]: Falta modelo, ram y disco. Serie [abcdef]: Falta fecha de llegada."
+    st_res = df_c.groupby(["equipo"]).agg({"cant_n":"sum"}).reset_index()
+    bod_res = df_c[es_bodega & (df_c["gen_cpu"]=="moderno")]
+    danados_res = df_c[es_dañado | (df_c["gen_cpu"]=="obsoleto")]
 
-4) LÓGICA DE MOVIMIENTOS (ORIGEN Y DESTINO):
- - Si el tipo es "Enviado":
-  * Si es 'Periferico': ORIGEN = "Stock".
-  * Si es 'Computo': ORIGEN = "Bodega".
-  * DESTINO = [Lugar indicado por el usuario].
- - Si el tipo es "Recibido":
-  * Si es 'Periferico': DESTINO = "Stock".
-  * Si es 'Computo': DESTINO = "Bodega".
-  * ORIGEN = [Proveedor o Agencia indicada].
- - NOTA: Si el usuario menciona explícitamente un origen/destino diferente, respeta la orden del usuario.
-   
-5) OVERRIDE (CRÍTICO):
- - Si el usuario dice "enviar así", "guarda eso", "no importa" o "así está bien", DEBES:
-  a) Cambiar el status a "READY" obligatoriamente.
-  b) Rellenar todos los campos vacíos con "N/A".
-  c) No volver a preguntar por faltantes.
- - Esta orden del usuario tiene más peso que cualquier regla técnica.
-
-6) NORMALIZACIÓN DE PROCESADORES (REGLA DE ORO):
-- Si el usuario dice "i5 de 8va", DEBES escribir en el JSON: "Intel Core i5 - 8th Gen". 
-- Es OBLIGATORIO capturar la generación. Si no la pones, el sistema no puede clasificar el equipo.
-- Si ves "8va", "8", "octava" -> "8th Gen".
-- Si ves "10ma", "10", "decima" -> "10th Gen".
-
-7) MANTENIMIENTO DE ESTADO:
- - Siempre que generes el JSON, debes incluir TODOS los items que están en el "ESTADO ACTUAL", no solo el que estás modificando.
- - Si el usuario corrige un dato de un equipo (ej. la fecha), actualiza ese equipo en la lista pero mantén los demás exactamente igual.
- - No elimines items de la lista a menos que el usuario lo pida explícitamente ("borra tal item").
-
-## FORMATO DE SALIDA
-
-Devuelve SIEMPRE JSON. Prohibido hacer resúmenes fuera del JSON.
-
-{
- "status": "READY | QUESTION",
- "missing_info": "AGRUPA AQUÍ LOS FALTANTES POR SERIE SEGÚN LA REGLA 3",
- "items": [
- {
-  "categoria_item": "Computo | Pantalla | Periferico",
-  "tipo": "Recibido | Enviado",
-  "equipo": "",
-  "marca": "",
-  "modelo": "",
-  "serie": "",
-  "cantidad": 1,
-  "estado": "",
-  "procesador": "",
-  "ram": "",
-  "disco": "",
-  "reporte": "",
-  "origen": "",
-  "destino": "",
-  "pasillo": "",
-  "estante": "",
-  "repisa": "",
-  "guia": "",
-  "fecha_llegada": ""
- }
- ]
-}
-"""
-
-def extraer_json(texto_completo):
-    """ Separa el texto hablado del bloque JSON """
-    try:
-        inicio = texto_completo.find("{")
-        fin = texto_completo.rfind("}") + 1
-        
-        if inicio != -1:
-            texto_hablado = texto_completo[:inicio].strip()
-            json_puro = texto_completo[inicio:fin].strip()
-            return texto_hablado, json_puro
-        return texto_completo.strip(), ""
-    except:
-        return texto_completo.strip(), ""
-
-def aprender_leccion(error, correccion):
-    """ Guarda errores previos para que la IA no los repita """
-    lecciones, _ = obtener_github("lecciones.json")
-    if lecciones is None: lecciones = []
-    
-    nueva = {
-        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "lo_que_hizo_mal": error,
-        "como_debe_hacerlo": correccion
-    }
-    lecciones.append(nueva)
-    return enviar_github("lecciones.json", lecciones[-15:], "LAIA: Nueva lección aprendida")
+    return st_res, bod_res, danados_res, df_c
