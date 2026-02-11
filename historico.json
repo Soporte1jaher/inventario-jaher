@@ -108,5 +108,27 @@
         "guia": "802890239230",
         "fecha_llegada": "",
         "fecha_registro": "2026-02-11 13:58"
+    },
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Enviado",
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 5,
+        "estado": "N/A",
+        "procesador": "N/A",
+        "ram": "N/A",
+        "disco": "N/A",
+        "reporte": "N/A",
+        "origen": "Stock",
+        "destino": "Per\u00fa",
+        "pasillo": "N/A",
+        "estante": "N/A",
+        "repisa": "N/A",
+        "guia": "932982398923",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-02-11 14:01"
     }
 ]
