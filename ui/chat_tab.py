@@ -1,7 +1,3 @@
-"""
-ui/chat_tab.py
-Interfaz del tab de chat auditor
-"""
 import streamlit as st
 import pandas as pd
 import time
