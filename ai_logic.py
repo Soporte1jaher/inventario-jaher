@@ -1,6 +1,8 @@
-import json
 import datetime
+import json
+from github_utils import enviar_github, obtener_github
 
+# === PEGA TU SYSTEM_PROMPT AQUÍ ===
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
 # ==========================================
@@ -130,13 +132,14 @@ def extraer_json(texto_completo):
     except:
         return texto_completo.strip(), ""
 
-def preparar_mensajes_ia(mensajes_historial, lecciones, draft):
-    memoria_err = "\n".join([f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]) if lecciones else ""
-    contexto_tabla = json.dumps(draft, ensure_ascii=False) if draft else "[]"
+def aprender_leccion(error, correccion, file_lecciones):
+    lecciones, _ = obtener_github(file_lecciones)
+    if lecciones is None: lecciones = []
     
-    mensajes_api = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{}"},
-        {"role": "system", "content": f"ESTADO ACTUAL: {}"}
-    ]
-    return mensajes_api + mensajes_historial[-10:]
+    nueva = {
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "lo_que_hizo_mal": error,
+        "como_debe_hacerlo": correccion
+    }
+    lecciones.append(nueva)
+    return enviar_github(file_lecciones, lecciones[-15:], "LAIA: Nueva lección aprendida")
