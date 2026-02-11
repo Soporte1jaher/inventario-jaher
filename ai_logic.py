@@ -1,8 +1,10 @@
-import datetime
 import json
-from github_utils import enviar_github, obtener_github
+import datetime
+from openai import OpenAI
+from github_utils import obtener_github, enviar_github
 
-# === PEGA TU SYSTEM_PROMPT AQUÍ ===
+FILE_LECCIONES = "lecciones.json"
+
 # ==========================================
 # 5. PROMPT CEREBRO LAIA
 # ==========================================
@@ -119,6 +121,9 @@ Devuelve SIEMPRE JSON. Prohibido hacer resúmenes fuera del JSON.
 }
 """
 
+# ==========================================
+# UTILIDADES IA
+# ==========================================
 
 def extraer_json(texto_completo):
     try:
@@ -132,14 +137,60 @@ def extraer_json(texto_completo):
     except:
         return texto_completo.strip(), ""
 
-def aprender_leccion(error, correccion, file_lecciones):
-    lecciones, _ = obtener_github(file_lecciones)
-    if lecciones is None: lecciones = []
-    
+
+def aprender_leccion(error, correccion):
+    lecciones, _ = obtener_github(FILE_LECCIONES)
+    if lecciones is None:
+        lecciones = []
+
     nueva = {
         "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lo_que_hizo_mal": error,
         "como_debe_hacerlo": correccion
     }
+
     lecciones.append(nueva)
-    return enviar_github(file_lecciones, lecciones[-15:], "LAIA: Nueva lección aprendida")
+    return enviar_github(FILE_LECCIONES, lecciones[-15:], "LAIA: Nueva lección aprendida")
+
+
+# ==========================================
+# MOTOR PRINCIPAL IA
+# ==========================================
+
+def procesar_prompt(client: OpenAI, mensajes_chat, draft_actual):
+    """
+    Procesa el prompt usando el estado actual y devuelve:
+    texto_mostrable, json_resultado
+    """
+
+    lecciones, _ = obtener_github(FILE_LECCIONES)
+    memoria_err = "\n".join(
+        [f"- {l['lo_que_hizo_mal']} -> {l['como_debe_hacerlo']}" for l in lecciones]
+    ) if lecciones else ""
+
+    contexto_tabla = json.dumps(draft_actual, ensure_ascii=False) if draft_actual else "[]"
+
+    mensajes_api = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": f"LECCIONES TÉCNICAS:\n{memoria_err}"},
+        {"role": "system", "content": f"ESTADO ACTUAL: {contexto_tabla}"}
+    ]
+
+    for m in mensajes_chat[-10:]:
+        mensajes_api.append(m)
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=mensajes_api,
+        temperature=0
+    )
+
+    raw_content = response.choices[0].message.content
+    texto_fuera, res_txt = extraer_json(raw_content)
+
+    try:
+        res_json = json.loads(res_txt) if res_txt else {}
+    except:
+        res_json = {}
+
+    return texto_fuera, res_json
