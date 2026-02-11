@@ -1,1 +1,5 @@
-{"serie": "5CG1365VW1", "info": "No hallado", "specs": {}, "estado": "completado"}
+{
+    "serie_a_buscar": "099209",
+    "info": "",
+    "estado": "pendiente"
+}
