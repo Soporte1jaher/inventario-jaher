@@ -13,22 +13,13 @@ from inventory_engine import calcular_stock_web
 st.set_page_config(page_title="LAIA", layout="wide")
 st.title("🧠 LAIA — Auditora TI")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "messages" not in st.session_state: st.session_state.messages = []
+if "draft" not in st.session_state: st.session_state.draft = []
+if "status" not in st.session_state: st.session_state.status = "NEW"
+if "missing_info" not in st.session_state: st.session_state.missing_info = ""
+    
+t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
-if "draft" not in st.session_state:
-    st.session_state.draft = []
-
-if "status" not in st.session_state:
-    st.session_state.status = "NEW"
-
-
-# -------------------------------------------------
-# TABS
-# -------------------------------------------------
-tab1, tab2, tab3 = st.tabs(
-    ["💬 Chat", "📊 Stock", "🗑️ Limpieza"]
-)
 
 # =================================================
 # TAB 1 — CHAT
