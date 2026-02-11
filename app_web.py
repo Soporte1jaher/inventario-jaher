@@ -522,8 +522,8 @@ with t1:
                         st.session_state.draft = []
                         st.session_state.messages = []
                         st.rerun()
-            else:
-                st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, help="Completa todos los campos para guardar.")
+            #else:
+               # st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, help="Completa todos los campos para guardar.")
         with c2:
             if st.button("🗑️ Descartar Todo"):
                 st.session_state.draft = []
