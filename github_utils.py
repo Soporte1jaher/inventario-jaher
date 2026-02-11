@@ -4,7 +4,6 @@ import base64
 import json
 import time
 
-# Configuración del repositorio
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
@@ -19,31 +18,27 @@ def obtener_github(archivo):
             d = resp.json()
             contenido = base64.b64decode(d['content']).decode('utf-8')
             return json.loads(contenido), d['sha']
-        elif resp.status_code == 404:
-            return [], None
-        return None, None
-    except Exception as e:
-        st.error(f"Error GitHub: {str(e)}")
+        return [], None
+    except Exception:
         return None, None
 
-def enviar_github(archivo, datos_nuevos, mensaje="Update"):
-    actual, sha = obtener_github(archivo)
-    if actual is None: actual = []
+def enviar_github(archivo, datos_nuevos, mensaje="LAIA Update"):
+    contenido_actual, sha = obtener_github(archivo)
+    if contenido_actual is None: contenido_actual = []
     if isinstance(datos_nuevos, list):
-        actual.extend(datos_nuevos)
+        contenido_actual.extend(datos_nuevos)
     else:
-        actual.append(datos_nuevos)
-    
+        contenido_actual.append(datos_nuevos)
     payload = {
         "message": mensaje,
-        "content": base64.b64encode(json.dumps(actual, indent=4).encode()).decode(),
+        "content": base64.b64encode(json.dumps(contenido_actual, indent=4).encode()).decode(),
         "sha": sha if sha else None
     }
     url = f"https://api.github.com/repos/{}/{}/contents/{}"
     resp = requests.put(url, headers=HEADERS, json=payload)
     return resp.status_code in [200, 201]
 
-def enviar_github_directo(archivo, datos, mensaje="Direct Update"):
+def enviar_github_directo(archivo, datos, mensaje="LAIA Direct"):
     _, sha = obtener_github(archivo)
     payload = {
         "message": mensaje,
