@@ -506,41 +506,49 @@ with t1:
                     st.info("⏳ Esperando que la PC de la oficina envíe la ficha técnica...")
 
         # 4. Botones de acción
-        c1, c2, c3 = st.columns([1, 1, 3]) # Añadimos una columna más
-        with c1:
-        # Si la IA dice READY, o si el usuario marca el checkbox de forzar
-        forzar_guardado = st.checkbox("Forzar desbloqueo", help="Marca esto si la IA no te deja guardar")
-        
-        if st.session_state.status == "READY" or forzar_guardado:
-            if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary"):
-                # ... (aquí va todo tu código de guardado que ya tienes) ...
-                # Asegúrate de mantener tu lógica de "hora_ec" y "enviar_github"
-                
-                # REPETIR TU LÓGICA DE GUARDADO AQUÍ:
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 2])
+    
+    with col_btn1:
+        # Esta casilla desbloquea el botón de guardado manualmente
+        forzar = st.checkbox("🔓 Forzar")
+
+    with col_btn2:
+        # Se activa si la IA dice READY O si marcas la casilla de forzar
+        if st.session_state.status == "READY" or forzar:
+            if st.button("🚀 GUARDAR EN HISTÓRICO", type="primary", use_container_width=True):
+                # 🔒 Lógica de limpieza antes de enviar
                 for d in st.session_state.draft:
                     proc = d.get("procesador", "")
                     gen = extraer_gen(proc)
                     if gen == "obsoleto":
                         d["estado"] = "Obsoleto / Pendiente Chatarrización"
                         d["destino"] = "CHATARRA / BAJA"
-                
+                        d["origen"] = d.get("origen", "Bodega")
+
+                # Agregar fecha de registro
                 hora_ec = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
-                for d in st.session_state.draft: d["fecha_registro"] = hora_ec
+                for d in st.session_state.draft: 
+                    d["fecha_registro"] = hora_ec
                 
+                # Intentar envío a GitHub
                 if enviar_github(FILE_BUZON, st.session_state.draft, "Registro LAIA"):
-                    st.success("✅ Guardado.")
+                    st.success("✅ ¡Guardado con éxito!")
                     st.session_state.draft = []
                     st.session_state.messages = []
-                    st.session_state.status = "NEW" # Resetear estado
+                    st.session_state.status = "NEW"
+                    time.sleep(1)
                     st.rerun()
+                else:
+                    st.error("❌ Error al conectar con GitHub.")
         else:
-            st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, help="Completa los campos o usa 'Forzar desbloqueo'")
-        with c2:
-            if st.button("🗑️ Descartar Todo"):
-                st.session_state.draft = []
-                st.session_state.messages = []
-                st.rerun()
+            st.button("🚀 GUARDAR (BLOQUEADO)", disabled=True, use_container_width=True)
 
+    with col_btn3:
+        if st.button("🗑️ Descartar Todo", use_container_width=True):
+            st.session_state.draft = []
+            st.session_state.messages = []
+            st.session_state.status = "NEW"
+            st.rerun()
 
 
 with t2:
