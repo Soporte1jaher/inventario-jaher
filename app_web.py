@@ -289,8 +289,9 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
    * ESTADO = "Bueno" o "Nuevo".
    * DESTINO = El indicado por el usuario (Bodega o Agencia).
  - CATEGORÍA 'Periferico': 
-    * Incluye: Teclado, Mouse, Monitor/Pantalla, Impresora, Parlantes/Bocinas, Cámaras (Web o Seguridad), Discos Duros (HDD/SSD), Memorias RAM, Cargadores, Cables (HDMI, Poder, Red, USB), Tóner, Tinta, Herramientas, Limpiadores.
+    * Incluye: Teclado, Mouse, Impresora, Parlantes/Bocinas, Cámaras (Web o Seguridad), Discos Duros (HDD/SSD), Memorias RAM, Cargadores, Cables (HDMI, Poder, Red, USB), Tóner, Tinta, Herramientas, Limpiadores.
     * LÓGICA: Su destino por defecto es "Stock".
+    * Si perifericos no llevan marca siempre pon N/A
  - CATEGORÍA 'Computo': 
     * Incluye: Laptop, CPU, Servidor, Tablet, All-in-One (AIO).
     * LÓGICA: Su destino por defecto es "Bodega".
