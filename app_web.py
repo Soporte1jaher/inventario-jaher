@@ -698,7 +698,7 @@ def conectar_glpi_jaher():
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'es-ES,es;q=0.9',
     'Origin': base_url,
-    'Referer': f"{}/front/login.php"
+    'Referer': f"{base_url}/front/login.php"
   })
 
   usuario = "soporte1"
