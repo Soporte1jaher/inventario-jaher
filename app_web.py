@@ -727,7 +727,7 @@ def conectar_glpi_jaher():
       if "selectprofile.php" in response.url:
         p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
         p_id = p_match.group(1) if p_match else "4"
-        session.get(f"{base_url}/front/selectprofile.php?profiles_id={}")
+        session.get(f"{base_url}/front/selectprofile.php?profiles_id={p_id}")
       return session, base_url
     else:
       return None, "Fallo de autenticación: Credenciales o Token inválidos."
