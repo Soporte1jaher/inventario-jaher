@@ -1,3 +1,10 @@
+Te lo corrijo limpio y estructurado como debe ser.
+
+Tu problema es que solo creaste los tabs pero no definiste nada dentro, y además seguramente te faltan las constantes de archivos (FILE_HISTORICO, etc.).
+
+Aquí tienes la base correcta y estable para que no vuelva a explotar:
+
+✅ app_web.py CORREGIDO (estructura limpia con 3 tabs)
 import streamlit as st
 import pandas as pd
 import json
@@ -8,18 +15,31 @@ from inventory_engine import calcular_stock_web
 
 
 # -------------------------------------------------
-# CONFIG
+# CONFIGURACIÓN GLOBAL
 # -------------------------------------------------
 st.set_page_config(page_title="LAIA", layout="wide")
 st.title("🧠 LAIA — Auditora TI")
 
-if "messages" not in st.session_state: st.session_state.messages = []
-if "draft" not in st.session_state: st.session_state.draft = []
-if "status" not in st.session_state: st.session_state.status = "NEW"
-if "missing_info" not in st.session_state: st.session_state.missing_info = ""
-    
-t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
+FILE_BUZON = "buzon.json"
+FILE_HISTORICO = "historico.json"
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "draft" not in st.session_state:
+    st.session_state.draft = []
+
+if "status" not in st.session_state:
+    st.session_state.status = "NEW"
+
+if "missing_info" not in st.session_state:
+    st.session_state.missing_info = ""
+
+
+# -------------------------------------------------
+# TABS
+# -------------------------------------------------
+t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 # =================================================
 # TAB 1 — CHAT
