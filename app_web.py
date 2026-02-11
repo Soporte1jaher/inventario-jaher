@@ -720,14 +720,14 @@ def conectar_glpi_jaher():
       'submit': 'Enviar'
     }
      
-    response = session.post(f"{}/front/login.php", data=payload, allow_redirects=True)
+    response = session.post(f"{base_url}/front/login.php", data=payload, allow_redirects=True)
 
     # 3. Verificación de sesión activa
     if session.cookies.get('glpi_session'):
       if "selectprofile.php" in response.url:
         p_match = re.search(r'profiles_id=([0-9]+)[^>]*>Soporte Técnico', response.text, re.IGNORECASE)
         p_id = p_match.group(1) if p_match else "4"
-        session.get(f"{}/front/selectprofile.php?profiles_id={}")
+        session.get(f"{base_url}/front/selectprofile.php?profiles_id={}")
       return session, base_url
     else:
       return None, "Fallo de autenticación: Credenciales o Token inválidos."
@@ -741,12 +741,12 @@ def consultar_datos_glpi(serie):
   if not session:
     return None
    
-  url_busqueda = f"{}/front/allassets.php?contains%5B0%5D={}&itemtype=all"
+  url_busqueda = f"{base_url}/front/allassets.php?contains%5B0%5D={serie}&itemtype=all"
    
   try:
     resp = session.get(url_busqueda, timeout=10)
     if serie.lower() in resp.text.lower():
-      return {"status": "Encontrado", "msg": f"Equipo {} detectado en el panel de GLPI."}
+      return {"status": "Encontrado", "msg": f"Equipo {serie} detectado en el panel de GLPI."}
     return None
   except:
     return None
