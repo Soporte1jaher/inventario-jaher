@@ -1,44 +1,31 @@
 import streamlit as st
 import pandas as pd
+import json
 import datetime
 import time
-import json
+import io
 from openai import OpenAI
 
-from github_utils import obtener_github, enviar_github
-from inventory_engine import calcular_stock_web
+# IMPORTACIONES MODULARES
+from github_utils import obtener_github, enviar_github, enviar_github_directo
 from hardware_utils import extraer_gen
-from ai_logic import procesar_prompt
+from ai_logic import extraer_json, aprender_leccion, client, SYSTEM_PROMPT
+from inventory_engine import calcular_stock_web
 from glpi_utils import solicitar_busqueda_glpi, revisar_respuesta_glpi
 
-# ==========================================
-# CONFIG
-# ==========================================
+# CONFIGURACIÓN
+st.set_page_config(page_title="LAIA v91.2 - Auditora Senior", page_icon="🧠", layout="wide")
 
-st.set_page_config(page_title="LAIA v91.2", layout="wide")
-
-try:
-    API_KEY = st.secrets["GPT_API_KEY"]
-    client = OpenAI(api_key=API_KEY)
-except:
-    st.error("Configura GPT_API_KEY")
-    st.stop()
-
+# (Aquí pegas todo el bloque de st.markdown del estilo y los nombres de archivos JSON)
 FILE_BUZON = "buzon.json"
 FILE_HISTORICO = "historico.json"
-
-# ==========================================
-# SESSION
-# ==========================================
+FILE_LECCIONES = "lecciones.json"
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = []
 if "status" not in st.session_state: st.session_state.status = "NEW"
-
-# ==========================================
-# TABS
-# ==========================================
-
+if "missing_info" not in st.session_state: st.session_state.missing_info = ""
+    
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
@@ -343,3 +330,4 @@ with t3:
         st.error(f"Error en el motor de limpieza: {e}")
     else:
       st.warning("Escribe una instrucción antes de presionar el botón.")
+
