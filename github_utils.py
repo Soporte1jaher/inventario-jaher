@@ -4,24 +4,19 @@ import base64
 import json
 import time
 
-# Constantes de configuración
 GITHUB_USER = "Soporte1jaher"
 GITHUB_REPO = "inventario-jaher"
 HEADERS = {"Authorization": "token " + st.secrets["GITHUB_TOKEN"], "Cache-Control": "no-cache"}
 
 def obtener_github(archivo):
     timestamp = int(time.time())
-    url = f"https://api.github.com/repos/{}/{}/contents/{}?t={}"  
+    url = f"https://api.github.com/repos/{}/{}/contents/{}?t={}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code == 200:
             d = resp.json()
             contenido = base64.b64decode(d['content']).decode('utf-8')
-            try:
-                return json.loads(contenido), d['sha']
-            except json.JSONDecodeError:
-                st.error(f"⛔ Error: El archivo {} está corrupto.")
-                return None, None
+            return json.loads(contenido), d['sha']
         elif resp.status_code == 404:
             return [], None
         return None, None
@@ -59,11 +54,7 @@ def enviar_github_directo(archivo, datos, mensaje="LAIA Update"):
     return resp.status_code in [200, 201]
 
 def solicitar_busqueda_glpi(serie):
-    pedido = {
-        "serie_a_buscar": serie,
-        "info": "",
-        "estado": "pendiente"
-    }
+    pedido = {"serie_a_buscar": serie, "info": "", "estado": "pendiente"}
     return enviar_github_directo("pedido.json", pedido, f"LAIA: Solicitud serie {}")
 
 def revisar_respuesta_glpi():
