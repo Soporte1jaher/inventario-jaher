@@ -311,6 +311,11 @@ Si te preguntan quién eres, responde solo con tus funciones técnicas y redirig
 - Si ves "8va", "8", "octava" -> "8th Gen".
 - Si ves "10ma", "10", "decima" -> "10th Gen".
 
+7) MANTENIMIENTO DE ESTADO:
+ - Siempre que generes el JSON, debes incluir TODOS los items que están en el "ESTADO ACTUAL", no solo el que estás modificando.
+ - Si el usuario corrige un dato de un equipo (ej. la fecha), actualiza ese equipo en la lista pero mantén los demás exactamente igual.
+ - No elimines items de la lista a menos que el usuario lo pida explícitamente ("borra tal item").
+
 ## FORMATO DE SALIDA
 
 Devuelve SIEMPRE JSON. Prohibido hacer resúmenes fuera del JSON.
@@ -351,7 +356,7 @@ if "messages" not in st.session_state: st.session_state.messages = []
 if "draft" not in st.session_state: st.session_state.draft = []
 if "status" not in st.session_state: st.session_state.status = "NEW"
 if "missing_info" not in st.session_state: st.session_state.missing_info = ""
-
+    
 t1, t2, t3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
 with t1:
@@ -403,14 +408,30 @@ with t1:
                     st.markdown(msg_laia)
 
                 if "items" in res_json and res_json["items"]:
-                    st.session_state.draft = res_json["items"]
-                    st.session_state.status = res_json.get("status", "QUESTION")
-                    if st.session_state.status == "READY":
-                        st.success("✅ Datos auditados. Listo para guardar.")
-                    
-                    time.sleep(1)
-                    st.rerun()
-
+                  nuevos_items = res_json["items"]
+            
+            # Si el borrador está vacío, simplemente lo llenamos
+                    if not st.session_state.draft:
+                      st.session_state.draft = nuevos_items
+                      else:
+                # LÓGICA DE FUSIÓN: 
+                # Creamos un diccionario usando la 'serie' como clave para actualizar
+                # Si el item no tiene serie, lo agregamos como nuevo
+                       dict_actual = { (i.get('serie') or i.get('modelo') or i.get('equipo')): i for i in st.session_state.draft }
+                
+                        for item in nuevos_items:
+                         key = item.get('serie') or item.get('modelo') or item.get('equipo')
+                         dict_actual[key] = item # Esto actualiza si existe o agrega si es nuevo
+                
+                         st.session_state.draft = list(dict_actual.values())
+        
+                         st.session_state.status = res_json.get("status", "QUESTION")
+            
+                         if st.session_state.status == "READY":
+                          st.success("✅ Datos auditados. Listo para guardar.")
+            
+                          time.sleep(1)
+                          st.rerun()
         except Exception as e:
             st.error(f"Error en el motor de LAIA: {str(e)}")
 
