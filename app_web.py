@@ -641,9 +641,9 @@ with t3:
 
           COLUMNAS VÁLIDAS: 'equipo', 'marca', 'modelo', 'serie', 'guia', 'destino', 'origen', 'categoria_item'.
 
-          HISTORIAL ACTUAL (Muestra): {}
+          HISTORIAL ACTUAL (Muestra): {contexto_breve}
 
-          INSTRUCCIÓN DEL USUARIO: "{}"
+          INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
 
           REGLAS DE SALIDA:
           1. Si pide borrar todo: {{"accion": "borrar_todo"}}
