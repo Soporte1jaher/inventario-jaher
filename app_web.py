@@ -639,10 +639,13 @@ with t3:
                     INSTRUCCIÓN DEL USUARIO: "{txt_borrar}"
 
                     REGLAS DE SALIDA:
-                    1. Si es algo general (ej: 'borra todo'): {{"accion": "borrar_todo"}}
-                    2. Si es algo específico (ej: 'borra las laptops', 'borra la serie 123', 'borra lo de HP'):
-                       Busca en el historial la columna que mejor coincida (equipo, marca, modelo, serie, origen, destino).
-                       Genera: {{"accion": "borrar_filtro", "columna": "NOMBRE_COLUMNA", "valor": "VALOR_EXACTO"}}
+          1. Si es algo general (ej: 'borra todo'): {"accion": "borrar_todo"}
+          2. Si es algo específico:
+             Busca la columna exacta: 'equipo', 'marca', 'modelo', 'serie', 'guia', 'destino'.
+             - Si pide borrar un lugar, usa columna 'destino'.
+             - Si pide borrar una marca, usa columna 'marca'.
+             - Si pide borrar un tipo de equipo, usa columna 'equipo'.
+             Genera: {"accion": "borrar_filtro", "columna": "nombre_columna", "valor": "valor_a_buscar"}
 
                     RESPONDE ÚNICAMENTE EL JSON.
                     """
