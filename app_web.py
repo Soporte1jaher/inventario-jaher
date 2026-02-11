@@ -300,7 +300,7 @@ Ejemplo 2: si el usuario especifica que le llego un periferico delt tipo "impres
 
 4) MOVIMIENTOS E INFERENCIAS:
  - "envio a [Lugar]": origen = "Bodega", destino = "[Lugar]", tipo = "Enviado".
- - "me llego": destino = "lo que el usuario diga", tipo = "Recibido". (Exige fecha).
+ - "me llego": destino = "Bodega", tipo = "Recibido". (Exige fecha).
  - Solo sugiere SSD si es ≥ 10ma Gen Y el disco dice "HDD".
 
 5) OVERRIDE:
