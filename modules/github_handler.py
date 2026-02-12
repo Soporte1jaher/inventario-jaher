@@ -96,3 +96,8 @@ class GitHubHandler:
         lecciones.append(nueva)
         # Solo guardamos las últimas 15 lecciones
         return self.enviar_github_directo("lecciones.json", lecciones[-15:], "LAIA: Nueva lección aprendida")
+
+    def enviar_a_buzon(self, datos):
+        """ Envía registros nuevos al buzon.json para que el Robot los procese """
+        # Usamos la función enviar_github que ya definimos (la que hace append)
+        return self.enviar_github("buzon.json", datos, "Registro desde Chat Modular")
