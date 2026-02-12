@@ -3,6 +3,7 @@ ui/cleaning_tab.py
 Interfaz del tab de limpieza inteligente
 """
 import streamlit as st
+import json
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
 from config.settings import Config
@@ -37,29 +38,38 @@ class CleaningTab:
                 st.warning("Escribe una instrucción antes de presionar el botón.")
     
     def _procesar_orden_borrado(self, instruccion):
-        """Procesa la orden de borrado"""
+        """Procesa la orden de borrado exactamente como el original"""
         try:
             with st.spinner("LAIA analizando historial para identificar el objetivo..."):
-                # Obtener contexto del historial
-                hist = self.github.obtener_historico()
+                # 1. Obtener historial (el original devolvía data, sha)
+                # Asumimos que tu handler nuevo ya devuelve solo la lista o []
+                hist = self.github.obtener_archivo(Config.FILE_HISTORICO)
                 
-                # Últimos 40 registros para contexto
-                contexto = hist[-40:] if hist else []
+                if not hist:
+                    st.error("No hay historial disponible para analizar.")
+                    return
+
+                # 2. Preparar contexto (últimos 40 registros como en el original)
+                contexto_breve = hist[-40:]
                 
-                # Generar orden con IA
-                orden = self.ai_engine.generar_orden_borrado(instruccion, contexto)
+                # 3. Llamar a la IA con la lógica de "DBA Senior"
+                orden = self.ai_engine.generar_orden_borrado(instruccion, contexto_breve)
                 
-                # Enviar orden al buzón
-                if self.github.agregar_a_archivo(
-                    Config.FILE_BUZON, 
-                    orden, 
-                    "Orden de Borrado Inteligente"
-                ):
-                    st.success("✅ Orden de borrado enviada con éxito.")
-                    st.json(orden)
-                    st.warning("⚠️ El Robot en tu PC procesará esto en unos segundos y actualizará el Excel y la Nube.")
+                if orden:
+                    # 4. Enviar la orden al buzón para el Robot
+                    # Importante: agregar_a_archivo debe hacer un "APPEND" (enviar_github original)
+                    if self.github.agregar_a_archivo(
+                        Config.FILE_BUZON, 
+                        orden, 
+                        "Orden de Borrado Inteligente"
+                    ):
+                        st.success("✅ Orden de borrado enviada con éxito.")
+                        st.json(orden)
+                        st.warning("⚠️ El Robot en tu PC procesará esto en unos segundos.")
+                    else:
+                        st.error("❌ No se pudo enviar la orden a GitHub.")
                 else:
-                    st.error("❌ No se pudo enviar la orden a GitHub.")
+                    st.error("LAIA no pudo interpretar la orden de borrado.")
         
         except Exception as e:
             st.error(f"Error en el motor de limpieza: {e}")
