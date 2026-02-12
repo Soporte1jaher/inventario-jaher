@@ -21,7 +21,7 @@ class GitHubHandler:
         self.base_url = f"https://api.github.com/repos/{self.user}/{self.repo}/contents"
 
     def obtener_github(self, archivo):
-        """Método base para descargar archivos"""
+        """Descarga y decodifica archivos JSON desde GitHub (REPLICADO)"""
         timestamp = int(time.time())
         url = f"{self.base_url}/{archivo}?t={timestamp}"  
         try:
@@ -37,7 +37,7 @@ class GitHubHandler:
             return None, None
 
     def enviar_github(self, archivo, datos_nuevos, mensaje="Actualización LAIA"):
-        """Método para acumular datos en una lista (APPEND)"""
+        """Agrega datos a una lista (APPEND) - REPLICADO"""
         contenido_actual, sha = self.obtener_github(archivo)
         if not isinstance(contenido_actual, list):
             contenido_actual = []
@@ -56,7 +56,7 @@ class GitHubHandler:
         return resp.status_code in [200, 201]
 
     def enviar_github_directo(self, archivo, datos, mensaje="LAIA Update"):
-        """Método para sobrescribir archivos (Para pedidos y configuración)"""
+        """Sobrescribe el archivo (REPLICADO)"""
         _, sha = self.obtener_github(archivo)
         payload = {
             "message": mensaje,
@@ -66,19 +66,33 @@ class GitHubHandler:
         resp = requests.put(f"{self.base_url}/{archivo}", headers=self.headers, json=payload)
         return resp.status_code in [200, 201]
 
-    # --- MÉTODOS DE CONVENIENCIA PARA LA APP ---
+    # --- MÉTODOS DE COMPATIBILIDAD PARA TABS (CHAT Y LIMPIEZA) ---
 
     def obtener_historico(self):
-        """Usado por Limpieza y Stock"""
         data, _ = self.obtener_github("historico.json")
         return data if isinstance(data, list) else []
 
     def obtener_lecciones(self):
-        """🔥 ESTO ES LO QUE FALTABA: Memoria del Chat"""
         data, _ = self.obtener_github("lecciones.json")
         return data if isinstance(data, list) else []
 
     def enviar_orden_limpieza(self, orden):
-        """Envía la orden al Robot de la PC"""
-        # Usamos enviar_github para acumular órdenes o directo para una sola
+        """Envía orden de borrado al Robot (Usa Append como el v91.2 original)"""
         return self.enviar_github("buzon.json", orden, "Orden de Borrado Inteligente")
+
+    def guardar_borrador(self, datos):
+        """🔥 ESTO ES LO QUE EL CHAT TAB ESTABA BUSCANDO"""
+        # Según tu v91.2 original, al guardar se envía al BUZON para que el Robot lo procese
+        return self.enviar_github("buzon.json", datos, "Registro LAIA desde Chat")
+
+    def aprender_leccion(self, error, correccion):
+        """Guarda errores para la memoria de la IA"""
+        lecciones = self.obtener_lecciones()
+        nueva = {
+            "fecha": time.strftime("%Y-%m-%d %H:%M"),
+            "lo_que_hizo_mal": error,
+            "como_debe_hacerlo": correccion
+        }
+        lecciones.append(nueva)
+        # Solo guardamos las últimas 15 lecciones
+        return self.enviar_github_directo("lecciones.json", lecciones[-15:], "LAIA: Nueva lección aprendida")
