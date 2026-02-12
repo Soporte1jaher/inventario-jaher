@@ -6,7 +6,12 @@ import streamlit as st
 
 class GitHubHandler:
     def __init__(self):
-        self.token = st.secrets["GITHUB_TOKEN"]
+        try:
+            self.token = st.secrets["GITHUB_TOKEN"]
+        except Exception:
+            st.error("⚠️ GITHUB_TOKEN no configurado en Secrets")
+            self.token = None
+
         self.repo = "Soporte1jaher/inventario-jaher"
         self.branch = "main"
         self.base_url = f"https://api.github.com/repos/{self.repo}/contents"
@@ -30,7 +35,13 @@ class GitHubHandler:
                 content = base64.b64decode(data["content"]).decode("utf-8")
                 return json.loads(content), data.get("sha")
 
-            return [], None
+            elif r.status_code == 404:
+                # Archivo no existe todavía
+                return [], None
+
+            else:
+                st.error(f"Error GitHub GET {path}: {r.status_code}")
+                return [], None
 
         except Exception as e:
             st.error(f"Error leyendo {path}: {str(e)}")
@@ -55,11 +66,37 @@ class GitHubHandler:
 
             r = requests.put(url, headers=self.headers, json=payload)
 
-            return r.status_code in [200, 201]
+            if r.status_code in [200, 201]:
+                return True
+            else:
+                st.error(f"Error GitHub PUT {path}: {r.status_code} - {r.text}")
+                return False
 
         except Exception as e:
             st.error(f"Error actualizando {path}: {str(e)}")
             return False
+
+    # =====================================================
+    # METODO GENERICO PARA AGREGAR A ARCHIVO JSON (LISTA)
+    # =====================================================
+
+    def agregar_a_archivo(self, nombre_archivo, nuevos_datos, mensaje="Actualización"):
+        data, sha = self._get_file(nombre_archivo)
+
+        if not isinstance(data, list):
+            data = []
+
+        if isinstance(nuevos_datos, list):
+            data.extend(nuevos_datos)
+        else:
+            data.append(nuevos_datos)
+
+        return self._update_file(
+            nombre_archivo,
+            data,
+            sha,
+            message=mensaje
+        )
 
     # =====================================================
     # HISTORICO
@@ -70,18 +107,10 @@ class GitHubHandler:
         return data if isinstance(data, list) else []
 
     def guardar_borrador(self, nuevos_items):
-        historico, sha = self._get_file("historico.json")
-
-        if not isinstance(historico, list):
-            historico = []
-
-        historico.extend(nuevos_items)
-
-        return self._update_file(
+        return self.agregar_a_archivo(
             "historico.json",
-            historico,
-            sha,
-            message="Agregar movimiento al historico"
+            nuevos_items,
+            mensaje="Agregar movimiento al historico"
         )
 
     # =====================================================
@@ -90,6 +119,14 @@ class GitHubHandler:
 
     def obtener_lecciones(self):
         data, _ = self._get_file("lecciones.json")
+        return data if isinstance(data, list) else []
+
+    # =====================================================
+    # PEDIDOS
+    # =====================================================
+
+    def obtener_pedidos(self):
+        data, _ = self._get_file("pedido.json")
         return data if isinstance(data, list) else []
 
     # =====================================================
@@ -102,9 +139,13 @@ class GitHubHandler:
             "serie": serie
         }
 
+        # buzon.json es dict, no lista
+        _, sha = self._get_file("buzon.json")
+
         return self._update_file(
             "buzon.json",
             payload,
+            sha,
             message="Solicitud GLPI"
         )
 
