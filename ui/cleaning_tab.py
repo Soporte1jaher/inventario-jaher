@@ -24,22 +24,28 @@ class CleaningTab:
     def _procesar_orden_borrado(self, instruccion):
         try:
             with st.spinner("LAIA analizando historial..."):
+                # 1. Obtener historial
                 hist = self.github.obtener_historico()
-                if not hist:
-                    st.error("No se pudo leer el historial.")
+                
+                # Si es None, es un error de conexión/token
+                if hist is None:
+                    st.error("❌ Error de comunicación con GitHub. Revisa el Token en los Secrets de la Web.")
+                    return
+                
+                # Si es una lista vacía, no hay nada que borrar
+                if len(hist) == 0:
+                    st.warning("⚠️ El historial ya está vacío. No hay nada que borrar.")
                     return
 
+                # 2. Si hay datos, proceder con la IA
                 contexto = hist[-40:]
                 orden = self.ai_engine.generar_orden_borrado(instruccion, contexto)
                 
                 if orden:
-                    # Usamos el método que hace APPEND (enviar_github original)
                     if self.github.enviar_orden_limpieza(orden):
                         st.success("✅ Orden enviada con éxito.")
                         st.json(orden)
                     else:
-                        st.error("❌ Error al conectar con GitHub.")
-                else:
-                    st.error("LAIA no pudo identificar qué registros borrar.")
+                        st.error("❌ No se pudo enviar la orden.")
         except Exception as e:
             st.error(f"Error en limpieza: {e}")
