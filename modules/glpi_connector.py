@@ -38,7 +38,7 @@ class GLPIConnector:
         })
         
         usuario = "soporte1"
-        clave = "Cpktnwt1986@*."
+        clave = ""
         
         try:
             # 1. Obtener Token CSRF
