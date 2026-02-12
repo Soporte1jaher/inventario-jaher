@@ -74,6 +74,10 @@ class GitHubHandler:
         data, _ = self.obtener_github("historico.json")
         return data if isinstance(data, list) else []
 
-    def enviar_orden_limpieza(self, orden):
-        """Usa el modo append para el buzón"""
-        return self.enviar_github("buzon.json", orden, "Orden de Borrado Inteligente")
+     def enviar_orden_limpieza(self, orden):
+        """ 
+        CAMBIO CRÍTICO: Usamos enviar_github_directo.
+        Esto envía el JSON como un objeto puro {...} sin corchetes.
+        Es lo que tu Robot de la PC espera leer.
+        """
+        return self.enviar_github_directo("buzon.json", orden, "Orden de Borrado Inteligente")
