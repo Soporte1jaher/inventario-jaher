@@ -1,3 +1,6 @@
+"""
+ui/cleaning_tab.py - CORREGIDO
+"""
 import streamlit as st
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -25,21 +28,23 @@ class CleaningTab:
     def _procesar_orden_borrado(self, instruccion):
         try:
             with st.spinner("LAIA analizando historial..."):
-                # 1. Obtener historial real
+                # 1. Obtener historial real para dar contexto a la IA
                 hist = self.github.obtener_historico()
                 if not hist:
                     st.error("El historial está vacío o no se pudo leer.")
                     return
 
-                # 2. Tomar muestra para la IA (últimos 40)
+                # 2. Tomar muestra para la IA (los últimos 40 registros)
                 contexto = hist[-40:]
                 
-                # 3. Pedir a la IA que genere el JSON de borrado
+                # 3. Pedir a la IA que genere el JSON de borrado (formato DBA Senior)
                 orden = self.ai_engine.generar_orden_borrado(instruccion, contexto)
                 
                 if orden:
-                    # 4. Enviar al buzón
-                    if self.github.enviar_orden_limpieza(orden):
+                    # 4. ENVIAR AL BUZÓN (MODO DIRECTO)
+                    # Usamos enviar_archivo_directo para que el archivo sea un {objeto} 
+                    # y NO una lista [objetos] que confunda al Robot.
+                    if self.github.enviar_archivo_directo("buzon.json", orden, "Orden de Borrado Inteligente"):
                         st.success("✅ Orden enviada con éxito.")
                         st.json(orden)
                         st.warning("⚠️ El Robot en tu PC procesará esto en unos segundos.")
