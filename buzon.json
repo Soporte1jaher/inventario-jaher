@@ -1,5 +1,8 @@
 [
   {
     "accion": "borrar_todo"
+  },
+  {
+    "accion": "borrar_todo"
   }
 ]
