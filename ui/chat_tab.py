@@ -19,6 +19,9 @@ class ChatTab:
         # ============== CONFIG UI ==============
         # Opción A: URL pública (recomendado)
         # Ejemplo: "https://raw.githubusercontent.com/Soporte1jaher/inventario-jaher/main/assets/logo_jaher.png"
+       # ============== CONFIG UI ==============
+        self.LOGO_URL = "https://raw.githubusercontent.com/Soporte1jaher/inventario-jaher/main/assets/logo_jaher.png"
+        self.LOGO_LOCAL_PATH = "assets/logo_jaher.png"
         self.LOGO_URL = None
 
         # Opción B: logo dentro del repo (recomendado si lo subes a /assets/)
