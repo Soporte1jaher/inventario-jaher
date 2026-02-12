@@ -1,1 +1,46 @@
-[]
+[
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Enviado",
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 9,
+        "estado": "N/A",
+        "procesador": "N/A",
+        "ram": "N/A",
+        "disco": "N/A",
+        "reporte": "N/A",
+        "origen": "Stock",
+        "destino": "Puyo",
+        "pasillo": "N/A",
+        "estante": "N/A",
+        "repisa": "N/A",
+        "guia": "0302390392023",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-02-12 17:59"
+    },
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Recibido",
+        "equipo": "Teclado",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 10,
+        "estado": "N/A",
+        "procesador": "N/A",
+        "ram": "N/A",
+        "disco": "N/A",
+        "reporte": "N/A",
+        "origen": "Aladelos",
+        "destino": "Stock",
+        "pasillo": "N/A",
+        "estante": "N/A",
+        "repisa": "N/A",
+        "guia": "N/A",
+        "fecha_llegada": "N/A",
+        "fecha_registro": "2026-02-12 17:59"
+    }
+]
