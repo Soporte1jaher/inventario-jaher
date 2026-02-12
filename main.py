@@ -14,7 +14,6 @@ from ui.cleaning_tab import CleaningTab
 st.set_page_config(page_title="LAIA v91.2", page_icon="🧠", layout="wide")
 
 def main():
-    inject_css()  # <-- SOLO ESTO y ya cambia todo lo visual
 
     tab1, tab2, tab3 = st.tabs(["💬 Chat Auditor", "📊 Stock Real", "🗑️ Limpieza"])
 
