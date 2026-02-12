@@ -16,15 +16,8 @@ class ChatTab:
         self.github = GitHubHandler()
         self.stock_calc = StockCalculator()
 
-        # ============== CONFIG UI ==============
-        # Opción A: URL pública (recomendado)
-        # Ejemplo: "https://raw.githubusercontent.com/Soporte1jaher/inventario-jaher/main/assets/logo_jaher.png"
-       # ============== CONFIG UI ==============
+        # ============== CONFIG UI (LIMPIO Y FUNCIONAL) ==============
         self.LOGO_URL = "https://raw.githubusercontent.com/Soporte1jaher/inventario-jaher/main/assets/logo_jaher.png"
-        self.LOGO_LOCAL_PATH = "assets/logo_jaher.png"
-        self.LOGO_URL = None
-
-        # Opción B: logo dentro del repo (recomendado si lo subes a /assets/)
         self.LOGO_LOCAL_PATH = "assets/logo_jaher.png"
 
         self.APP_TITLE = "LAIA — Auditoría de Bodega TI"
@@ -44,77 +37,94 @@ class ChatTab:
     # UI Helpers (sin archivo CSS)
     # ---------------------------
     def _inject_micro_style(self):
-        """
-        Micro-estilos (opcionales) incrustados aquí.
-        No necesitas crear archivo CSS.
-        Si algún día no te gusta, lo borras y todo sigue funcionando.
-        """
         st.markdown(
             """
             <style>
-              /* Espaciado superior más pro */
-              .block-container { padding-top: 1.2rem; }
+              /* Layout más pro */
+              .block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; max-width: 1200px; }
 
-              /* Chat un poquito más “corporativo” */
-              [data-testid="stChatMessage"] { border-radius: 14px; }
+              /* Cards (containers con border=True) un poco más premium */
+              div[data-testid="stVerticalBlockBorderWrapper"]{
+                border-radius: 16px !important;
+                border: 1px solid rgba(255,255,255,0.08) !important;
+                background: rgba(255,255,255,0.02);
+              }
 
-              /* Botones un poco más firmes */
-              .stButton button { border-radius: 10px; }
+              /* Chat messages más suaves */
+              [data-testid="stChatMessage"]{
+                border-radius: 14px;
+              }
 
-              /* Data editor: bordes suaves */
-              [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; }
+              /* Botones más corporativos */
+              .stButton button{
+                border-radius: 12px !important;
+                font-weight: 800 !important;
+                padding: 0.55rem 0.9rem !important;
+              }
 
-              /* Quita padding feo en algunos contenedores */
+              /* Data editor: borde + radius */
+              div[data-testid="stDataEditor"]{
+                border-radius: 14px;
+                overflow: hidden;
+                border: 1px solid rgba(255,255,255,0.08);
+              }
+
+              /* Logo flotante */
+              #jaher-logo{
+                position: fixed;
+                top: 14px;
+                right: 18px;
+                z-index: 9999;
+                width: 120px;
+                opacity: 0.95;
+                filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+              }
+
+              /* Quita padding raro alrededor del chat input */
               [data-testid="stVerticalBlock"] > div:has(> [data-testid="stChatInput"]) { padding-top: .2rem; }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
+    def _render_floating_logo(self):
+        """
+        Logo JAHER flotante en esquina.
+        - Preferencia: URL
+        - Fallback: archivo local
+        - Si nada existe: no rompe nada
+        """
+        # 1) Intento por URL (más fácil en Streamlit Cloud)
+        if self.LOGO_URL:
+            st.markdown(
+                f"""<img id="jaher-logo" src="{self.LOGO_URL}" />""",
+                unsafe_allow_html=True
+            )
+            return
+
+        # 2) Fallback local (si lo empaquetas en repo /assets/)
+        try:
+            st.image(self.LOGO_LOCAL_PATH, width=120)
+        except:
+            pass
+
     def _render_header(self):
-        """
-        Encabezado corporativo con logo en esquina derecha.
-        """
         with st.container(border=True):
-            c1, c2 = st.columns([4, 1], vertical_alignment="center")
+            st.markdown(f"### {self.APP_TITLE}")
+            st.caption(self.APP_SUBTITLE)
 
-            with c1:
-                st.markdown(f"### {self.APP_TITLE}")
-                st.caption(self.APP_SUBTITLE)
-
-                # Chip de estado
-                status = st.session_state.get("status", "NEW")
-                if status == "READY":
-                    st.success("Estado: READY (Listo para guardar)", icon="✅")
-                elif status == "QUESTION":
-                    st.warning("Estado: QUESTION (Faltan datos)", icon="⚠️")
-                else:
-                    st.info("Estado: NEW (Sin borrador)", icon="ℹ️")
-
-            with c2:
-                # Logo: intenta URL, si no hay, intenta archivo local
-                logo_rendered = False
-
-                if self.LOGO_URL:
-                    try:
-                        st.image(self.LOGO_URL, use_container_width=True)
-                        logo_rendered = True
-                    except:
-                        logo_rendered = False
-
-                if not logo_rendered:
-                    try:
-                        st.image(self.LOGO_LOCAL_PATH, use_container_width=True)
-                        logo_rendered = True
-                    except:
-                        # Si no existe, no rompemos nada
-                        st.caption(" ")
+            status = st.session_state.get("status", "NEW")
+            if status == "READY":
+                st.success("Estado: READY (Listo para guardar)", icon="✅")
+            elif status == "QUESTION":
+                st.warning("Estado: QUESTION (Faltan datos)", icon="⚠️")
+            else:
+                st.info("Estado: NEW (Sin borrador)", icon="ℹ️")
 
     def render(self):
-        # UI micro (sin archivo CSS)
+        # UI (sin archivo CSS)
         self._inject_micro_style()
-
-        # Header corporativo
+        self._render_floating_logo()
         self._render_header()
 
         # ============= ZONA CHAT =============
@@ -122,12 +132,10 @@ class ChatTab:
             st.markdown("#### 💬 Chat Auditor")
             st.caption("Escribe en lenguaje natural lo que llegó o lo que enviaste. LAIA lo audita y arma el borrador.")
 
-            # A. Mostrar historial de mensajes
             for m in st.session_state.messages:
                 with st.chat_message(m["role"]):
                     st.markdown(m["content"])
 
-            # B. Entrada de usuario
             if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
                 self._procesar_mensaje(prompt)
 
@@ -151,11 +159,7 @@ class ChatTab:
                     historial_mensajes=st.session_state.messages
                 )
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": resultado["mensaje"]
-                })
-
+                st.session_state.messages.append({"role": "assistant", "content": resultado["mensaje"]})
                 with st.chat_message("assistant"):
                     st.markdown(resultado["mensaje"])
 
@@ -185,15 +189,12 @@ class ChatTab:
 
         with st.container(border=True):
             top1, top2 = st.columns([3, 1], vertical_alignment="center")
-
             with top1:
                 st.markdown("#### 📊 Borrador de Movimientos")
                 st.caption("Revisa, ajusta si hace falta y guarda. (Puedes forzar si quieres saltar preguntas).")
-
             with top2:
                 st.metric("Items en borrador", len(st.session_state.draft))
 
-            # Sincronizar con el calculador de stock modular
             st.session_state.draft = self.stock_calc.aplicar_reglas_obsolescencia(st.session_state.draft)
 
             df_editor = pd.DataFrame(st.session_state.draft)
@@ -202,7 +203,6 @@ class ChatTab:
                 "tipo", "origen", "destino", "pasillo", "estante", "repisa", "guia", "fecha_llegada",
                 "ram", "disco", "procesador", "reporte"
             ]
-
             for c in cols_base:
                 if c not in df_editor.columns:
                     df_editor[c] = ""
@@ -241,12 +241,10 @@ class ChatTab:
                 self._limpiar_sesion()
 
     def _guardar_borrador(self):
-        # Sellar con fecha (UTC-5)
         ahora = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
         for item in st.session_state.draft:
             item["fecha_registro"] = ahora
 
-        # Enviar al BUZÓN para el Robot
         if self.github.enviar_a_buzon(st.session_state.draft):
             st.success("✅ ¡Enviado al Robot de la PC!", icon="✅")
             self._limpiar_sesion()
