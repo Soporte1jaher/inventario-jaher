@@ -89,7 +89,7 @@ class CleaningTab:
             with c3:
                 st.session_state.cln_mode = st.selectbox(
                     "Modo",
-                    options=["AUTO", "SERIE", "MARCA", "EQUIPO", "DESTINO", "ORIGEN", "TEXTO"],
+                    options=["AUTO", "SERIE", "MARCA", "EQUIPO", "DESTINO", "ORIGEN", "TIPO", "ESTADO", "TEXTO", "VACIOS"],
                     index=0,
                     key="cln_sel_mode",
                     help="AUTO detecta el campo. Los otros fuerzan dónde buscar.",
@@ -130,27 +130,32 @@ class CleaningTab:
             st.success(f"✅ He encontrado **{len(results)}** registros. Elige cuáles eliminar abajo.")
 
     def _detect_criterion(self, q: str, mode: str = "AUTO", ai_hint: dict | None = None):
-        ql = q.lower().strip()
-        ai_hint = ai_hint or {}
+    ql = q.lower().strip()
+    ai_hint = ai_hint or {}
 
-        if mode != "AUTO":
-            return mode.lower(), self._extract_value(ql)
+    # ✅ Si el modo está forzado, busca directo ahí
+    if mode != "AUTO":
+        return mode.lower(), self._extract_value(ql)
 
-        m = re.search(r"(serie|serial)\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
+    # ✅ serie/serial
+    m = re.search(r"(serie|serial)\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
+    if m:
+        return "serie", m.group(2).strip()
+
+    # ✅ ahora soporta: marca/equipo/destino/origen/tipo/estado
+    for k in ["marca", "equipo", "destino", "origen", "tipo", "estado"]:
+        m = re.search(rf"({k})\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
         if m:
-            return "serie", m.group(2).strip()
+            return k, m.group(2).strip()
 
-        for k in ["marca", "equipo", "destino", "origen"]:
-            m = re.search(rf"({k})\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
-            if m:
-                return k, m.group(2).strip()
+    # ✅ hint IA
+    for k in ["serie", "marca", "equipo", "destino", "origen", "tipo", "estado"]:
+        v = ai_hint.get(k) or ai_hint.get(k.upper())
+        if isinstance(v, str) and v.strip():
+            return k, v.strip().lower()
 
-        for k in ["serie", "marca", "equipo", "destino", "origen"]:
-            v = ai_hint.get(k) or ai_hint.get(k.upper())
-            if isinstance(v, str) and v.strip():
-                return k, v.strip().lower()
-
-        return "texto", self._extract_value(ql)
+    # ✅ texto
+    return "texto", self._extract_value(ql)
 
     def _extract_value(self, ql: str):
         stop = {
