@@ -13,8 +13,9 @@ Mejoras clave:
 - Export Excel 4 hojas (RAW)
 
 FIX aplicado:
-✅ Filtrado de “comandos” (action/accion delete/borrar_*) dentro del histórico
-   para que LAIA Web coincida con el Excel local (que no muestra esas columnas).
+✅ 1) Filtrar “comandos” (action/accion delete/borrar_*)
+✅ 2) Sanear histórico: eliminar filas raras (listas/columnas 0,1,2...) que contaminan UI
+✅ 3) Forzar columnas de vista (las mismas del Excel)
 """
 
 import streamlit as st
@@ -31,8 +32,28 @@ class StockTab:
         self.github = GitHubHandler()
         self.stock_calc = StockCalculator()
 
+        # Columnas “oficiales” (las que quieres ver igual que Excel)
+        self.base_cols = [
+            "fecha_registro",
+            "guia",
+            "tipo",
+            "origen",
+            "destino",
+            "categoria_item",
+            "equipo",
+            "marca",
+            "modelo",
+            "serie",
+            "estado",
+            "procesador",
+            "ram",
+            "disco",
+            "reporte",
+            "cantidad",
+        ]
+
     # ---------------------------------------------------------
-    # ✅ FIX: Filtrar filas comando dentro del histórico
+    # ✅ FIX 1: Filtrar filas comando dentro del histórico
     # ---------------------------------------------------------
     def _filtrar_comandos(self, df: pd.DataFrame) -> pd.DataFrame:
         if df is None or df.empty:
@@ -41,7 +62,6 @@ class StockTab:
         d = df.copy()
         d.columns = [str(c).strip().lower() for c in d.columns]
 
-        # Detectar columna de acción
         col_acc = None
         if "action" in d.columns:
             col_acc = "action"
@@ -53,15 +73,60 @@ class StockTab:
             comandos = acc.isin(["delete", "borrar_por_indices", "borrar_todo", "borrar"])
             return d[~comandos].copy()
 
-        # Fallback: si no hay action/accion, intenta detectar “comando” por indices/instruction/source
+        # Fallback por indices + source/instruction
         if "indices" in d.columns:
             ind = d["indices"].astype(str).str.strip()
             comandos = ind.str.startswith("[") & ind.str.endswith("]") & (ind != "[]")
-
             if "instruction" in d.columns or "source" in d.columns:
                 return d[~comandos].copy()
 
         return d
+
+    # ---------------------------------------------------------
+    # ✅ FIX 2: Sanear histórico antes del cálculo/UI
+    # - Si vienen listas -> mapear a schema
+    # - Si vienen dicts con columnas 0,1,2... -> limpiar
+    # ---------------------------------------------------------
+    def _sanear_historial(self, hist) -> pd.DataFrame:
+        if not hist:
+            return pd.DataFrame()
+
+        filas = []
+        schema = self.base_cols[:]  # mismo orden
+
+        for x in hist:
+            if isinstance(x, dict):
+                filas.append(x)
+                continue
+
+            # Si te llegó como lista/tuple => convertir a dict por orden
+            if isinstance(x, (list, tuple)):
+                d = {}
+                for i, k in enumerate(schema):
+                    d[k] = x[i] if i < len(x) else ""
+                filas.append(d)
+
+        df = pd.DataFrame(filas)
+        if df.empty:
+            return df
+
+        # Normalizar nombres de columnas
+        df.columns = [str(c).strip().lower() for c in df.columns]
+
+        # ❌ eliminar columnas basura típicas que aparecen en tu web
+        # (columnas numéricas 0,1,2,3... y comandos)
+        cols_drop = []
+        for c in df.columns:
+            cs = str(c).strip().lower()
+            if cs.isdigit():  # "0","1","2"...
+                cols_drop.append(c)
+            if cs in ["action", "accion", "source", "instruction", "count", "indices", "idx_list", "mat", "meta"]:
+                cols_drop.append(c)
+
+        if cols_drop:
+            df = df.drop(columns=list(set(cols_drop)), errors="ignore")
+
+        return df
 
     # ---------------------------------------------------------
     # UI
@@ -97,19 +162,26 @@ class StockTab:
     # Core
     # ---------------------------------------------------------
     def _mostrar_datos(self, hist, show_debug=False):
-        df_h_raw = pd.DataFrame(hist)
+        # ✅ SANEAR primero (mata las columnas 0,1,2... y filas raras)
+        df_h_raw = self._sanear_historial(hist)
         if df_h_raw.empty:
             st.info("Histórico vacío.")
             return
 
-        # ✅ FIX: quitar comandos del histórico antes de calcular
+        # ✅ Filtrar comandos (por si quedaron dicts con action/accion)
         df_h_raw = self._filtrar_comandos(df_h_raw)
 
         # Cálculo modular (tu lógica)
         st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out = self.stock_calc.calcular_stock_completo(df_h_raw)
 
-        # ✅ FIX: por si el calculador vuelve a anexar columnas raras, filtra otra vez
-        df_h_raw_out = self._filtrar_comandos(df_h_raw_out)
+        # ✅ doble sanitización por seguridad
+        if isinstance(df_h_raw_out, pd.DataFrame):
+            df_h_raw_out = self._filtrar_comandos(df_h_raw_out)
+            # también recortar basura si el calculador reintroduce columnas extra
+            df_h_raw_out.columns = [str(c).strip().lower() for c in df_h_raw_out.columns]
+            for extra in ["action", "accion", "source", "instruction", "count", "indices"]:
+                if extra in df_h_raw_out.columns:
+                    df_h_raw_out = df_h_raw_out.drop(columns=[extra], errors="ignore")
 
         # Vista normalizada (UI)
         df_h_view = self._normalize_historial(df_h_raw_out)
@@ -125,7 +197,7 @@ class StockTab:
         # Métricas + resumen por equipo
         self._mostrar_metricas_top(df_h_view, df_mov_view, st_res_view, bod_res_view, danados_res_view)
 
-        # Export (RAW recomendado) ✅ pero con histórico limpio
+        # Export (RAW) pero ya limpio
         self._crear_boton_descarga(st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out)
 
         # Tabs internas
@@ -147,11 +219,12 @@ class StockTab:
 
         if show_debug:
             with st.expander("🧪 Debug (revisión técnica)", expanded=False):
-                st.write("df_h_raw (filtrado):", df_h_raw.shape)
+                st.write("df_h_raw (saneado):", df_h_raw.shape)
                 st.dataframe(df_h_raw.head(30), use_container_width=True)
 
-                st.write("df_h_raw_out (filtrado):", df_h_raw_out.shape)
-                st.dataframe(df_h_raw_out.head(30), use_container_width=True)
+                if isinstance(df_h_raw_out, pd.DataFrame):
+                    st.write("df_h_raw_out:", df_h_raw_out.shape)
+                    st.dataframe(df_h_raw_out.head(30), use_container_width=True)
 
                 st.write("df_h_view:", df_h_view.shape)
                 st.dataframe(df_h_view.head(30), use_container_width=True)
@@ -197,7 +270,6 @@ class StockTab:
             if ultimo:
                 st.caption(f"🕒 Última actividad detectada: **{ultimo}** | Histórico total: **{total_hist}**")
 
-        # Resumen por equipo
         if isinstance(st_res_view, pd.DataFrame) and (not st_res_view.empty):
             if "equipo" in st_res_view.columns and "cantidad_disponible" in st_res_view.columns:
                 with st.container(border=True):
@@ -338,22 +410,13 @@ class StockTab:
         if "fecha_llegada" in df.columns and "fecha_registro" not in df.columns:
             df["fecha_registro"] = df["fecha_llegada"]
 
-        for c in [
-            "tipo",
-            "equipo",
-            "marca",
-            "modelo",
-            "serie",
-            "estado",
-            "origen",
-            "destino",
-            "guia",
-            "reporte",
-            "categoria_item",
-            "cantidad",
-        ]:
+        # Asegurar columnas base
+        for c in self.base_cols:
             if c not in df.columns:
                 df[c] = ""
+
+        # Forzar SOLO columnas base para que nunca se cuelen extras
+        df = df[self.base_cols].copy()
 
         df["fecha_registro_dt"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
         df = df.sort_values("fecha_registro_dt", ascending=True)
@@ -365,6 +428,8 @@ class StockTab:
         except Exception:
             df["cantidad"] = 1
 
+        # Quitar helper dt antes de mostrar
+        df = df.drop(columns=["fecha_registro_dt"], errors="ignore")
         return self._clean_nan_to_na(df)
 
     def _normalize_stock(self, df, mode="stock"):
@@ -380,7 +445,6 @@ class StockTab:
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
-        # compat: valor_final -> val
         if "valor_final" in df.columns and "val" not in df.columns:
             df["val"] = df["valor_final"]
 
