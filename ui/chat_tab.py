@@ -9,10 +9,11 @@ from modules.github_handler import GitHubHandler
 
 class ChatTab:
     """
-    LAIA — Chat + Tabla (Borrador)
-    ✅ Chat bonito + respeta saltos de línea
-    ✅ Tabla de borrador como antes (data_editor)
-    ✅ JSON debug solo en modo técnico
+    LAIA — Chat + Tabla (Borrador) [CORREGIDO]
+    ✅ Respeta saltos de línea del usuario
+    ✅ La respuesta del assistant se muestra como JSON (según SYSTEM_PROMPT)
+    ✅ Tabla de borrador (data_editor) como antes
+    ✅ Vista simple opcional (para usuarios finales)
     """
 
     def __init__(self):
@@ -25,7 +26,10 @@ class ChatTab:
         st.session_state.setdefault("draft", [])
         st.session_state.setdefault("status", "NEW")
 
-        st.session_state.setdefault("modo_tecnico", False)
+        # UI toggles
+        st.session_state.setdefault("modo_tecnico", False)     # muestra JSON debug abajo
+        st.session_state.setdefault("vista_simple", True)      # usuarios finales: resumen corto (opcional)
+
         st.session_state.setdefault("last_json", {})
 
     # ---------------------------
@@ -67,7 +71,6 @@ class ChatTab:
                 opacity: 0.98;
               }
 
-              /* Tabla/borrador */
               div[data-testid="stDataEditor"]{
                 border-radius: 14px;
                 overflow: hidden;
@@ -107,35 +110,46 @@ class ChatTab:
         self._inject_style()
         self._render_logo()
 
-        # Toggle técnico arriba
-        top_l, top_r = st.columns([4, 1.2], vertical_alignment="center")
+        # Toggles arriba (discretos)
+        top_l, top_r = st.columns([4, 2.2], vertical_alignment="center")
         with top_r:
+            st.session_state["vista_simple"] = st.toggle(
+                "👤 Vista simple (usuarios)",
+                value=bool(st.session_state.get("vista_simple", True)),
+                help="ON: muestra un resumen corto. OFF: muestra el JSON en el chat."
+            )
             st.session_state["modo_tecnico"] = st.toggle(
                 "🛠️ Modo técnico",
-                value=bool(st.session_state.get("modo_tecnico", False))
+                value=bool(st.session_state.get("modo_tecnico", False)),
+                help="Muestra el JSON crudo también abajo (debug)."
             )
 
         # CHAT
         for m in st.session_state.messages:
             role = m.get("role", "assistant")
             content = m.get("content", "")
+            fmt = m.get("format", "md")  # "md" | "json" | "text"
+
             with st.chat_message(role):
                 if role == "user":
                     self._render_user_text_preserving_lines(content)
                 else:
-                    st.markdown(content)
+                    if fmt == "json":
+                        st.code(content, language="json")
+                    else:
+                        st.markdown(content)
 
         if prompt := st.chat_input("Dime qué llegó o qué enviaste (puedes pegar varias líneas)..."):
             self._procesar_mensaje(prompt)
             st.rerun()
 
-        # JSON debug (solo técnico)
+        # Debug extra abajo (solo técnico)
         if st.session_state.get("modo_tecnico", False):
             last = st.session_state.get("last_json", {}) or {}
             with st.expander("🧾 JSON (debug)", expanded=False):
                 st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
 
-        # ✅ TABLA BORRADOR (como antes)
+        # TABLA BORRADOR
         if st.session_state.get("draft"):
             self._render_borrador()
 
@@ -147,20 +161,30 @@ class ChatTab:
         if not prompt:
             return
 
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "user", "content": prompt, "format": "text"})
 
         if self._is_saludo_o_basura(prompt):
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": (
-                    "Dime un movimiento de inventario.\n\n"
-                    "Ejemplos:\n"
-                    "- `Recibí 1 laptop Dell serie 099209`\n"
-                    "- `Envié 1 CPU a Pedernales guía 12345`\n"
-                    "- Puedes pegar varios movimientos, uno por línea."
-                )
-            })
-            st.session_state["last_json"] = {"status": "QUESTION", "missing_info": "Falta movimiento de inventario"}
+            # Generar JSON “vacío” válido (según tu contrato)
+            res_json = {
+                "status": "QUESTION",
+                "missing_info": "Falta movimiento de inventario",
+                "items": st.session_state.draft or []
+            }
+            st.session_state["last_json"] = res_json
+
+            # En chat: si vista simple, muestra guía corta; si no, muestra JSON
+            if st.session_state.get("vista_simple", True):
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "Necesito un movimiento. Ej: `Recibí 1 laptop Dell serie 099209` o `Envié 1 CPU a Pedernales guía 12345`.",
+                    "format": "md"
+                })
+            else:
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": json.dumps(res_json, ensure_ascii=False, indent=2),
+                    "format": "json"
+                })
             return
 
         try:
@@ -174,32 +198,50 @@ class ChatTab:
                     historial_mensajes=st.session_state.messages
                 )
 
-                mensaje = resultado.get("mensaje", "Sin respuesta.")
-                st.session_state.messages.append({"role": "assistant", "content": mensaje})
+                # ✅ JSON es la verdad
+                res_json = (resultado.get("json_response") or {}) if isinstance(resultado, dict) else {}
+                if not res_json:
+                    # fallback: si el motor falló y no dio JSON, al menos no rompas
+                    res_json = {
+                        "status": "QUESTION",
+                        "missing_info": "Motor no devolvió json_response",
+                        "items": st.session_state.draft or []
+                    }
 
-                res_json = resultado.get("json_response", {}) or {}
                 st.session_state["last_json"] = res_json
-
-                items = res_json.get("items") or []
-                if items:
-                    self._merge_draft(items)
-
                 st.session_state["status"] = res_json.get("status", "QUESTION")
 
+                # Actualizar borrador con items del JSON
+                items = res_json.get("items") or []
+                if items:
+                    self._set_draft(items)
+
+                # ✅ Mostrar en chat:
+                if st.session_state.get("vista_simple", True):
+                    # resumen corto para usuarios
+                    missing = (res_json.get("missing_info") or "").strip()
+                    if missing:
+                        txt = missing
+                    else:
+                        txt = "READY: sin faltantes."
+                    st.session_state.messages.append({"role": "assistant", "content": txt, "format": "md"})
+                else:
+                    # JSON completo (cumple tu SYSTEM_PROMPT)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": json.dumps(res_json, ensure_ascii=False, indent=2),
+                        "format": "json"
+                    })
+
         except Exception as e:
-            st.session_state.messages.append({"role": "assistant", "content": f"⚠️ Error en el motor de LAIA: {str(e)}"})
-            st.session_state["last_json"] = {"status": "ERROR", "error": str(e)}
+            res_json = {"status": "ERROR", "missing_info": "", "error": str(e), "items": st.session_state.draft or []}
+            st.session_state["last_json"] = res_json
+            st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"})
 
-    def _merge_draft(self, nuevos_items):
-        if not st.session_state.draft:
-            st.session_state.draft = nuevos_items
-            return
-
-        actual = {(i.get("serie") or i.get("modelo") or i.get("equipo")): i for i in st.session_state.draft}
-        for item in nuevos_items:
-            key = item.get("serie") or item.get("modelo") or item.get("equipo")
-            actual[key] = item
-        st.session_state.draft = list(actual.values())
+    def _set_draft(self, items):
+        # Aquí NO hacemos merge raro: tu system prompt dice que el JSON debe traer “todos los items actuales”.
+        # Entonces: el borrador = items del JSON.
+        st.session_state.draft = items
 
     # ---------------------------
     # Tabla de borrador
@@ -217,7 +259,6 @@ class ChatTab:
             with right:
                 st.caption(f"Estado: **{st.session_state.get('status', 'NEW')}**")
 
-        # columnas base (las que tu robot espera)
         cols_base = [
             "categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado",
             "tipo", "origen", "destino", "pasillo", "estante", "repisa", "guia", "fecha_llegada",
@@ -237,16 +278,14 @@ class ChatTab:
                 num_rows="dynamic",
                 use_container_width=True,
                 hide_index=True,
-                key="editor_borrador_chat"
+                key="editor_borrador_chat_v2"
             )
 
-        # sincronizar cambios
         if not df.equals(edited):
             st.session_state.draft = edited.to_dict("records")
             st.session_state.status = "QUESTION"
             st.rerun()
 
-        # botones mínimos
         c1, c2 = st.columns([1.2, 2.8], vertical_alignment="center")
         with c1:
             if st.button("🗑️ Limpiar borrador", use_container_width=True):
@@ -254,4 +293,4 @@ class ChatTab:
                 st.session_state.status = "NEW"
                 st.rerun()
         with c2:
-            st.caption("Tip: si LAIA marca faltantes, completa aquí y vuelve a enviar un 'OK' para que re-audite.")
+            st.caption("Completa faltantes en la tabla. Luego envía un mensaje tipo: `guarda así` para forzar READY.")
