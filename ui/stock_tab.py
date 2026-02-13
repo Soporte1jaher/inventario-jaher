@@ -1,3 +1,4 @@
+# ui/stock_tab.py
 """
 ui/stock_tab.py
 Stock Real — Control & Reportes (PRO)
@@ -7,7 +8,7 @@ Mejoras clave:
 - Regla JAHER:
   - si DESTINO == "bodega" -> solo se ve en BODEGA (no en MOVIMIENTOS)
   - si ORIGEN == "bodega" -> se ve normal en MOVIMIENTOS
-- Métricas top + resumen por equipo (ej: TECLADO 11, MOUSE 3)
+- Métricas top + resumen por equipo
 - Debug opcional
 - Export Excel 4 hojas (RAW)
 """
@@ -27,7 +28,6 @@ class StockTab:
         self.stock_calc = StockCalculator()
 
     def render(self):
-        # Header corporativo
         with st.container(border=True):
             c1, c2, c3 = st.columns([3, 1.1, 1.1], vertical_alignment="center")
 
@@ -36,14 +36,15 @@ class StockTab:
                 st.caption("Fuente: historico.json (GitHub) → cálculo modular → vistas + Excel (4 hojas)")
 
             with c2:
-                if st.button("🔄 Refrescar", use_container_width=True):
+                if st.button("🔄 Refrescar", use_container_width=True, key="stk_refresh_btn"):
                     st.rerun()
 
             with c3:
                 show_debug = st.toggle(
                     "🧪 Debug",
                     value=False,
-                    help="Solo para ti: muestra dataframes crudos/post-cálculo para entender por qué algo salió raro.",
+                    help="Muestra dataframes crudos/post-cálculo (solo para revisión).",
+                    key="stk_debug_toggle",
                 )
 
         hist = self.github.obtener_historico()
@@ -76,7 +77,7 @@ class StockTab:
         bod_res_view = self._normalize_stock(bod_res_raw, mode="bodega")
         danados_res_view = self._normalize_stock(danados_res_raw, mode="danados")
 
-        # Métricas + Resumen por equipo
+        # Métricas + resumen por equipo
         self._mostrar_metricas_top(df_h_view, df_mov_view, st_res_view, bod_res_view, danados_res_view)
 
         # Export (RAW recomendado)
@@ -99,19 +100,15 @@ class StockTab:
         with t_dan:
             self._tab_danados(danados_res_view)
 
-        # Debug opcional
         if show_debug:
             with st.expander("🧪 Debug (revisión técnica)", expanded=False):
-                st.write("df_h_raw (histórico leído):", df_h_raw.shape)
+                st.write("df_h_raw:", df_h_raw.shape)
                 st.dataframe(df_h_raw.head(30), use_container_width=True)
-
-                st.write("df_h_raw_out (post-cálculo):", df_h_raw_out.shape)
+                st.write("df_h_raw_out:", df_h_raw_out.shape)
                 st.dataframe(df_h_raw_out.head(30), use_container_width=True)
-
-                st.write("df_h_view (normalizado UI):", df_h_view.shape)
+                st.write("df_h_view:", df_h_view.shape)
                 st.dataframe(df_h_view.head(30), use_container_width=True)
-
-                st.write("df_mov_view (movimientos sin destino bodega):", df_mov_view.shape)
+                st.write("df_mov_view:", df_mov_view.shape)
                 st.dataframe(df_mov_view.head(30), use_container_width=True)
 
                 if isinstance(st_res_raw, pd.DataFrame):
@@ -153,8 +150,8 @@ class StockTab:
                 st.caption(f"🕒 Última actividad detectada: **{ultimo}** | Histórico total: **{total_hist}**")
 
         # Resumen por equipo
-        if isinstance(st_res_view, pd.DataFrame) and (not st_res_view.empty) and ("equipo" in st_res_view.columns):
-            if "cantidad_disponible" in st_res_view.columns:
+        if isinstance(st_res_view, pd.DataFrame) and (not st_res_view.empty):
+            if "equipo" in st_res_view.columns and "cantidad_disponible" in st_res_view.columns:
                 with st.container(border=True):
                     st.markdown("### 📌 Resumen rápido (por equipo)")
                     st.caption("Ej: TECLADO 11, MOUSE 3… (calculado desde la tabla de Stock)")
@@ -195,9 +192,7 @@ class StockTab:
                 st.warning("No hay movimientos para mostrar.")
                 return
 
-            df_show = df_view.copy()
-            df_show = self._clean_nan_to_na(df_show)
-
+            df_show = self._clean_nan_to_na(df_view.copy())
             st.dataframe(df_show.tail(250), use_container_width=True, hide_index=True, height=520)
 
     def _tab_stock(self, st_res):
@@ -207,8 +202,7 @@ class StockTab:
                 st.info("No hay stock disponible (o no se han registrado periféricos).")
                 return
 
-            df = st_res.copy()
-            df = self._clean_nan_to_na(df)
+            df = self._clean_nan_to_na(st_res.copy())
 
             if "cantidad_disponible" in df.columns:
                 df["cantidad_disponible"] = pd.to_numeric(df["cantidad_disponible"], errors="coerce").fillna(0).astype(int)
@@ -225,8 +219,7 @@ class StockTab:
                 st.info("No hay registros que caigan en Bodega.")
                 return
 
-            df = bod_res.copy()
-            df = self._clean_nan_to_na(df)
+            df = self._clean_nan_to_na(bod_res.copy())
             st.dataframe(df, use_container_width=True, hide_index=True, height=560)
 
     def _tab_danados(self, danados_res):
@@ -236,8 +229,7 @@ class StockTab:
                 st.info("No hay registros marcados como dañados/chatarras/bajas.")
                 return
 
-            df = danados_res.copy()
-            df = self._clean_nan_to_na(df)
+            df = self._clean_nan_to_na(danados_res.copy())
             st.dataframe(df, use_container_width=True, hide_index=True, height=560)
 
     # ---------------------------------------------------------
@@ -245,42 +237,52 @@ class StockTab:
     # ---------------------------------------------------------
     def _crear_boton_descarga(self, st_res, bod_res, danados_res, df_h):
         with st.container(border=True):
-            st.markdown("### 📥 Exportación Excel")
-            st.caption("Descarga el Excel con 4 hojas: MOVIMIENTOS, STOCK_SALDOS, BODEGA, DANADOS_CHATARRA.")
+            c1, c2 = st.columns([3, 1.4], vertical_alignment="center")
+            with c1:
+                st.markdown("### 📥 Exportación Excel")
+                st.caption("Descarga el Excel con 4 hojas: MOVIMIENTOS, STOCK_SALDOS, BODEGA, DANADOS_CHATARRA.")
+            with c2:
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                    pd.DataFrame(df_h).to_excel(writer, index=False, sheet_name="MOVIMIENTOS")
 
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                pd.DataFrame(df_h).to_excel(writer, index=False, sheet_name="MOVIMIENTOS")
+                    if isinstance(st_res, pd.DataFrame) and not st_res.empty:
+                        st_res.to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
+                    else:
+                        pd.DataFrame().to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
 
-                if isinstance(st_res, pd.DataFrame) and not st_res.empty:
-                    st_res.to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
-                else:
-                    pd.DataFrame(columns=["equipo", "marca", "val"]).to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
+                    if isinstance(bod_res, pd.DataFrame) and not bod_res.empty:
+                        bod_res.to_excel(writer, index=False, sheet_name="BODEGA")
+                    else:
+                        pd.DataFrame().to_excel(writer, index=False, sheet_name="BODEGA")
 
-                if isinstance(bod_res, pd.DataFrame) and not bod_res.empty:
-                    bod_res.to_excel(writer, index=False, sheet_name="BODEGA")
-                else:
-                    pd.DataFrame().to_excel(writer, index=False, sheet_name="BODEGA")
+                    if isinstance(danados_res, pd.DataFrame) and not danados_res.empty:
+                        danados_res.to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
+                    else:
+                        pd.DataFrame().to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
 
-                if isinstance(danados_res, pd.DataFrame) and not danados_res.empty:
-                    danados_res.to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
-                else:
-                    pd.DataFrame().to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
-
-            timestamp = datetime.datetime.now().strftime("%d_%m_%H%M")
-            st.download_button(
-                label="📥 Descargar Excel (4 hojas)",
-                data=buffer.getvalue(),
-                file_name=f"Inventario_Jaher_{timestamp}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True,
-            )
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+                st.download_button(
+                    label="📥 Descargar Excel (4 hojas)",
+                    data=buffer.getvalue(),
+                    file_name=f"Inventario_Jaher_{timestamp}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="primary",
+                    use_container_width=True,
+                    key="stk_download_excel",
+                )
 
     # ---------------------------------------------------------
     # Helpers
     # ---------------------------------------------------------
-    def _normalize_historial(self, df):
+    def _clean_nan_to_na(self, df: pd.DataFrame):
+        if df is None or df.empty:
+            return df
+        df = df.replace({pd.NA: "", "nan": ""}).fillna("")
+        df = df.replace("", "N/A")
+        return df
+
+    def _normalize_historial(self, df: pd.DataFrame):
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
@@ -288,35 +290,21 @@ class StockTab:
         if "fecha_llegada" in df.columns and "fecha_registro" not in df.columns:
             df["fecha_registro"] = df["fecha_llegada"]
 
-        # asegurar columnas típicas
-        for c in [
-            "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
-            "cantidad", "estado", "procesador", "ram", "disco", "origen", "destino", "guia", "reporte"
-        ]:
+        for c in ["tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia", "reporte", "categoria_item", "cantidad"]:
             if c not in df.columns:
                 df[c] = ""
 
-        # fecha bonita
-        df["fecha_registro"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
-        df = df.sort_values("fecha_registro", ascending=True)
-        df["fecha_registro"] = df["fecha_registro"].dt.strftime("%Y-%m-%d %H:%M")
+        df["fecha_registro_dt"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
+        df = df.sort_values("fecha_registro_dt", ascending=True)
 
-        # cantidad (UI)
+        df["fecha_registro"] = df["fecha_registro_dt"].dt.strftime("%Y-%m-%d %H:%M").fillna("N/A")
+
         try:
             df["cantidad"] = pd.to_numeric(df["cantidad"], errors="coerce").fillna(1).astype(int)
         except Exception:
-            pass
+            df["cantidad"] = 1
 
-        # limpiar NaN -> N/A para UI
-        df = self._clean_nan_to_na(df)
-
-        cols_pref = [
-            "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
-            "cantidad", "estado", "procesador", "ram", "disco", "origen", "destino", "guia", "reporte"
-        ]
-        cols_pref = [c for c in cols_pref if c in df.columns]
-        resto = [c for c in df.columns if c not in cols_pref]
-        return df[cols_pref + resto]
+        return self._clean_nan_to_na(df)
 
     def _normalize_stock(self, df, mode="stock"):
         if df is None:
@@ -348,15 +336,9 @@ class StockTab:
             if "val" in df.columns:
                 df = df.rename(columns={"val": "cantidad_disponible"})
 
-        df = self._clean_nan_to_na(df)
-        return df
+        return self._clean_nan_to_na(df)
 
-    def _movimientos_sin_destino_bodega(self, df_view):
-        """
-        Regla JAHER:
-        - Si DESTINO == 'bodega' => NO se muestra en Movimientos (solo en Bodega)
-        - Si ORIGEN == 'bodega'  => se mantiene normal en Movimientos
-        """
+    def _movimientos_sin_destino_bodega(self, df_view: pd.DataFrame):
         if df_view is None or df_view.empty:
             return df_view
         if "destino" not in df_view.columns:
@@ -364,15 +346,4 @@ class StockTab:
 
         df = df_view.copy()
         dest = df["destino"].astype(str).str.strip().str.lower()
-        df = df[dest != "bodega"].copy()
-        return df
-
-    def _clean_nan_to_na(self, df: pd.DataFrame):
-        # Convierte NaN/None/'nan'/'None' -> "N/A" para UI
-        if df is None or df.empty:
-            return df
-        out = df.copy()
-        out = out.replace({pd.NA: "", None: "", "nan": "", "None": ""})
-        out = out.fillna("")
-        out = out.replace("", "N/A")
-        return out
+        return df[dest != "bodega"]
