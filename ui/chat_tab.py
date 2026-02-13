@@ -20,6 +20,7 @@ class ChatTab:
     ✅ Cinturón de seguridad: Intel <= 9 => CHATARRA/BAJA (si no hay override)
     ✅ NO rompe con: "Motor no devolvió json_response"
     ✅ IDLE para charla/preguntas (frío) como tu prompt v14
+    ✅ Al enviar: limpia borrador + chat + reset del editor
     """
 
     def __init__(self):
@@ -37,6 +38,9 @@ class ChatTab:
 
         st.session_state.setdefault("last_json", {})
         st.session_state.setdefault("forzar_guardado", False)
+
+        # ✅ para reiniciar el data_editor cuando envías
+        st.session_state.setdefault("editor_reset_key", "0")
 
     # ---------------------------
     # UI style
@@ -108,7 +112,6 @@ class ChatTab:
               .b-idle{ border-color: rgba(130,177,255,0.35); }
               .b-bad{ border-color: rgba(255,82,82,0.35); }
 
-              /* para que el toggle "vista simple" se note visualmente */
               .hint-mode{
                 opacity:.75;
                 font-size:.85rem;
@@ -132,7 +135,10 @@ class ChatTab:
     # ---------------------------
     def _is_force_override(self, user_text: str) -> bool:
         t = (user_text or "").lower()
-        triggers = ["enviar así", "guarda eso", "no importa", "asi esta bien", "así está bien", "asi nomas", "así nomás", "forzar ready"]
+        triggers = [
+            "enviar así", "guarda eso", "no importa", "asi esta bien", "así está bien",
+            "asi nomas", "así nomás", "forzar ready"
+        ]
         return any(x in t for x in triggers)
 
     def _is_smalltalk(self, text: str) -> bool:
@@ -187,11 +193,9 @@ class ChatTab:
             if isinstance(resultado.get("json_response"), str):
                 return self._try_parse_json(resultado.get("json_response"))
 
-            # otras claves comunes
             for k in ["response", "content", "message", "raw"]:
                 v = resultado.get(k)
                 if isinstance(v, dict):
-                    # si ya es dict, asumo que es el JSON final
                     if "items" in v and "status" in v:
                         return v
                 if isinstance(v, str):
@@ -211,7 +215,6 @@ class ChatTab:
         try:
             return json.loads(s)
         except:
-            # intenta extraer el primer bloque {...} por si viene texto con JSON incrustado
             try:
                 m = re.search(r"\{.*\}", s, flags=re.DOTALL)
                 if m:
@@ -228,7 +231,7 @@ class ChatTab:
             return None
         p = str(proc).lower().strip()
 
-        m = re.search(r'(\d{1,2})\s*(?:th)?\s*gen', p)
+        m = re.search(r"(\d{1,2})\s*(?:th)?\s*gen", p)
         if m:
             try:
                 return int(m.group(1))
@@ -250,7 +253,7 @@ class ChatTab:
         if any(x in p for x in ["14ma", "14a", "14ª"]) or "14th" in p:
             return 14
 
-        m2 = re.search(r'i[3579]\s*[- ]?\s*(\d{4,5})', p)
+        m2 = re.search(r"i[3579]\s*[- ]?\s*(\d{4,5})", p)
         if m2:
             code = m2.group(1)
             try:
@@ -275,7 +278,9 @@ class ChatTab:
 
             equipo = str(x.get("equipo", "") or "").lower()
             categoria = str(x.get("categoria_item", "") or "").lower()
-            es_computo = ("computo" in categoria) or any(k in equipo for k in ["laptop", "cpu", "servidor", "aio", "all-in-one", "tablet"])
+            es_computo = ("computo" in categoria) or any(
+                k in equipo for k in ["laptop", "cpu", "servidor", "aio", "all-in-one", "tablet"]
+            )
 
             gen = self._infer_intel_gen(str(x.get("procesador", "") or ""))
 
@@ -316,7 +321,7 @@ class ChatTab:
               {"<div style='margin-top:10px; white-space:pre-wrap;'>" + html.escape(missing) + "</div>" if missing else ""}
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     # ---------------------------
@@ -331,22 +336,20 @@ class ChatTab:
             st.session_state["vista_simple"] = st.toggle(
                 "👤 Vista simple (usuarios)",
                 value=bool(st.session_state.get("vista_simple", True)),
-                help="ON: tarjeta resumen. OFF: JSON crudo en el chat."
+                help="ON: tarjeta resumen. OFF: JSON crudo en el chat.",
             )
             st.session_state["modo_tecnico"] = st.toggle(
                 "🛠️ Modo técnico",
                 value=bool(st.session_state.get("modo_tecnico", False)),
-                help="Muestra JSON crudo también abajo (debug)."
+                help="Muestra JSON crudo también abajo (debug).",
             )
-            # micro-indicador visible
             st.markdown(
                 "<div class='hint-mode'>"
                 + ("Modo: <b>Tarjeta</b>" if st.session_state["vista_simple"] else "Modo: <b>JSON</b>")
                 + "</div>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
-        # CHAT
         for m in st.session_state.messages:
             role = m.get("role", "assistant")
             content = m.get("content", "")
@@ -382,22 +385,17 @@ class ChatTab:
     # Core
     # ---------------------------
     def _reply(self, res_json: dict):
-        """Centraliza cómo se muestra la respuesta (simple vs json)."""
         st.session_state["last_json"] = res_json
         st.session_state["status"] = res_json.get("status", "QUESTION")
 
         if st.session_state.get("vista_simple", True):
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": json.dumps(res_json, ensure_ascii=False),
-                "format": "simple"
-            })
+            st.session_state.messages.append(
+                {"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False), "format": "simple"}
+            )
         else:
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": json.dumps(res_json, ensure_ascii=False, indent=2),
-                "format": "json"
-            })
+            st.session_state.messages.append(
+                {"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"}
+            )
 
     def _procesar_mensaje(self, prompt: str):
         prompt = (prompt or "").rstrip()
@@ -406,12 +404,11 @@ class ChatTab:
 
         st.session_state.messages.append({"role": "user", "content": prompt, "format": "text"})
 
-        # 1) Preguntas sobre LAIA / charla => IDLE frío (NO QUESTION)
         if self._is_about_me(prompt):
             res_json = {
                 "status": "IDLE",
                 "missing_info": "Soy LAIA v14.0. Audito hardware y registro movimientos (recibido/enviado), validando series, guías, specs y destino. Reporta los movimientos pendientes.",
-                "items": st.session_state.draft or []
+                "items": st.session_state.draft or [],
             }
             self._reply(res_json)
             return
@@ -420,12 +417,11 @@ class ChatTab:
             res_json = {
                 "status": "IDLE",
                 "missing_info": "Ese mensaje no es un movimiento. Reporta recepción o envío con equipo/serie/guía/destino.",
-                "items": st.session_state.draft or []
+                "items": st.session_state.draft or [],
             }
             self._reply(res_json)
             return
 
-        # 2) Si el usuario fuerza override, NO bloquees; deja que el motor lo haga (y si falla, forzamos READY)
         forced = self._is_force_override(prompt)
 
         try:
@@ -436,15 +432,13 @@ class ChatTab:
                     user_input=prompt,
                     lecciones=lecciones,
                     borrador_actual=st.session_state.draft,
-                    historial_mensajes=st.session_state.messages
+                    historial_mensajes=st.session_state.messages,
                 )
 
                 res_json = self._extract_json(resultado)
 
-                # 3) Si el motor no devolvió JSON, fallback decente
                 if not res_json:
                     if self._looks_like_inventory(prompt):
-                        # crea 1 item genérico para que la tabla exista (tu regla NMMS: jamás items:[])
                         res_json = {
                             "status": "QUESTION" if not forced else "READY",
                             "missing_info": "Motor no devolvió JSON. Se creó borrador mínimo. Completa datos en la tabla.",
@@ -468,26 +462,23 @@ class ChatTab:
                                     "estante": "N/A",
                                     "repisa": "N/A",
                                     "guia": "N/A",
-                                    "fecha_llegada": "N/A"
+                                    "fecha_llegada": "N/A",
                                 }
-                            ]
+                            ],
                         }
                     else:
-                        # no parece inventario => IDLE (no molestes con QUESTION)
                         res_json = {
                             "status": "IDLE",
                             "missing_info": "Ese mensaje no contiene un movimiento inventariable. Reporta equipos/series/guías.",
-                            "items": st.session_state.draft or []
+                            "items": st.session_state.draft or [],
                         }
 
-                # 4) Cinturón supremo + set draft
                 items = res_json.get("items") or []
                 if items:
                     items = self._enforce_chatarrizacion_rule(items, prompt)
                     res_json["items"] = items
                     self._set_draft(items)
 
-                # 5) Si el usuario force override y el motor no puso READY, nosotros lo dejamos READY (UI)
                 if forced:
                     res_json["status"] = "READY"
 
@@ -498,7 +489,7 @@ class ChatTab:
                 "status": "ERROR",
                 "missing_info": "Error en motor.",
                 "error": str(e),
-                "items": st.session_state.draft or []
+                "items": st.session_state.draft or [],
             }
             self._reply(res_json)
 
@@ -509,34 +500,34 @@ class ChatTab:
     # Guardar / Enviar
     # ---------------------------
     def _guardar_y_enviar(self):
-    # Hora Ecuador (UTC-5)
+        # Hora Ecuador (UTC-5)
         ahora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
         payload = []
-       for item in (st.session_state.draft or []):
-          x = dict(item)
-          x["fecha_registro"] = x.get("fecha_registro") or ahora
-          payload.append(x)
+        for item in (st.session_state.draft or []):
+            x = dict(item)
+            x["fecha_registro"] = x.get("fecha_registro") or ahora
+            payload.append(x)
 
-         ok = self.github.enviar_a_buzon(payload)
-      if ok:
-        st.success("✅ Enviado al Robot de la PC", icon="✅")
+        ok = self.github.enviar_a_buzon(payload)
+        if ok:
+            st.success("✅ Enviado al Robot de la PC", icon="✅")
 
-        # ✅ LIMPIEZA TOTAL (chat + borrador + estado)
-          st.session_state["draft"] = []
-          st.session_state["status"] = "NEW"
-          st.session_state["forzar_guardado"] = False
-          st.session_state["last_json"] = {}
+            # ✅ LIMPIEZA TOTAL (chat + borrador + estado)
+            st.session_state["draft"] = []
+            st.session_state["status"] = "NEW"
+            st.session_state["forzar_guardado"] = False
+            st.session_state["last_json"] = {}
 
-        # ✅ chat limpio para nuevo registro
-          st.session_state["messages"] = []
+            # ✅ chat limpio para nuevo registro
+            st.session_state["messages"] = []
 
-        # ✅ opcional: “reset” del data_editor (evita que quede cacheado)
-          st.session_state["editor_reset_key"] = str(datetime.now().timestamp())
+            # ✅ reset del data_editor (evita cache)
+            st.session_state["editor_reset_key"] = str(datetime.now().timestamp())
 
-          st.rerun()
-      else:
-          st.error("❌ No se pudo enviar al buzón. Revisa token/permiso/red.")
+            st.rerun()
+        else:
+            st.error("❌ No se pudo enviar al buzón. Revisa token/permiso/red.")
 
     # ---------------------------
     # Tabla borrador
@@ -557,7 +548,7 @@ class ChatTab:
         cols_base = [
             "categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado",
             "tipo", "origen", "destino", "pasillo", "estante", "repisa", "guia", "fecha_llegada",
-            "ram", "disco", "procesador", "reporte"
+            "ram", "disco", "procesador", "reporte",
         ]
 
         df = pd.DataFrame(st.session_state.draft).copy()
@@ -573,7 +564,7 @@ class ChatTab:
                 num_rows="dynamic",
                 use_container_width=True,
                 hide_index=True,
-                key="editor_borrador_chat_final_fix"
+                key=f"editor_borrador_chat_final_fix_{st.session_state['editor_reset_key']}",
             )
 
         if not df.equals(edited):
@@ -588,7 +579,7 @@ class ChatTab:
                 "🔓 Forzar",
                 value=bool(st.session_state.get("forzar_guardado", False)),
                 help="Permite enviar aunque el estado sea QUESTION (bajo tu responsabilidad).",
-                key="chk_forzar_guardado"
+                key="chk_forzar_guardado",
             )
 
         allow_save = (st.session_state.get("status") == "READY") or bool(st.session_state.get("forzar_guardado", False))
@@ -598,11 +589,19 @@ class ChatTab:
                 if st.button("🚀 GUARDAR Y ENVIAR AL ROBOT", type="primary", use_container_width=True, key="btn_send_robot"):
                     self._guardar_y_enviar()
             else:
-                st.button("🚀 GUARDAR (FALTAN DATOS)", disabled=True, use_container_width=True, key="btn_send_robot_disabled")
+                st.button(
+                    "🚀 GUARDAR (FALTAN DATOS)",
+                    disabled=True,
+                    use_container_width=True,
+                    key="btn_send_robot_disabled",
+                )
 
         with c3:
             if st.button("🗑️ Limpiar borrador", use_container_width=True, key="btn_clear_draft"):
                 st.session_state.draft = []
                 st.session_state.status = "NEW"
                 st.session_state.forzar_guardado = False
+                st.session_state["messages"] = []
+                st.session_state["last_json"] = {}
+                st.session_state["editor_reset_key"] = str(datetime.now().timestamp())
                 st.rerun()
