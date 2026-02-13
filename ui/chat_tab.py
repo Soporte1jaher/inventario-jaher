@@ -509,23 +509,34 @@ class ChatTab:
     # Guardar / Enviar
     # ---------------------------
     def _guardar_y_enviar(self):
+    # Hora Ecuador (UTC-5)
         ahora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
         payload = []
-        for item in (st.session_state.draft or []):
-            x = dict(item)
-            x["fecha_registro"] = x.get("fecha_registro") or ahora
-            payload.append(x)
+       for item in (st.session_state.draft or []):
+          x = dict(item)
+          x["fecha_registro"] = x.get("fecha_registro") or ahora
+          payload.append(x)
 
-        ok = self.github.enviar_a_buzon(payload)
-        if ok:
-            st.success("✅ Enviado al Robot de la PC", icon="✅")
-            st.session_state.draft = []
-            st.session_state.status = "NEW"
-            st.session_state.forzar_guardado = False
-            st.rerun()
-        else:
-            st.error("❌ No se pudo enviar al buzón. Revisa token/permiso/red.")
+         ok = self.github.enviar_a_buzon(payload)
+      if ok:
+        st.success("✅ Enviado al Robot de la PC", icon="✅")
+
+        # ✅ LIMPIEZA TOTAL (chat + borrador + estado)
+          st.session_state["draft"] = []
+          st.session_state["status"] = "NEW"
+          st.session_state["forzar_guardado"] = False
+          st.session_state["last_json"] = {}
+
+        # ✅ chat limpio para nuevo registro
+          st.session_state["messages"] = []
+
+        # ✅ opcional: “reset” del data_editor (evita que quede cacheado)
+          st.session_state["editor_reset_key"] = str(datetime.now().timestamp())
+
+          st.rerun()
+      else:
+          st.error("❌ No se pudo enviar al buzón. Revisa token/permiso/red.")
 
     # ---------------------------
     # Tabla borrador
