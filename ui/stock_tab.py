@@ -1,10 +1,10 @@
 """
 ui/stock_tab.py
 Tab de control de stock (PRO) — 4 vistas: Movimientos, Stock, Bodega, Dañados
-- Filtros (fecha, tipo, equipo, marca, estado, texto libre)
 - Métricas y resúmenes
 - Tabs internas con tablas limpias
 - Descarga Excel 4 hojas con nombres claros
+- Debug opcional (solo muestra dataframes para revisar)
 """
 
 import streamlit as st
@@ -31,14 +31,20 @@ class StockTab:
         with a1:
             if st.button("🔄 Refrescar", use_container_width=True):
                 st.rerun()
+
         with a2:
-            show_debug = st.toggle("🧪 Debug", value=False)
+            # Debug = mostrar dataframes internos para revisar cálculos
+            show_debug = st.toggle(
+                "🧪 Debug",
+                value=False,
+                help="Muestra tablas internas (raw/normalizado) para detectar por qué algo sale raro."
+            )
+
         with a3:
             st.caption("Fuente: historico.json (GitHub) → cálculo modular → vistas + Excel (4 hojas)")
 
         # Obtener histórico
         hist = self.github.obtener_historico()
-
         if not hist:
             st.info("Aún no hay datos en el histórico.")
             return
@@ -54,62 +60,68 @@ class StockTab:
             st.info("Histórico vacío.")
             return
 
-        # Calcular stock completo (NO tocamos tu lógica)
-        st_res, bod_res, danados_res, df_h = self.stock_calc.calcular_stock_completo(df_h_raw)
+        # Calcular stock completo (tu lógica)
+        st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out = self.stock_calc.calcular_stock_completo(df_h_raw)
 
-        # Normalizaciones suaves para UI (no cambian tu data base)
-        df_h = self._normalize_historial(df_h)
-        st_res = self._normalize_stock(st_res, mode="stock")
-        bod_res = self._normalize_stock(bod_res, mode="bodega")
-        danados_res = self._normalize_stock(danados_res, mode="danados")
+        # Normalizar historial para vista (NO altera los datos guardados en GitHub)
+        df_h_view = self._normalize_historial(df_h_raw_out)
 
-        # Métricas PRO
-        self._mostrar_metricas_top(df_h, st_res, bod_res, danados_res)
+        # Normalizar vistas de stock/bodega/dañados SOLO para UI
+        st_res_view = self._normalize_stock(st_res_raw, mode="stock")
+        bod_res_view = self._normalize_stock(bod_res_raw, mode="bodega")
+        danados_res_view = self._normalize_stock(danados_res_raw, mode="danados")
 
-        # Filtros (impactan vistas, no el excel si no quieres)
-        with st.expander("🎛️ Filtros de vista (no altera datos, solo lo que ves)", expanded=True):
-            filtros = self._ui_filtros(df_h)
+        # Métricas PRO (usar VISTA normalizada, pero robusto por nombre de columna)
+        self._mostrar_metricas_top(df_h_view, st_res_view, bod_res_view, danados_res_view)
 
-        df_view = self._apply_filters(df_h, filtros)
+        # Descarga Excel (4 hojas) — aquí puedes escoger si quieres raw o view
+        # Te recomiendo EXPORTAR RAW para no perder columnas, pero con nombres bonitos de hojas.
+        self._crear_boton_descarga(st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out)
 
-        # Descarga Excel (4 hojas)
-        self._crear_boton_descarga(st_res, bod_res, danados_res, df_h)
-
-        # Tabs internas (lo que pediste)
+        # Tabs internas
         t_mov, t_stock, t_bod, t_dan = st.tabs(
             ["🧾 Movimientos", "📦 Stock (Periféricos)", "🏢 Bodega (Cómputo)", "🧯 Dañados/Chatarras"]
         )
 
         with t_mov:
-            self._tab_movimientos(df_view, df_h)
+            self._tab_movimientos(df_h_view)
 
         with t_stock:
-            self._tab_stock(st_res)
+            self._tab_stock(st_res_view)
 
         with t_bod:
-            self._tab_bodega(bod_res)
+            self._tab_bodega(bod_res_view)
 
         with t_dan:
-            self._tab_danados(danados_res)
+            self._tab_danados(danados_res_view)
 
         if show_debug:
             with st.expander("🧪 Debug DataFrames", expanded=False):
-                st.write("df_h_raw:", df_h_raw.shape)
-                st.dataframe(df_h_raw.head(25), use_container_width=True)
-                st.write("df_h (normalizado):", df_h.shape)
-                st.dataframe(df_h.head(25), use_container_width=True)
+                st.write("df_h_raw (histórico leído):", df_h_raw.shape)
+                st.dataframe(df_h_raw.head(30), use_container_width=True)
+                st.write("df_h_out (histórico post-cálculo):", df_h_raw_out.shape)
+                st.dataframe(df_h_raw_out.head(30), use_container_width=True)
+                st.write("st_res_raw:", getattr(st_res_raw, "shape", None))
+                st.dataframe(st_res_raw.head(30) if hasattr(st_res_raw, "head") else pd.DataFrame(), use_container_width=True)
 
     # ---------------------------------------------------------
     # UI Blocks
     # ---------------------------------------------------------
     def _mostrar_metricas_top(self, df_h, st_res, bod_res, danados_res):
-        # Totales
         total_mov = len(df_h)
-        total_stock = int(st_res.get("val", pd.Series([0])).sum()) if not st_res.empty else 0
+
+        # ---- total_stock robusto ----
+        total_stock = 0
+        if isinstance(st_res, pd.DataFrame) and not st_res.empty:
+            if "cantidad_disponible" in st_res.columns:
+                total_stock = int(pd.to_numeric(st_res["cantidad_disponible"], errors="coerce").fillna(0).sum())
+            elif "val" in st_res.columns:
+                total_stock = int(pd.to_numeric(st_res["val"], errors="coerce").fillna(0).sum())
+
         total_bodega = len(bod_res) if isinstance(bod_res, pd.DataFrame) else 0
         total_danados = len(danados_res) if isinstance(danados_res, pd.DataFrame) else 0
 
-        # “Último movimiento”
+        # Última fecha
         ultimo = ""
         if "fecha_registro" in df_h.columns:
             try:
@@ -122,119 +134,20 @@ class StockTab:
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("📜 Movimientos", total_mov, help="Cantidad total de registros en el histórico.")
         k2.metric("📦 Periféricos en Stock", total_stock, help="Suma de cantidades disponibles (stock).")
-        k3.metric("🏢 Registros en Bodega", total_bodega, help="Cantidad de items que caen en la vista Bodega.")
+        k3.metric("🏢 Registros en Bodega", total_bodega, help="Cantidad de items en la vista Bodega.")
         k4.metric("🧯 Registros Dañados/Chatarras", total_danados, help="Items marcados como dañados/obsoletos/chatarras.")
 
         if ultimo:
             st.caption(f"🕒 Última actividad detectada: **{ultimo}**")
 
-        # Top quick insights
-        c1, c2 = st.columns(2)
-        with c1:
-            top_equipo = self._top_count(df_h, "equipo", 5)
-            if not top_equipo.empty:
-                st.write("**Top Equipos (Movimientos)**")
-                st.dataframe(top_equipo, use_container_width=True, hide_index=True)
-        with c2:
-            top_marca = self._top_count(df_h, "marca", 5)
-            if not top_marca.empty:
-                st.write("**Top Marcas (Movimientos)**")
-                st.dataframe(top_marca, use_container_width=True, hide_index=True)
-
         st.divider()
 
-    def _ui_filtros(self, df_h):
-        # Campos disponibles
-        col_fecha = "fecha_registro" if "fecha_registro" in df_h.columns else None
-        col_tipo = "tipo" if "tipo" in df_h.columns else None
-        col_equipo = "equipo" if "equipo" in df_h.columns else None
-        col_marca = "marca" if "marca" in df_h.columns else None
-        col_estado = "estado" if "estado" in df_h.columns else None
-
-        f1, f2, f3, f4 = st.columns([1.7, 1.2, 1.2, 1.7])
-        filtros = {}
-
-        with f1:
-            filtros["q"] = st.text_input(
-                "🔎 Buscar texto (serie/modelo/reporte/etc.)",
-                placeholder="Ej: 8th gen / LATACUNGA / ABC123 / HP...",
-            ).strip()
-
-        with f2:
-            if col_tipo:
-                tipos = sorted([x for x in df_h[col_tipo].dropna().unique().tolist() if str(x).strip() != ""])
-                filtros["tipo"] = st.multiselect("Tipo", tipos, default=[])
-            else:
-                filtros["tipo"] = []
-
-        with f3:
-            if col_estado:
-                estados = sorted([x for x in df_h[col_estado].dropna().unique().tolist() if str(x).strip() != ""])
-                filtros["estado"] = st.multiselect("Estado", estados, default=[])
-            else:
-                filtros["estado"] = []
-
-        with f4:
-            filtros["max_rows"] = st.slider("Filas a mostrar", min_value=20, max_value=1000, value=120, step=20)
-
-        f5, f6, f7 = st.columns([1.5, 1.5, 1.0])
-
-        with f5:
-            if col_equipo:
-                equipos = sorted([x for x in df_h[col_equipo].dropna().unique().tolist() if str(x).strip() != ""])
-                filtros["equipo"] = st.multiselect("Equipo", equipos, default=[])
-            else:
-                filtros["equipo"] = []
-
-        with f6:
-            if col_marca:
-                marcas = sorted([x for x in df_h[col_marca].dropna().unique().tolist() if str(x).strip() != ""])
-                filtros["marca"] = st.multiselect("Marca", marcas, default=[])
-            else:
-                filtros["marca"] = []
-
-        with f7:
-            filtros["solo_ultimos"] = st.toggle("Solo últimos", value=True, help="Limita a los últimos N movimientos.")
-
-        # Rango de fechas si existe
-        if col_fecha:
-            try:
-                s = pd.to_datetime(df_h[col_fecha], errors="coerce")
-                s = s.dropna()
-                if not s.empty:
-                    min_d = s.min().date()
-                    max_d = s.max().date()
-                    d1, d2 = st.date_input("📅 Rango de fechas", value=(min_d, max_d))
-                    filtros["date_from"] = d1
-                    filtros["date_to"] = d2
-                else:
-                    filtros["date_from"] = None
-                    filtros["date_to"] = None
-            except:
-                filtros["date_from"] = None
-                filtros["date_to"] = None
-        else:
-            filtros["date_from"] = None
-            filtros["date_to"] = None
-
-        return filtros
-
-    def _tab_movimientos(self, df_view, df_h):
+    def _tab_movimientos(self, df_view):
         st.markdown("### 🧾 Movimientos (Histórico)")
         if df_view.empty:
-            st.warning("No hay movimientos que coincidan con los filtros.")
+            st.warning("No hay movimientos para mostrar.")
             return
-
-        st.dataframe(df_view, use_container_width=True, hide_index=True)
-
-        # Quick KPIs de la vista
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Filas visibles", len(df_view))
-        c2.metric("Total histórico", len(df_h))
-        if "tipo" in df_view.columns:
-            c3.metric("Tipos en vista", df_view["tipo"].nunique())
-        else:
-            c3.metric("Tipos en vista", 0)
+        st.dataframe(df_view.tail(250), use_container_width=True, hide_index=True)
 
     def _tab_stock(self, st_res):
         st.markdown("### 📦 Stock (Periféricos)")
@@ -242,10 +155,12 @@ class StockTab:
             st.info("No hay stock disponible (o no se han registrado periféricos).")
             return
 
-        # ordenado por cantidad
         df = st_res.copy()
-        if "val" in df.columns:
-            df = df.sort_values("val", ascending=False)
+
+        # ordenar por columna correcta
+        if "cantidad_disponible" in df.columns:
+            df["cantidad_disponible"] = pd.to_numeric(df["cantidad_disponible"], errors="coerce").fillna(0).astype(int)
+            df = df.sort_values("cantidad_disponible", ascending=False)
 
         st.dataframe(df, use_container_width=True, hide_index=True)
 
@@ -254,7 +169,6 @@ class StockTab:
         if bod_res is None or bod_res.empty:
             st.info("No hay registros que caigan en Bodega.")
             return
-
         st.dataframe(bod_res, use_container_width=True, hide_index=True)
 
     def _tab_danados(self, danados_res):
@@ -262,7 +176,6 @@ class StockTab:
         if danados_res is None or danados_res.empty:
             st.info("No hay registros marcados como dañados/chatarras/bajas.")
             return
-
         st.dataframe(danados_res, use_container_width=True, hide_index=True)
 
     # ---------------------------------------------------------
@@ -272,23 +185,23 @@ class StockTab:
         buffer = io.BytesIO()
 
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            # Hoja 1: Movimientos
-            df_h.to_excel(writer, index=False, sheet_name="MOVIMIENTOS")
+            # Movimientos
+            pd.DataFrame(df_h).to_excel(writer, index=False, sheet_name="MOVIMIENTOS")
 
-            # Hoja 2: Stock
-            if st_res is not None and not st_res.empty:
+            # Stock
+            if isinstance(st_res, pd.DataFrame) and not st_res.empty:
                 st_res.to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
             else:
                 pd.DataFrame(columns=["equipo", "marca", "val"]).to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
 
-            # Hoja 3: Bodega
-            if bod_res is not None and not bod_res.empty:
+            # Bodega
+            if isinstance(bod_res, pd.DataFrame) and not bod_res.empty:
                 bod_res.to_excel(writer, index=False, sheet_name="BODEGA")
             else:
                 pd.DataFrame().to_excel(writer, index=False, sheet_name="BODEGA")
 
-            # Hoja 4: Dañados
-            if danados_res is not None and not danados_res.empty:
+            # Dañados
+            if isinstance(danados_res, pd.DataFrame) and not danados_res.empty:
                 danados_res.to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
             else:
                 pd.DataFrame().to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
@@ -311,34 +224,25 @@ class StockTab:
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
-        # renombres si vienen variables distintas
-        # (no rompe si ya existen)
         if "fecha_llegada" in df.columns and "fecha_registro" not in df.columns:
             df["fecha_registro"] = df["fecha_llegada"]
 
-        # ordenar por fecha si existe
         if "fecha_registro" in df.columns:
             df["fecha_registro"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
             df = df.sort_values("fecha_registro", ascending=True)
-
-            # formatear de vuelta para vista (bonito)
             df["fecha_registro"] = df["fecha_registro"].dt.strftime("%Y-%m-%d %H:%M")
 
-        # asegurar columnas típicas
         for c in ["tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "reporte", "cantidad"]:
             if c not in df.columns:
                 df[c] = ""
 
-        # cantidad como número si se puede (solo vista)
         try:
             df["cantidad"] = pd.to_numeric(df["cantidad"], errors="coerce").fillna(1).astype(int)
         except:
             pass
 
-        # reemplazo de NaN visual
         df = df.fillna("")
 
-        # Orden de columnas amigable
         cols_pref = [
             "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
             "cantidad", "estado", "procesador", "ram", "disco", "origen", "destino", "guia", "reporte"
@@ -351,85 +255,31 @@ class StockTab:
         if df is None:
             return pd.DataFrame()
 
+        if not isinstance(df, pd.DataFrame):
+            try:
+                df = pd.DataFrame(df)
+            except:
+                return pd.DataFrame()
+
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
-        # Intentar normalizar nombres comunes
-        # st_res normalmente trae equipo/marca/val (según tu calculador)
+        # Mapear nombre de cantidad si viene como valor_final
         if "valor_final" in df.columns and "val" not in df.columns:
             df["val"] = df["valor_final"]
 
-        # Para vista stock: poner nombres amigables
         if mode == "stock":
-            # Si viene equipo_f / marca_f
             if "equipo_f" in df.columns and "equipo" not in df.columns:
                 df["equipo"] = df["equipo_f"]
             if "marca_f" in df.columns and "marca" not in df.columns:
                 df["marca"] = df["marca_f"]
 
-            # Dejar columnas clave
             cols = [c for c in ["equipo", "marca", "val"] if c in df.columns]
             if cols:
                 df = df[cols]
 
-            # Renombrar para UI
-            rename = {}
             if "val" in df.columns:
-                rename["val"] = "cantidad_disponible"
-            df = df.rename(columns=rename)
+                df = df.rename(columns={"val": "cantidad_disponible"})
 
-        # Para bodega y dañados, solo limpiamos NaN
         df = df.fillna("")
         return df
-
-    def _apply_filters(self, df, filtros):
-        dfv = df.copy()
-
-        # Texto libre (busca en todo)
-        q = filtros.get("q", "")
-        if q:
-            q_lower = q.lower()
-            mask = pd.Series([False] * len(dfv))
-            for col in dfv.columns:
-                try:
-                    mask = mask | dfv[col].astype(str).str.lower().str.contains(q_lower, na=False)
-                except:
-                    pass
-            dfv = dfv[mask]
-
-        # Tipo, estado, equipo, marca
-        for key in ["tipo", "estado", "equipo", "marca"]:
-            vals = filtros.get(key, [])
-            if vals and key in dfv.columns:
-                dfv = dfv[dfv[key].isin(vals)]
-
-        # Fecha
-        d1 = filtros.get("date_from")
-        d2 = filtros.get("date_to")
-        if d1 and d2 and "fecha_registro" in dfv.columns:
-            # fecha_registro viene formateada como string "YYYY-MM-DD HH:MM"
-            try:
-                s = pd.to_datetime(dfv["fecha_registro"], errors="coerce")
-                dfv = dfv[(s.dt.date >= d1) & (s.dt.date <= d2)]
-            except:
-                pass
-
-        # Limitar filas
-        max_rows = int(filtros.get("max_rows", 120))
-        if filtros.get("solo_ultimos", True):
-            dfv = dfv.tail(max_rows)
-        else:
-            dfv = dfv.head(max_rows)
-
-        return dfv
-
-    def _top_count(self, df, col, n=5):
-        if col not in df.columns:
-            return pd.DataFrame()
-        s = df[col].astype(str).str.strip()
-        s = s[s != ""]
-        if s.empty:
-            return pd.DataFrame()
-        out = s.value_counts().head(n).reset_index()
-        out.columns = [col.upper(), "TOTAL"]
-        return out
