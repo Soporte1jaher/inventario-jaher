@@ -187,15 +187,21 @@ class StockTab:
     # Tabs
     # ---------------------------------------------------------
     def _tab_movimientos(self, df_view):
-        with st.container(border=True):
-            st.markdown("### 🧾 Movimientos (Histórico)")
-            st.caption("Aquí NO se muestran registros cuyo DESTINO sea 'bodega' (esos van solo a la pestaña Bodega).")
+    with st.container(border=True):
+        st.markdown("### 🧾 Movimientos (Histórico)")
+        if df_view.empty:
+            st.warning("No hay movimientos para mostrar.")
+            return
 
-            if df_view.empty:
-                st.warning("No hay movimientos para mostrar.")
-                return
+        # ✅ regla: si DESTINO == bodega, no se muestra en Movimientos (solo en Bodega)
+        if "destino" in df_view.columns:
+            s = df_view["destino"].astype(str).str.lower().str.strip()
+            df_show = df_view[s != "bodega"].copy()
+        else:
+            df_show = df_view
 
-            st.dataframe(df_view.tail(400), use_container_width=True, hide_index=True, height=560)
+        df_show = df_show.replace({pd.NA: "", "nan": ""}).fillna("").replace("", "N/A")
+        st.dataframe(df_show.tail(250), use_container_width=True, hide_index=True, height=520)
 
     def _tab_stock(self, st_res):
         with st.container(border=True):
@@ -222,13 +228,18 @@ class StockTab:
 
             st.dataframe(bod_res, use_container_width=True, hide_index=True, height=560)
 
-    def _tab_danados(self, danados_res):
-        with st.container(border=True):
-            st.markdown("### 🧯 Dañados / Chatarras / Bajas")
-            if danados_res is None or danados_res.empty:
-                st.info("No hay registros marcados como dañados/chatarras/bajas.")
-                return
-            st.dataframe(danados_res, use_container_width=True, hide_index=True, height=560)
+    def _tab_bodega(self, bod_res):
+    with st.container(border=True):
+        st.markdown("### 🏢 Bodega (Cómputo)")
+        st.caption("Los registros con DESTINO='bodega' aparecen aquí.")
+
+        # Si tu calculador ya da bod_res, ok. Si no, al menos no queda vacío.
+        if bod_res is None or bod_res.empty:
+            st.info("No hay registros que caigan en Bodega.")
+            return
+
+        bod_res = bod_res.replace({pd.NA: "", "nan": ""}).fillna("").replace("", "N/A")
+        st.dataframe(bod_res, use_container_width=True, hide_index=True, height=520)
 
     # ---------------------------------------------------------
     # Export
@@ -305,6 +316,8 @@ class StockTab:
         ]
         cols_pref = [c for c in cols_pref if c in df.columns]
         resto = [c for c in df.columns if c not in cols_pref]
+        df = df.replace({pd.NA: "", "nan": ""}).fillna("")
+        df = df.replace("", "N/A")
         return df[cols_pref + resto]
 
     def _normalize_stock(self, df, mode="stock"):
