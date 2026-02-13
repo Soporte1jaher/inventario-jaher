@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import datetime
+from collections import Counter
 
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -9,7 +10,11 @@ from modules.stock_calculator import StockCalculator
 
 
 class ChatTab:
-    """Chat Auditor - UI Corporativa + Modo Usuario Final (Fácil) + Modo Pro"""
+    """
+    Chat Auditor — UI Corporativa + 2 upgrades:
+    ✅ (A) Vista Operativa arriba del borrador (widgets mini)
+    ✅ (B) Plantillas conversacionales (botones que “escriben” al chat y disparan a LAIA)
+    """
 
     def __init__(self):
         self.ai_engine = AIEngine()
@@ -26,12 +31,27 @@ class ChatTab:
         st.session_state.setdefault("status", "NEW")
         st.session_state.setdefault("missing_info", "")
 
-        # UX state
+        # UX state (mantenemos tu panel actual)
         st.session_state.setdefault("ui_mode", "FÁCIL")  # FÁCIL / PRO
         st.session_state.setdefault("confirm_risky_save", False)
         st.session_state.setdefault("quick_origin", "")
         st.session_state.setdefault("quick_destino", "")
         st.session_state.setdefault("quick_tipo", "recibido")
+
+        # ✅ NUEVO: plantillas conversacionales
+        st.session_state.setdefault("tpl_tipo", "recibido")
+        st.session_state.setdefault("tpl_origen", "")
+        st.session_state.setdefault("tpl_destino", "")
+        st.session_state.setdefault("tpl_equipo", "laptops")
+        st.session_state.setdefault("tpl_marca", "")
+        st.session_state.setdefault("tpl_modelo", "")
+        st.session_state.setdefault("tpl_cantidad", 1)
+        st.session_state.setdefault("tpl_guia", "")
+        st.session_state.setdefault("tpl_series_text", "")
+
+        # ✅ NUEVO: buffer para inyectar prompt al chat_input
+        st.session_state.setdefault("chat_prefill", "")
+        st.session_state.setdefault("chat_fire", False)
 
     # ---------------------------
     # UI style
@@ -72,20 +92,17 @@ class ChatTab:
                 filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
               }
 
-              /* Chips */
-              .chip-row { display:flex; gap:10px; flex-wrap:wrap; }
-              .chip {
-                display:inline-block; padding:8px 12px; border-radius:999px;
-                border:1px solid rgba(255,255,255,0.12);
-                background: rgba(255,255,255,0.03);
-                cursor:pointer; user-select:none;
+              .op-card{
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.02);
+                padding: 14px 14px 10px 14px;
               }
-              .chip:hover{ background: rgba(255,255,255,0.06); }
-
-              /* Badges */
-              .badge-ok{ color:#00e676; font-weight:900; }
-              .badge-warn{ color:#ffb300; font-weight:900; }
-              .badge-bad{ color:#ff5252; font-weight:900; }
+              .op-title{ font-weight: 900; opacity: 0.9; margin-bottom: 6px; }
+              .op-mini{ opacity: 0.85; font-size: 0.95rem; }
+              .op-alert{ color: #ffb300; font-weight: 900; }
+              .op-bad{ color: #ff5252; font-weight: 900; }
+              .op-ok{ color: #00e676; font-weight: 900; }
             </style>
             """,
             unsafe_allow_html=True,
@@ -99,10 +116,6 @@ class ChatTab:
     # Data helpers
     # ---------------------------
     def _get_sedes_sugeridas(self):
-        """
-        Saca sedes del histórico para autocompletar origen/destino.
-        (No rompe si falla)
-        """
         try:
             hist = self.github.obtener_historico() or []
             df = pd.DataFrame([x for x in hist if isinstance(x, dict)])
@@ -119,29 +132,20 @@ class ChatTab:
             return []
 
     def _validate_draft(self, draft_items):
-        """
-        Devuelve:
-        - resumen (ok/warn/bad)
-        - errores (lista)
-        - df con columna 'validacion'
-        """
         if not draft_items:
             return {"ok": 0, "warn": 0, "bad": 0}, [], pd.DataFrame()
 
         df = pd.DataFrame(draft_items).copy()
 
-        # asegurar columnas
         for c in ["tipo", "equipo", "marca", "modelo", "serie", "origen", "destino", "guia", "cantidad", "estado"]:
             if c not in df.columns:
                 df[c] = ""
 
-        # normalizar
         for c in ["tipo", "equipo", "marca", "modelo", "serie", "origen", "destino", "guia", "estado"]:
             df[c] = df[c].astype(str).fillna("").str.strip()
 
         errors = []
         status_col = []
-
         ok = warn = bad = 0
 
         for _, r in df.iterrows():
@@ -152,25 +156,21 @@ class ChatTab:
             origen = r["origen"]
             equipo = r["equipo"]
 
-            # reglas de riesgo simples
             row_issues = []
 
             if equipo.strip() in ["", "N/A", "n/a"]:
                 row_issues.append("Falta equipo")
 
-            # Si es enviado: guía + destino casi obligatorios
             if "envi" in t:
                 if guia.strip() in ["", "N/A", "n/a"]:
                     row_issues.append("Enviado sin guía")
                 if destino.strip() in ["", "N/A", "n/a"]:
                     row_issues.append("Enviado sin destino")
 
-            # Si es recibido: origen recomendado
             if "recib" in t:
                 if origen.strip() in ["", "N/A", "n/a"]:
                     row_issues.append("Recibido sin origen")
 
-            # serie recomendada para cómputo (si no hay serie, al menos modelo)
             if serie.strip() in ["", "N/A", "n/a"]:
                 if str(r["modelo"]).strip() in ["", "N/A", "n/a"]:
                     row_issues.append("Sin serie/modelo")
@@ -205,6 +205,223 @@ class ChatTab:
             else:
                 st.info("Estado: NEW (Sin borrador)", icon="ℹ️")
 
+    # =========================================================
+    # ✅ NUEVO (A): Vista Operativa
+    # =========================================================
+    def _render_vista_operativa(self, df: pd.DataFrame, resumen: dict, errores: list):
+        """
+        Widgets mini arriba del borrador:
+        - Resumen: Recibidos / Enviados
+        - Sedes: Orígenes + Destinos top
+        - Alertas: enviados sin guía / sin destino / críticos / revisar
+        """
+        if df is None or df.empty:
+            return
+
+        # Tipos
+        tipos = df.get("tipo", pd.Series([], dtype=str)).astype(str).str.lower().str.strip()
+        recibidos = int(tipos.str.contains("recib").sum())
+        enviados = int(tipos.str.contains("envi").sum())
+
+        # Sedes
+        origenes = df.get("origen", pd.Series([], dtype=str)).astype(str).str.strip()
+        destinos = df.get("destino", pd.Series([], dtype=str)).astype(str).str.strip()
+
+        def _top_values(s: pd.Series, k=3):
+            vals = [x for x in s.tolist() if x and str(x).strip() and str(x).strip().lower() not in ["n/a", "na", "none", "nan"]]
+            if not vals:
+                return []
+            c = Counter(vals)
+            return [x for x, _ in c.most_common(k)]
+
+        top_origen = _top_values(origenes, k=2)
+        top_dest = _top_values(destinos, k=4)
+
+        # Alertas puntuales
+        guia = df.get("guia", pd.Series([], dtype=str)).astype(str).str.strip().str.lower()
+        destino_l = destinos.astype(str).str.strip().str.lower()
+
+        enviados_mask = tipos.str.contains("envi")
+        sin_guia = int((enviados_mask & guia.isin(["", "n/a", "na", "none", "nan"])).sum())
+        sin_destino = int((enviados_mask & destino_l.isin(["", "n/a", "na", "none", "nan"])).sum())
+
+        # UI
+        with st.container(border=True):
+            a, b, c = st.columns([1.2, 1.8, 1.6], vertical_alignment="center")
+
+            with a:
+                st.markdown(
+                    f"""
+                    <div class="op-card">
+                      <div class="op-title">📌 Resumen</div>
+                      <div class="op-mini">Recibidos: <span class="op-ok">{recibidos}</span></div>
+                      <div class="op-mini">Enviados: <span class="op-ok">{enviados}</span></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            with b:
+                o_txt = ", ".join(top_origen) if top_origen else "N/A"
+                d_txt = ", ".join(top_dest) if top_dest else "N/A"
+                st.markdown(
+                    f"""
+                    <div class="op-card">
+                      <div class="op-title">🏢 Sedes</div>
+                      <div class="op-mini">Origen (top): <b>{o_txt}</b></div>
+                      <div class="op-mini">Destinos (top): <b>{d_txt}</b></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            with c:
+                crit = int(resumen.get("bad", 0))
+                rev = int(resumen.get("warn", 0))
+                st.markdown(
+                    f"""
+                    <div class="op-card">
+                      <div class="op-title">⚠️ Alertas</div>
+                      <div class="op-mini">Enviados sin guía: <span class="{ 'op-bad' if sin_guia else 'op-ok' }">{sin_guia}</span></div>
+                      <div class="op-mini">Enviados sin destino: <span class="{ 'op-bad' if sin_destino else 'op-ok' }">{sin_destino}</span></div>
+                      <div class="op-mini">Críticos: <span class="{ 'op-bad' if crit else 'op-ok' }">{crit}</span> | Revisar: <span class="{ 'op-alert' if rev else 'op-ok' }">{rev}</span></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        # Opcional: lista corta de errores
+        if errores:
+            with st.expander("🧩 Detalles de alertas", expanded=False):
+                for e in errores[:15]:
+                    st.write(f"- {e}")
+
+    # =========================================================
+    # ✅ NUEVO (B): Plantillas conversacionales
+    # =========================================================
+    def _render_plantillas_conversacionales(self):
+        """
+        Botones que generan un prompt “bonito” y lo mandan al chat.
+        El usuario siente que “habla con LAIA”, pero con turbo.
+        """
+        sedes = self._get_sedes_sugeridas()
+
+        with st.container(border=True):
+            st.markdown("#### ⚡ Plantillas rápidas (conversación)")
+            st.caption("Toca una plantilla, completa 2-3 campos y LAIA recibe el mensaje ya armado.")
+
+            c1, c2, c3, c4 = st.columns([1.2, 1.6, 1.6, 1.2], vertical_alignment="center")
+            with c1:
+                st.session_state.tpl_tipo = st.selectbox("Tipo", ["recibido", "enviado"], key="tpl_tipo")
+            with c2:
+                st.session_state.tpl_origen = st.selectbox("Origen", options=[""] + sedes, key="tpl_origen")
+            with c3:
+                st.session_state.tpl_destino = st.selectbox("Destino", options=[""] + sedes, key="tpl_destino")
+            with c4:
+                st.session_state.tpl_cantidad = st.number_input("Cantidad", min_value=1, value=int(st.session_state.tpl_cantidad), step=1, key="tpl_cantidad")
+
+            # Campos comunes
+            d1, d2, d3, d4 = st.columns(4, vertical_alignment="center")
+            with d1:
+                st.session_state.tpl_equipo = st.text_input("Equipo", value=st.session_state.tpl_equipo, key="tpl_equipo")
+            with d2:
+                st.session_state.tpl_marca = st.text_input("Marca", value=st.session_state.tpl_marca, key="tpl_marca")
+            with d3:
+                st.session_state.tpl_modelo = st.text_input("Modelo", value=st.session_state.tpl_modelo, key="tpl_modelo")
+            with d4:
+                st.session_state.tpl_guia = st.text_input("Guía (si enviado)", value=st.session_state.tpl_guia, key="tpl_guia")
+
+            st.markdown("**Plantillas**")
+            b1, b2, b3, b4 = st.columns([1.25, 1.25, 1.45, 1.05], vertical_alignment="center")
+
+            with b1:
+                if st.button("📦 Recibí laptops", use_container_width=True, key="tpl_btn_laptops"):
+                    prompt = self._tpl_build_recibi_laptops()
+                    self._chat_send_template(prompt)
+
+            with b2:
+                if st.button("🚚 Envié equipos", use_container_width=True, key="tpl_btn_envie"):
+                    prompt = self._tpl_build_envie_equipos()
+                    self._chat_send_template(prompt)
+
+            with b3:
+                if st.button("🧾 Lote por series", use_container_width=True, key="tpl_btn_lote_series"):
+                    with st.expander("Pegar series", expanded=True):
+                        st.session_state.tpl_series_text = st.text_area(
+                            "Series (una por línea)",
+                            value=st.session_state.tpl_series_text,
+                            height=130,
+                            key="tpl_series_text",
+                            placeholder="ABC123\nDEF456\nGHI789",
+                        )
+                        cta1, cta2 = st.columns([1.3, 1.7])
+                        with cta1:
+                            if st.button("✅ Generar mensaje", use_container_width=True, key="tpl_btn_gen_series"):
+                                prompt = self._tpl_build_lote_series()
+                                self._chat_send_template(prompt)
+                        with cta2:
+                            st.caption("LAIA recibirá el lote en un solo mensaje.")
+
+            with b4:
+                if st.button("🧹 Limpiar", use_container_width=True, key="tpl_btn_clear"):
+                    st.session_state.tpl_marca = ""
+                    st.session_state.tpl_modelo = ""
+                    st.session_state.tpl_guia = ""
+                    st.session_state.tpl_series_text = ""
+                    st.rerun()
+
+    def _tpl_build_recibi_laptops(self) -> str:
+        tipo = "recibido"
+        cant = int(st.session_state.tpl_cantidad or 1)
+        marca = (st.session_state.tpl_marca or "N/A").strip()
+        modelo = (st.session_state.tpl_modelo or "N/A").strip()
+        origen = (st.session_state.tpl_origen or "N/A").strip()
+        destino = (st.session_state.tpl_destino or "N/A").strip()
+        return f"Recibido: {cant} laptops {marca} {modelo} desde {origen} hacia {destino}"
+
+    def _tpl_build_envie_equipos(self) -> str:
+        tipo = "enviado"
+        cant = int(st.session_state.tpl_cantidad or 1)
+        equipo = (st.session_state.tpl_equipo or "equipos").strip()
+        destino = (st.session_state.tpl_destino or "N/A").strip()
+        guia = (st.session_state.tpl_guia or "N/A").strip()
+        return f"Enviado: {cant} {equipo} a {destino} guía {guia}"
+
+    def _tpl_build_lote_series(self) -> str:
+        equipo = (st.session_state.tpl_equipo or "N/A").strip()
+        marca = (st.session_state.tpl_marca or "N/A").strip()
+        modelo = (st.session_state.tpl_modelo or "N/A").strip()
+        origen = (st.session_state.tpl_origen or "N/A").strip()
+        destino = (st.session_state.tpl_destino or "N/A").strip()
+        guia = (st.session_state.tpl_guia or "N/A").strip()
+
+        series = [s.strip() for s in (st.session_state.tpl_series_text or "").splitlines() if s.strip()]
+        series_block = "\n".join(series) if series else "(sin series)"
+
+        return (
+            "Registrar lote:\n"
+            f"- equipo: {equipo}\n"
+            f"- marca: {marca}\n"
+            f"- modelo: {modelo}\n"
+            f"- tipo: {st.session_state.tpl_tipo}\n"
+            f"- origen: {origen}\n"
+            f"- destino: {destino}\n"
+            f"- guia: {guia}\n"
+            "series:\n"
+            f"{series_block}"
+        )
+
+    def _chat_send_template(self, prompt: str):
+        """
+        ✅ Mete el prompt al chat_input y lo dispara (sin que el user copie/pegue).
+        Nota: en Streamlit no siempre se puede setear chat_input directamente;
+        por eso usamos un flag y lo procesamos en el render del chat.
+        """
+        st.session_state.chat_prefill = prompt
+        st.session_state.chat_fire = True
+        st.toast("Plantilla lista ✅ (enviando a LAIA…)", icon="⚡")
+        st.rerun()
+
     # ---------------------------
     # Main render
     # ---------------------------
@@ -212,7 +429,7 @@ class ChatTab:
         self._inject_micro_style()
         self._render_floating_logo()
 
-        # Sidebar: modo usuario final
+        # Sidebar: dejamos tu panel (puedes quitarlo luego si quieres)
         with st.sidebar:
             st.markdown("## ⚙️ Panel")
             st.session_state.ui_mode = st.radio(
@@ -231,19 +448,20 @@ class ChatTab:
 
         self._render_header()
 
-        # Zona principal: modo fácil
+        # ✅ Plantillas SIEMPRE visibles (sin cambiar el chat)
+        self._render_plantillas_conversacionales()
+
+        # Mantienes tu easy mode si quieres (puedes borrarlo luego)
         if st.session_state.ui_mode == "FÁCIL":
             self._render_easy_mode()
 
-        # Chat pro (siempre disponible)
         self._render_chat()
 
-        # Borrador / tabla
         if st.session_state.draft:
             self._mostrar_borrador()
 
     # ---------------------------
-    # Easy Mode (formularios + chips)
+    # Easy Mode (lo dejas igual)
     # ---------------------------
     def _render_easy_mode(self):
         with st.container(border=True):
@@ -329,7 +547,7 @@ class ChatTab:
                     "procesador": "N/A",
                 }
                 st.session_state.draft.append(item)
-                st.session_state.status = "QUESTION"  # que valide el bloque
+                st.session_state.status = "QUESTION"
                 st.success("Agregado ✅")
                 st.rerun()
 
@@ -418,6 +636,14 @@ class ChatTab:
                 with st.chat_message(m["role"]):
                     st.markdown(m["content"])
 
+            # ✅ NUEVO: si viene una plantilla, la disparamos como si el usuario la escribió
+            if st.session_state.get("chat_fire") and st.session_state.get("chat_prefill"):
+                prompt = st.session_state.chat_prefill
+                st.session_state.chat_fire = False
+                st.session_state.chat_prefill = ""
+                self._procesar_mensaje(prompt)
+                st.rerun()
+
             if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
                 self._procesar_mensaje(prompt)
 
@@ -474,6 +700,13 @@ class ChatTab:
         # validar
         resumen, errores, df_valid = self._validate_draft(st.session_state.draft)
 
+        # ✅ NUEVO: Vista Operativa ARRIBA del borrador (widgets)
+        try:
+            df_ops = pd.DataFrame(st.session_state.draft).fillna("N/A")
+            self._render_vista_operativa(df_ops, resumen, errores)
+        except Exception:
+            pass
+
         with st.container(border=True):
             top1, top2, top3 = st.columns([2.2, 1, 1], vertical_alignment="center")
             with top1:
@@ -482,18 +715,12 @@ class ChatTab:
             with top2:
                 st.metric("Items", len(st.session_state.draft))
             with top3:
-                # semáforo
                 if resumen["bad"] > 0:
                     st.error(f"Críticos: {resumen['bad']}")
                 elif resumen["warn"] > 0:
                     st.warning(f"Revisar: {resumen['warn']}")
                 else:
                     st.success(f"OK: {resumen['ok']}")
-
-            if errores:
-                with st.expander("⚠️ Problemas detectados (clic para ver)", expanded=False):
-                    for e in errores[:25]:
-                        st.write(f"- {e}")
 
         # editor
         with st.container(border=True):
@@ -532,7 +759,6 @@ class ChatTab:
 
         risky = (resumen.get("bad", 0) > 0)
         if st.session_state.confirm_risky_save and risky:
-            # bloquea si hay críticos
             allow_save = False
         else:
             allow_save = (st.session_state.status == "READY") or forzar or (not risky)
@@ -560,9 +786,6 @@ class ChatTab:
             st.rerun()
 
     def _build_resume_text(self):
-        """
-        Resumen para copiar/WhatsApp.
-        """
         if not st.session_state.draft:
             return "Sin borrador."
         df = pd.DataFrame(st.session_state.draft).fillna("N/A")
