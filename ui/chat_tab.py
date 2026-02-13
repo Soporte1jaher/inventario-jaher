@@ -2,6 +2,7 @@ import streamlit as st
 import html
 import json
 import pandas as pd
+import re
 
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -14,6 +15,7 @@ class ChatTab:
     ✅ La respuesta del assistant se muestra como JSON (según SYSTEM_PROMPT)
     ✅ Tabla de borrador (data_editor) como antes
     ✅ Vista simple opcional (para usuarios finales)
+    ✅ Cinturón de seguridad: Intel <= 9th Gen => CHATARRA/BAJA siempre
     """
 
     def __init__(self):
@@ -103,6 +105,95 @@ class ChatTab:
             return True
         return False
 
+    # =========================================================
+    # ✅ CINTURÓN DE SEGURIDAD (PROMPT NO SIEMPRE OBEDECE)
+    # =========================================================
+    def _infer_intel_gen(self, proc: str):
+        """
+        Devuelve gen Intel como int (8, 10, etc) o None.
+        Soporta:
+          - 'Intel Core i5 - 10th Gen'
+          - 'core i3 de octava'
+          - 'i5-10210u', 'i7 8565u'
+        """
+        if not proc:
+            return None
+        p = str(proc).lower().strip()
+
+        # "10th gen", "8th gen"
+        m = re.search(r'(\d{1,2})\s*(?:th)?\s*gen', p)
+        if m:
+            try:
+                return int(m.group(1))
+            except:
+                pass
+
+        # español: "octava", "8va", "10ma"
+        if any(x in p for x in ["octava", "8va", "8a", "8ª"]):
+            return 8
+        if any(x in p for x in ["novena", "9na", "9a", "9ª"]):
+            return 9
+        if any(x in p for x in ["decima", "décima", "10ma", "10a", "10ª"]):
+            return 10
+        if any(x in p for x in ["11ma", "11a", "11ª"]) or "11th" in p:
+            return 11
+        if any(x in p for x in ["12ma", "12a", "12ª"]) or "12th" in p:
+            return 12
+
+        # i5-10210u / i7-8565u
+        m2 = re.search(r'i[3579]\s*[- ]?\s*(\d{4,5})', p)
+        if m2:
+            code = m2.group(1)
+            try:
+                if len(code) == 4:
+                    return int(code[0])         # 8565 -> 8
+                if len(code) == 5:
+                    return int(code[:2])        # 10210 -> 10
+            except:
+                return None
+
+        return None
+
+    def _is_force_override(self, user_text: str) -> bool:
+        """
+        Regla #5 del prompt: si el usuario dice 'así está bien' etc => READY y N/A.
+        Aquí solo detectamos para NO pelear la corrección si el usuario lo ordenó.
+        """
+        t = (user_text or "").lower()
+        triggers = ["enviar así", "guarda eso", "no importa", "asi esta bien", "así está bien"]
+        return any(x in t for x in triggers)
+
+    def _enforce_chatarrizacion_rule(self, items: list, user_text: str) -> list:
+        """
+        Aplica regla #1: Intel <= 9 => CHATARRA/BAJA + estado obsoleto.
+        Esto es post-check, no depende del modelo.
+        Solo se evita si el usuario está activando OVERRIDE (#5).
+        """
+        if not items:
+            return items
+
+        if self._is_force_override(user_text):
+            # si el usuario forzó, no tocamos nada: el prompt manda READY + N/A
+            return items
+
+        fixed = []
+        for it in items:
+            x = dict(it)
+
+            equipo = str(x.get("equipo", "") or "").lower()
+            categoria = str(x.get("categoria_item", "") or "").lower()
+            es_computo = ("computo" in categoria) or any(k in equipo for k in ["laptop", "cpu", "servidor", "aio", "all-in-one", "tablet"])
+
+            gen = self._infer_intel_gen(str(x.get("procesador", "") or ""))
+
+            if es_computo and gen is not None and gen <= 9:
+                x["estado"] = "Obsoleto / Pendiente Chatarrización"
+                x["destino"] = "CHATARRA / BAJA"
+
+            fixed.append(x)
+
+        return fixed
+
     # ---------------------------
     # Main render
     # ---------------------------
@@ -110,7 +201,6 @@ class ChatTab:
         self._inject_style()
         self._render_logo()
 
-        # Toggles arriba (discretos)
         top_l, top_r = st.columns([4, 2.2], vertical_alignment="center")
         with top_r:
             st.session_state["vista_simple"] = st.toggle(
@@ -128,7 +218,7 @@ class ChatTab:
         for m in st.session_state.messages:
             role = m.get("role", "assistant")
             content = m.get("content", "")
-            fmt = m.get("format", "md")  # "md" | "json" | "text"
+            fmt = m.get("format", "md")
 
             with st.chat_message(role):
                 if role == "user":
@@ -143,13 +233,11 @@ class ChatTab:
             self._procesar_mensaje(prompt)
             st.rerun()
 
-        # Debug extra abajo (solo técnico)
         if st.session_state.get("modo_tecnico", False):
             last = st.session_state.get("last_json", {}) or {}
             with st.expander("🧾 JSON (debug)", expanded=False):
                 st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
 
-        # TABLA BORRADOR
         if st.session_state.get("draft"):
             self._render_borrador()
 
@@ -164,7 +252,6 @@ class ChatTab:
         st.session_state.messages.append({"role": "user", "content": prompt, "format": "text"})
 
         if self._is_saludo_o_basura(prompt):
-            # Generar JSON “vacío” válido (según tu contrato)
             res_json = {
                 "status": "QUESTION",
                 "missing_info": "Falta movimiento de inventario",
@@ -172,7 +259,6 @@ class ChatTab:
             }
             st.session_state["last_json"] = res_json
 
-            # En chat: si vista simple, muestra guía corta; si no, muestra JSON
             if st.session_state.get("vista_simple", True):
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -198,35 +284,32 @@ class ChatTab:
                     historial_mensajes=st.session_state.messages
                 )
 
-                # ✅ JSON es la verdad
                 res_json = (resultado.get("json_response") or {}) if isinstance(resultado, dict) else {}
                 if not res_json:
-                    # fallback: si el motor falló y no dio JSON, al menos no rompas
                     res_json = {
                         "status": "QUESTION",
                         "missing_info": "Motor no devolvió json_response",
                         "items": st.session_state.draft or []
                     }
 
+                # ✅ APLICAR REGLA SUPREMA EN CÓDIGO
+                items = res_json.get("items") or []
+                if items:
+                    items = self._enforce_chatarrizacion_rule(items, prompt)
+                    res_json["items"] = items
+                    self._set_draft(items)
+
                 st.session_state["last_json"] = res_json
                 st.session_state["status"] = res_json.get("status", "QUESTION")
 
-                # Actualizar borrador con items del JSON
-                items = res_json.get("items") or []
-                if items:
-                    self._set_draft(items)
-
-                # ✅ Mostrar en chat:
                 if st.session_state.get("vista_simple", True):
-                    # resumen corto para usuarios
                     missing = (res_json.get("missing_info") or "").strip()
-                    if missing:
-                        txt = missing
-                    else:
-                        txt = "READY: sin faltantes."
-                    st.session_state.messages.append({"role": "assistant", "content": txt, "format": "md"})
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": missing if missing else "READY: sin faltantes.",
+                        "format": "md"
+                    })
                 else:
-                    # JSON completo (cumple tu SYSTEM_PROMPT)
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": json.dumps(res_json, ensure_ascii=False, indent=2),
@@ -236,11 +319,13 @@ class ChatTab:
         except Exception as e:
             res_json = {"status": "ERROR", "missing_info": "", "error": str(e), "items": st.session_state.draft or []}
             st.session_state["last_json"] = res_json
-            st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"})
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": json.dumps(res_json, ensure_ascii=False, indent=2),
+                "format": "json"
+            })
 
     def _set_draft(self, items):
-        # Aquí NO hacemos merge raro: tu system prompt dice que el JSON debe traer “todos los items actuales”.
-        # Entonces: el borrador = items del JSON.
         st.session_state.draft = items
 
     # ---------------------------
@@ -293,4 +378,4 @@ class ChatTab:
                 st.session_state.status = "NEW"
                 st.rerun()
         with c2:
-            st.caption("Completa faltantes en la tabla. Luego envía un mensaje tipo: `guarda así` para forzar READY.")
+            st.caption("Completa faltantes en la tabla. Luego envía: `así está bien` para forzar READY.")
