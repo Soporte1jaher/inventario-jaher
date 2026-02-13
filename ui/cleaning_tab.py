@@ -9,31 +9,17 @@ from modules.github_handler import GitHubHandler
 
 class CleaningTab:
     """
-    🧹 Limpieza del Historial (Modo Usuario Final) — SIMPLE + POTENTE
+    🧹 Limpieza del Historial (FÁCIL para usuario final) — v2 UX+
 
-    Objetivo: misma potencia que “ULTRA PRO”, pero para usuarios NO técnicos.
-
-    ✅ UX para usuario final:
-    - 3 pasos claros: 1) Elegir qué limpiar  2) Ver resultados  3) Confirmar y enviar
-    - Botones grandes + textos claros (sin “modo”, sin jerga)
-    - Plantillas rápidas (limpiar vacíos, limpiar por fecha, limpiar por sede/destino/origen, etc.)
-    - Búsqueda “tipo Google” (escribes y listo) + filtros guiados
-    - Vista previa (resumen + tabla)
-    - “Deshacer” (si el robot soporta rollback NO; aquí guardamos el JSON de la orden para rehacer/revisar)
-    - Seguridad: confirmación y advertencias si es masivo
-
-    ✅ Funciones extra:
-    - “Limpieza automática recomendada” (sugerencias: vacíos, N/A, registros basura)
-    - “Eliminar duplicados” (por firma: fecha+serie+guia+equipo+marca+destino+origen+tipo)
-    - “Eliminar por rango de fechas” con selector calendario
-    - “Eliminar por categoría” (Periférico / Cómputo) si existe categoria_item
-    - “Eliminar por sede” (origen/destino)
-    - “Eliminar por texto” (en cualquier columna)
-    - Anti-filas fantasma (>=80% N/A)
-
-    Nota: Sigue enviando al robot la misma orden:
-    - action=delete + indices + matches
-    - accion=borrar_por_indices + idx_list (compat)
+    ✅ Añadido:
+    - ✅ Por SERIE (lo que te faltaba)
+    - Por GUÍA, MARCA, EQUIPO, MODELO (rápidos)
+    - Búsqueda rápida tipo Google (arriba) -> detecta serie/guia o hace texto
+    - UI más clara: chips/atajos + textos simples
+    - Ordenamiento (más nuevos primero / más antiguos)
+    - Resumen de riesgo (borrado masivo)
+    - “Seleccionar por reglas”: todos / invert / limpiar
+    - Preview más bonito + top info
     """
 
     def __init__(self):
@@ -68,20 +54,26 @@ class CleaningTab:
         # UX state
         st.session_state.setdefault("cln_flow_step", 1)
         st.session_state.setdefault("cln_filter_type", "Recomendado (Automático)")
+
         st.session_state.setdefault("cln_text_search", "")
         st.session_state.setdefault("cln_date_from", None)
         st.session_state.setdefault("cln_date_to", None)
         st.session_state.setdefault("cln_pick_field", "Cualquier campo")
         st.session_state.setdefault("cln_pick_value", "")
-        st.session_state.setdefault("cln_massive_lock", True)  # más seguro: bloquea masivo si no confirma extra
+        st.session_state.setdefault("cln_massive_lock", True)
+
+        st.session_state.setdefault("cln_sort", "Más nuevos primero")
+        st.session_state.setdefault("cln_quick_search", "")
 
     # =========================================================
     # UI
     # =========================================================
     def render(self):
+        self._inject_css()
+
         with st.container(border=True):
             st.markdown("## 🧹 Limpieza del Historial (Fácil)")
-            st.caption("Pensado para usuarios finales: elige una opción, revisa, confirma y listo.")
+            st.caption("Hecho para usuarios finales: escribe o elige una opción, revisa y confirma.")
 
         # orden enviada
         if st.session_state.cln_last_order:
@@ -94,7 +86,7 @@ class CleaningTab:
                         st.rerun()
                 with c2:
                     st.caption("Si el robot aún no corrió, verás lo mismo. Refresca luego de que procese.")
-                with st.expander("📦 Ver orden enviada (para soporte)", expanded=False):
+                with st.expander("📦 Ver orden enviada (soporte)", expanded=False):
                     st.json(st.session_state.cln_last_order)
 
         # cargar historial
@@ -110,9 +102,10 @@ class CleaningTab:
         df = self._normalize(df)
         st.session_state.cln_df = df
 
-        # =========================
-        # Paso a paso (wizard)
-        # =========================
+        # Búsqueda rápida (arriba) — para usuario final
+        self._quick_search_bar(df)
+
+        # wizard
         self._render_steps_header()
 
         step = st.session_state.cln_flow_step
@@ -122,6 +115,27 @@ class CleaningTab:
             self._step_2_review()
         else:
             self._step_3_confirm_and_send()
+
+    def _inject_css(self):
+        st.markdown(
+            """
+            <style>
+              .cln-chip {
+                display:inline-block;
+                padding:6px 10px;
+                border-radius:999px;
+                border:1px solid rgba(255,255,255,.12);
+                background: rgba(255,255,255,.04);
+                margin-right:8px;
+                margin-bottom:8px;
+                font-size: 13px;
+              }
+              .cln-muted { opacity: .8; }
+              .cln-title { font-weight: 800; letter-spacing: .2px; }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
 
     def _render_steps_header(self):
         with st.container(border=True):
@@ -135,11 +149,86 @@ class CleaningTab:
                     st.markdown(f"### {label}")
 
             with s1:
-                pill("1) Elegir limpieza", step == 1)
+                pill("1) Elegir", step == 1)
             with s2:
-                pill("2) Revisar resultados", step == 2)
+                pill("2) Revisar", step == 2)
             with s3:
-                pill("3) Confirmar y enviar", step == 3)
+                pill("3) Confirmar", step == 3)
+
+    # =========================================================
+    # QUICK SEARCH (tipo Google)
+    # =========================================================
+    def _quick_search_bar(self, df: pd.DataFrame):
+        with st.container(border=True):
+            st.markdown("### 🔎 Búsqueda rápida")
+            st.caption("Escribe una serie, guía, marca, equipo, destino… y te saco resultados al toque.")
+
+            q = st.text_input(
+                "Buscar y limpiar",
+                placeholder="Ej: 5CD1234 (serie) | guia 0987 | HP | babahoyo | monitor | obsoleto ...",
+                key="cln_quick_search_input",
+            ).strip()
+
+            c1, c2, c3 = st.columns([1.4, 1.4, 2.2], vertical_alignment="center")
+            with c1:
+                if st.button("🔎 Buscar", key="cln_btn_quick_search", use_container_width=True, type="secondary"):
+                    if q:
+                        field, value = self._detect_quick_intent(q)
+                        res = self._search(df, field, value)
+                        st.session_state.cln_last_query = f"RÁPIDO: {field}={value}"
+                        st.session_state.cln_results = self._apply_sort(res)
+                        st.session_state.cln_selected_idx = set()
+                        if st.session_state.cln_results.empty:
+                            st.warning("❌ No encontré nada con eso.")
+                            return
+                        st.session_state.cln_flow_step = 2
+                        st.rerun()
+                    else:
+                        st.warning("Escribe algo para buscar.")
+            with c2:
+                if st.button("🧹 Limpiar", key="cln_btn_quick_clear", use_container_width=True):
+                    self._reset(keep_order=True)
+                    st.rerun()
+            with c3:
+                st.session_state.cln_sort = st.selectbox(
+                    "Ordenar resultados",
+                    ["Más nuevos primero", "Más antiguos primero"],
+                    index=0,
+                    key="cln_sel_sort",
+                )
+
+            # chips guía
+            st.markdown(
+                """
+                <span class="cln-chip">✅ Tip: si pegas SOLO un número o código, lo tomo como <b>serie</b></span>
+                <span class="cln-chip">✅ Tip: escribe <b>guia 123</b> o <b>serie 5CD...</b></span>
+                <span class="cln-chip">✅ Tip: escribe <b>destino babahoyo</b> o <b>origen sid</b></span>
+                """,
+                unsafe_allow_html=True
+            )
+
+    def _detect_quick_intent(self, q: str):
+        ql = q.lower().strip()
+
+        # patrones directos
+        m = re.search(r"\b(serie|serial)\s*[:#-]?\s*([a-z0-9\-_/]+)\b", ql)
+        if m:
+            return "serie", m.group(2).strip()
+
+        m = re.search(r"\b(guia|guía)\s*[:#-]?\s*([a-z0-9\-_/]+)\b", ql)
+        if m:
+            return "guia", m.group(2).strip()
+
+        for k in ["marca", "equipo", "modelo", "destino", "origen", "tipo", "estado"]:
+            m = re.search(rf"\b({k})\s*[:#-]?\s*([a-z0-9\-_/]+)\b", ql)
+            if m:
+                return k, m.group(2).strip()
+
+        # si parece código/serie (sin espacios, largo razonable)
+        if re.fullmatch(r"[a-z0-9\-_/]{4,}", ql) and " " not in ql:
+            return "serie", ql
+
+        return "texto", ql
 
     # =========================================================
     # STEP 1
@@ -150,6 +239,11 @@ class CleaningTab:
 
             opciones = [
                 "Recomendado (Automático)",
+                "Por SERIE (exacta / contiene)",
+                "Por GUÍA (exacta / contiene)",
+                "Por MARCA",
+                "Por EQUIPO",
+                "Por MODELO",
                 "Registros vacíos / basura (N/A)",
                 "Duplicados (repetidos)",
                 "Por fecha (un día)",
@@ -175,15 +269,57 @@ class CleaningTab:
                 key="cln_tgl_massive_lock",
             )
 
-        # Inputs guiados según opción
         ft = st.session_state.cln_filter_type
 
         with st.container(border=True):
             st.markdown("### Configuración")
 
+            # atajos pro
+            st.markdown(
+                """
+                <span class="cln-chip">🧼 Vacíos (basura)</span>
+                <span class="cln-chip">🔁 Duplicados</span>
+                <span class="cln-chip">📅 Por fechas</span>
+                <span class="cln-chip">🏷️ Por serie / guía</span>
+                """,
+                unsafe_allow_html=True
+            )
+
             if ft == "Recomendado (Automático)":
-                st.caption("Detecta automáticamente: vacíos, N/A masivos, duplicados y basura común.")
+                st.caption("Detecta automáticamente: vacíos (N/A), basura común y registros raros.")
                 st.session_state.cln_text_search = ""
+
+            elif ft == "Por SERIE (exacta / contiene)":
+                st.session_state.cln_pick_value = st.text_input(
+                    "Escribe la serie",
+                    placeholder="Ej: 5CD123ABC",
+                    key="cln_txt_serie",
+                ).strip()
+
+            elif ft == "Por GUÍA (exacta / contiene)":
+                st.session_state.cln_pick_value = st.text_input(
+                    "Escribe la guía",
+                    placeholder="Ej: 098765",
+                    key="cln_txt_guia",
+                ).strip()
+
+            elif ft == "Por MARCA":
+                marcas = self._unique_values(df, ["marca"], limit=200)
+                st.session_state.cln_pick_value = st.selectbox("Marca", ["(Escribir)"] + marcas, key="cln_sel_marca")
+                if st.session_state.cln_pick_value == "(Escribir)":
+                    st.session_state.cln_pick_value = st.text_input("Escribe la marca", key="cln_txt_marca_manual").strip()
+
+            elif ft == "Por EQUIPO":
+                equipos = self._unique_values(df, ["equipo"], limit=250)
+                st.session_state.cln_pick_value = st.selectbox("Equipo", ["(Escribir)"] + equipos, key="cln_sel_equipo")
+                if st.session_state.cln_pick_value == "(Escribir)":
+                    st.session_state.cln_pick_value = st.text_input("Escribe el equipo", key="cln_txt_equipo_manual").strip()
+
+            elif ft == "Por MODELO":
+                modelos = self._unique_values(df, ["modelo"], limit=250)
+                st.session_state.cln_pick_value = st.selectbox("Modelo", ["(Escribir)"] + modelos, key="cln_sel_modelo")
+                if st.session_state.cln_pick_value == "(Escribir)":
+                    st.session_state.cln_pick_value = st.text_input("Escribe el modelo", key="cln_txt_modelo_manual").strip()
 
             elif ft == "Registros vacíos / basura (N/A)":
                 st.caption("Encuentra filas que tienen casi todo N/A (filas fantasma).")
@@ -192,11 +328,7 @@ class CleaningTab:
                 st.caption("Detecta registros repetidos por firma (fecha+serie+guia+equipo+marca+origen+destino+tipo).")
 
             elif ft == "Por fecha (un día)":
-                d = st.date_input(
-                    "Selecciona la fecha",
-                    value=datetime.date.today(),
-                    key="cln_date_one_day",
-                )
+                d = st.date_input("Selecciona la fecha", value=datetime.date.today(), key="cln_date_one_day")
                 st.session_state.cln_date_from = d
                 st.session_state.cln_date_to = d
 
@@ -210,47 +342,28 @@ class CleaningTab:
                 st.session_state.cln_date_to = d2
 
             elif ft == "Por sede (origen / destino)":
-                # lista sugerida desde datos
                 sedes = self._unique_values(df, ["origen", "destino"], limit=250)
-                st.session_state.cln_pick_field = st.radio(
-                    "¿Dónde buscar?",
-                    ["Origen", "Destino"],
-                    horizontal=True,
-                    key="cln_radio_origen_destino",
-                )
-                st.session_state.cln_pick_value = st.selectbox(
-                    "Selecciona la sede",
-                    options=["(Escribir manual)"] + sedes,
-                    key="cln_sel_sede",
-                )
-                if st.session_state.cln_pick_value == "(Escribir manual)":
+                st.session_state.cln_pick_field = st.radio("¿Dónde buscar?", ["Origen", "Destino"], horizontal=True, key="cln_radio_origen_destino")
+                st.session_state.cln_pick_value = st.selectbox("Selecciona la sede", options=["(Escribir)"] + sedes, key="cln_sel_sede")
+                if st.session_state.cln_pick_value == "(Escribir)":
                     st.session_state.cln_pick_value = st.text_input("Escribe la sede", key="cln_txt_sede_manual").strip()
 
             elif ft == "Por tipo (Recibido / Enviado)":
-                st.session_state.cln_pick_value = st.selectbox(
-                    "Tipo",
-                    ["recibido", "enviado"],
-                    key="cln_sel_tipo_user",
-                )
+                st.session_state.cln_pick_value = st.selectbox("Tipo", ["recibido", "enviado"], key="cln_sel_tipo_user")
 
             elif ft == "Por estado (Bueno / Dañado / Obsoleto / etc.)":
                 estados = self._unique_values(df, ["estado"], limit=120)
-                st.session_state.cln_pick_value = st.selectbox(
-                    "Estado",
-                    options=["(Escribir manual)"] + estados,
-                    key="cln_sel_estado_user",
-                )
-                if st.session_state.cln_pick_value == "(Escribir manual)":
+                st.session_state.cln_pick_value = st.selectbox("Estado", options=["(Escribir)"] + estados, key="cln_sel_estado_user")
+                if st.session_state.cln_pick_value == "(Escribir)":
                     st.session_state.cln_pick_value = st.text_input("Escribe el estado", key="cln_txt_estado_manual").strip()
 
             elif ft == "Por texto (buscar en todo)":
                 st.session_state.cln_text_search = st.text_input(
                     "Escribe lo que quieres buscar y eliminar",
-                    placeholder="Ej: puyo / hp / 6263... / teclado / n/a",
+                    placeholder="Ej: puyo / hp / teclado / obsoleto / sid ...",
                     key="cln_txt_search_all",
                 ).strip().lower()
 
-        # Botón: Generar resultados
         with st.container(border=True):
             c1, c2 = st.columns([1.4, 2.6], vertical_alignment="center")
             with c1:
@@ -261,8 +374,6 @@ class CleaningTab:
 
     def _generate_results_user(self, df: pd.DataFrame):
         ft = st.session_state.cln_filter_type
-
-        # Convertimos esto a una “consulta” interna (solo para trazabilidad)
         q = ft
 
         if ft == "Recomendado (Automático)":
@@ -304,10 +415,37 @@ class CleaningTab:
             q = f"ESTADO: {v}"
             results = self._search(df, "estado", v)
 
+        elif ft == "Por SERIE (exacta / contiene)":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"SERIE: {v}"
+            results = self._search(df, "serie", v)
+
+        elif ft == "Por GUÍA (exacta / contiene)":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"GUIA: {v}"
+            results = self._search(df, "guia", v)
+
+        elif ft == "Por MARCA":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"MARCA: {v}"
+            results = self._search(df, "marca", v)
+
+        elif ft == "Por EQUIPO":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"EQUIPO: {v}"
+            results = self._search(df, "equipo", v)
+
+        elif ft == "Por MODELO":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"MODELO: {v}"
+            results = self._search(df, "modelo", v)
+
         else:  # Por texto (buscar en todo)
             v = (st.session_state.cln_text_search or "").strip().lower()
             q = f"TEXTO: {v}"
             results = self._search(df, "texto", v)
+
+        results = self._apply_sort(results)
 
         st.session_state.cln_last_query = q
         st.session_state.cln_results = results
@@ -319,6 +457,15 @@ class CleaningTab:
 
         st.session_state.cln_flow_step = 2
         st.rerun()
+
+    def _apply_sort(self, dfres: pd.DataFrame):
+        if dfres is None or dfres.empty:
+            return dfres
+        if "fecha_registro_dt" not in dfres.columns:
+            return dfres
+        if st.session_state.cln_sort == "Más antiguos primero":
+            return dfres.sort_values("fecha_registro_dt", ascending=True)
+        return dfres.sort_values("fecha_registro_dt", ascending=False)
 
     # =========================================================
     # STEP 2
@@ -336,13 +483,9 @@ class CleaningTab:
             st.session_state.cln_flow_step = 1
             return
 
-        # resumen
         with st.container(border=True):
-            st.markdown("#### Resumen")
             total = len(dfres)
             st.metric("Registros encontrados", total)
-
-            # warning masivo
             if total >= 200:
                 st.warning("⚠️ Son muchos registros. Revisa bien antes de borrar.")
 
@@ -360,34 +503,37 @@ class CleaningTab:
             hide_index=True,
             num_rows="fixed",
             height=540,
-            key="cln_editor_results_user",
+            key="cln_editor_results_user_v2",
         )
 
         selected_idx = set(edited.loc[edited["ELIMINAR"] == True, "idx"].astype(int).tolist())
         st.session_state.cln_selected_idx = selected_idx
 
         with st.container(border=True):
-            c1, c2, c3, c4 = st.columns([1.2, 1.2, 1.6, 1.6], vertical_alignment="center")
+            c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.2, 1.2, 1.2], vertical_alignment="center")
             with c1:
                 st.metric("Seleccionados", len(selected_idx))
             with c2:
-                if st.button("✅ Seleccionar todo", key="cln_btn_sel_all_user", use_container_width=True):
+                if st.button("✅ Todo", key="cln_btn_sel_all_user_v2", use_container_width=True):
                     st.session_state.cln_selected_idx = set(dfres["idx"].astype(int).tolist())
                     st.rerun()
             with c3:
-                if st.button("🔁 Invertir", key="cln_btn_sel_inv_user", use_container_width=True):
+                if st.button("🔁 Invertir", key="cln_btn_sel_inv_user_v2", use_container_width=True):
                     all_idx = set(dfres["idx"].astype(int).tolist())
                     st.session_state.cln_selected_idx = all_idx - set(st.session_state.cln_selected_idx)
                     st.rerun()
             with c4:
-                if st.button("⬅️ Volver", key="cln_btn_back_to_step1", use_container_width=True):
+                if st.button("🧽 Limpiar", key="cln_btn_sel_clear_user_v2", use_container_width=True):
+                    st.session_state.cln_selected_idx = set()
+                    st.rerun()
+            with c5:
+                if st.button("⬅️ Volver", key="cln_btn_back_to_step1_v2", use_container_width=True):
                     st.session_state.cln_flow_step = 1
                     st.rerun()
 
-        # pasar a confirmar
         with st.container(border=True):
             disabled = len(st.session_state.cln_selected_idx) == 0
-            if st.button("➡️ Continuar a Confirmación", key="cln_btn_go_step3", type="primary", use_container_width=True, disabled=disabled):
+            if st.button("➡️ Continuar a Confirmación", key="cln_btn_go_step3_v2", type="primary", use_container_width=True, disabled=disabled):
                 st.session_state.cln_flow_step = 3
                 st.rerun()
 
@@ -409,13 +555,11 @@ class CleaningTab:
 
         sub = dfall[dfall["idx"].isin(selected_idx)].copy()
 
-        # preview
         with st.container(border=True):
             st.markdown("#### Vista previa (lo que se eliminará)")
             sub_cols = [c for c in ["idx","fecha_registro","tipo","equipo","marca","modelo","serie","estado","origen","destino","guia"] if c in sub.columns]
             st.dataframe(sub[sub_cols].head(250), use_container_width=True, hide_index=True)
 
-        # seguridad
         with st.container(border=True):
             total = len(selected_idx)
             st.metric("Total a eliminar", total)
@@ -424,31 +568,30 @@ class CleaningTab:
             if warn_massive:
                 st.warning("⚠️ Esto es un borrado masivo. Confirma con cuidado.")
 
-            confirm = st.checkbox("✅ Sí, quiero eliminar estos registros", key="cln_chk_confirm_user", value=False)
+            confirm = st.checkbox("✅ Sí, quiero eliminar estos registros", key="cln_chk_confirm_user_v2", value=False)
 
             confirm2 = True
             if st.session_state.cln_massive_lock and warn_massive:
                 confirm2 = st.text_input(
                     "Para borrar masivo, escribe EXACTAMENTE: ELIMINAR",
-                    key="cln_txt_confirm_massive",
+                    key="cln_txt_confirm_massive_v2",
                     placeholder="ELIMINAR",
                 ).strip().upper() == "ELIMINAR"
 
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("⬅️ Volver", key="cln_btn_back_step2", use_container_width=True):
+                if st.button("⬅️ Volver", key="cln_btn_back_step2_v2", use_container_width=True):
                     st.session_state.cln_flow_step = 2
                     st.rerun()
 
             disabled = (not confirm) or (not confirm2)
             with c2:
-                if st.button("🔥 Enviar al robot", key="cln_btn_send_user", type="primary", use_container_width=True, disabled=disabled):
+                if st.button("🔥 Enviar al robot", key="cln_btn_send_user_v2", type="primary", use_container_width=True, disabled=disabled):
                     self._send_delete_order_user()
 
     def _send_delete_order_user(self):
         dfall = st.session_state.cln_df
         selected_idx = sorted(list(st.session_state.cln_selected_idx))
-
         sub = dfall[dfall["idx"].isin(selected_idx)].copy()
 
         firmas = []
@@ -493,17 +636,7 @@ class CleaningTab:
     # Recommended / extras
     # =========================================================
     def _recommended_cleanup(self, df: pd.DataFrame):
-        """
-        Recomendado:
-        - Vacíos (>=80% N/A)
-        - tipo n/a
-        - estado n/a
-        - equipo n/a
-        - registros con todo N/A (extremo)
-        """
         vacios = self._search(df, "vacios", "1")
-
-        # “n/a” críticos
         na_tipo = self._search(df, "tipo", "n/a")
         na_estado = self._search(df, "estado", "n/a")
         na_equipo = self._search(df, "equipo", "n/a")
@@ -512,16 +645,11 @@ class CleaningTab:
         if out.empty:
             return out
 
-        # quitar duplicados por idx
         out = out.drop_duplicates(subset=["idx"], keep="first").copy()
         out = out.sort_values("fecha_registro_dt", ascending=False)
         return out.head(2000)
 
     def _find_duplicates(self, df: pd.DataFrame):
-        """
-        Duplicados por firma (campos principales).
-        Devuelve solo los duplicados (no el primero).
-        """
         if df is None or df.empty:
             return pd.DataFrame()
 
@@ -534,8 +662,6 @@ class CleaningTab:
             tmp[c] = tmp[c].astype(str).str.strip().str.lower()
 
         tmp["__sig__"] = tmp[cols].agg("|".join, axis=1)
-
-        # marca duplicados
         dup_mask = tmp.duplicated(subset="__sig__", keep="first")
         out = tmp[dup_mask].copy()
         out = out.drop(columns=["__sig__"], errors="ignore")
@@ -570,13 +696,12 @@ class CleaningTab:
                 )
                 vals.extend(v.unique().tolist())
         vals = [x for x in vals if x and str(x).strip()]
-        vals = sorted(list(dict.fromkeys(vals)))  # unique preserve
-        # quita N/A arriba de todo
+        vals = sorted(list(dict.fromkeys(vals)))
         vals = [x for x in vals if str(x).strip().lower() not in ["n/a", "na", "none", "nan"]]
         return vals[:limit]
 
     # =========================================================
-    # Core search (reutiliza lógica PRO)
+    # Core search
     # =========================================================
     def _search(self, df: pd.DataFrame, field: str, value: str):
         field = (field or "").strip().lower()
@@ -585,7 +710,6 @@ class CleaningTab:
         if df is None or df.empty:
             return pd.DataFrame()
 
-        # vacíos
         if field == "vacios":
             check_cols = [c for c in ["tipo","categoria_item","equipo","marca","modelo","serie","estado","origen","destino","guia","reporte"] if c in df.columns]
             if not check_cols:
@@ -600,9 +724,9 @@ class CleaningTab:
         if not value:
             return pd.DataFrame()
 
-        # campo directo
         if field in df.columns and field != "texto":
             s = df[field].astype(str).str.lower().str.strip()
+
             if field in ["serie", "guia"]:
                 mask = (s == value) | s.str.contains(re.escape(value), na=False)
             elif field in ["tipo", "estado"]:
@@ -613,7 +737,6 @@ class CleaningTab:
             out = df[mask].copy()
             return out.sort_values("fecha_registro_dt", ascending=False).head(4000)
 
-        # texto en todo
         search_cols = [c for c in ["serie", "marca", "equipo", "modelo", "origen", "destino", "guia", "reporte", "tipo", "estado"] if c in df.columns]
         if not search_cols:
             search_cols = df.columns.tolist()
@@ -629,7 +752,7 @@ class CleaningTab:
         return out.sort_values("fecha_registro_dt", ascending=False).head(4000)
 
     # =========================================================
-    # Normalización (igual que PRO)
+    # Normalización
     # =========================================================
     def _safe_hist_to_df(self, hist):
         filas = []
@@ -674,7 +797,6 @@ class CleaningTab:
 
         keep = [c for c in self.base_cols if c in df.columns]
         df = df[keep].copy()
-
         return df
 
     def _reset(self, keep_order: bool = False):
