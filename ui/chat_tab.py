@@ -254,14 +254,6 @@ class ChatTab:
             unsafe_allow_html=True
         )
 
-        # Acciones rápidas visibles SOLO en vista simple
-        c1, c2 = st.columns([1.4, 1.6])
-        with c1:
-            if st.button("📋 Copiar comando: 'así está bien'", use_container_width=True, key="btn_copy_force"):
-                st.toast("Copia y pega: así está bien", icon="📋")
-        with c2:
-            st.caption("Tip: si dices **así está bien**, LAIA debe rellenar N/A y poner READY.")
-
     # ---------------------------
     # Render
     # ---------------------------
