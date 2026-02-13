@@ -1,6 +1,7 @@
 import streamlit as st
 import html
 import json
+import pandas as pd
 
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -8,11 +9,10 @@ from modules.github_handler import GitHubHandler
 
 class ChatTab:
     """
-    LAIA — Chat Only (Final)
-    ✅ Solo chat (sin ayuda)
-    ✅ Estética pro
-    ✅ Respeta saltos de línea del usuario
-    ✅ JSON visible SOLO en modo técnico (para ti)
+    LAIA — Chat + Tabla (Borrador)
+    ✅ Chat bonito + respeta saltos de línea
+    ✅ Tabla de borrador como antes (data_editor)
+    ✅ JSON debug solo en modo técnico
     """
 
     def __init__(self):
@@ -25,18 +25,17 @@ class ChatTab:
         st.session_state.setdefault("draft", [])
         st.session_state.setdefault("status", "NEW")
 
-        # ✅ Para debug/JSON
         st.session_state.setdefault("modo_tecnico", False)
         st.session_state.setdefault("last_json", {})
 
     # ---------------------------
-    # UI style (más pro)
+    # UI style
     # ---------------------------
     def _inject_style(self):
         st.markdown(
             """
             <style>
-              .block-container { padding-top: 0.9rem; padding-bottom: 1.1rem; max-width: 980px; }
+              .block-container { padding-top: 0.9rem; padding-bottom: 1.1rem; max-width: 1100px; }
 
               .stApp {
                 background: radial-gradient(1200px 600px at 15% 10%, rgba(46,125,50,0.12), transparent 60%),
@@ -61,19 +60,21 @@ class ChatTab:
               }
 
               .user-pre{
-                white-space: pre-wrap;      /* ✅ respeta Enter */
+                white-space: pre-wrap;
                 word-wrap: break-word;
                 line-height: 1.35rem;
                 font-size: 0.98rem;
                 opacity: 0.98;
               }
 
-              .stButton button{
-                border-radius: 12px !important;
-                font-weight: 850 !important;
+              /* Tabla/borrador */
+              div[data-testid="stDataEditor"]{
+                border-radius: 14px;
+                overflow: hidden;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.02);
               }
 
-              /* Expander más limpio */
               details summary { font-weight: 800; }
             </style>
             """,
@@ -84,16 +85,10 @@ class ChatTab:
         if self.LOGO_URL:
             st.markdown(f"""<img id="jaher-logo" src="{self.LOGO_URL}" />""", unsafe_allow_html=True)
 
-    # ---------------------------
-    # Render helpers
-    # ---------------------------
     def _render_user_text_preserving_lines(self, text: str):
         safe = html.escape(text or "")
         st.markdown(f"<div class='user-pre'>{safe}</div>", unsafe_allow_html=True)
 
-    # ---------------------------
-    # UX helpers
-    # ---------------------------
     def _is_saludo_o_basura(self, text: str) -> bool:
         t = (text or "").strip().lower()
         if len(t) <= 2:
@@ -112,16 +107,18 @@ class ChatTab:
         self._inject_style()
         self._render_logo()
 
-        # ✅ Toggle discreto SOLO para ti (arriba)
-        top_l, top_r = st.columns([3.5, 1.3], vertical_alignment="center")
+        # Toggle técnico arriba
+        top_l, top_r = st.columns([4, 1.2], vertical_alignment="center")
         with top_r:
-            st.session_state["modo_tecnico"] = st.toggle("🛠️ Modo técnico", value=bool(st.session_state.get("modo_tecnico", False)))
+            st.session_state["modo_tecnico"] = st.toggle(
+                "🛠️ Modo técnico",
+                value=bool(st.session_state.get("modo_tecnico", False))
+            )
 
-        # Chat
+        # CHAT
         for m in st.session_state.messages:
             role = m.get("role", "assistant")
             content = m.get("content", "")
-
             with st.chat_message(role):
                 if role == "user":
                     self._render_user_text_preserving_lines(content)
@@ -132,11 +129,15 @@ class ChatTab:
             self._procesar_mensaje(prompt)
             st.rerun()
 
-        # ✅ Mostrar JSON SOLO si modo técnico está activo
+        # JSON debug (solo técnico)
         if st.session_state.get("modo_tecnico", False):
             last = st.session_state.get("last_json", {}) or {}
             with st.expander("🧾 JSON (debug)", expanded=False):
                 st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
+
+        # ✅ TABLA BORRADOR (como antes)
+        if st.session_state.get("draft"):
+            self._render_borrador()
 
     # ---------------------------
     # Core
@@ -146,10 +147,8 @@ class ChatTab:
         if not prompt:
             return
 
-        # Guardar user msg
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Respuesta rápida si ponen “hola”
         if self._is_saludo_o_basura(prompt):
             st.session_state.messages.append({
                 "role": "assistant",
@@ -179,9 +178,8 @@ class ChatTab:
                 st.session_state.messages.append({"role": "assistant", "content": mensaje})
 
                 res_json = resultado.get("json_response", {}) or {}
-                st.session_state["last_json"] = res_json  # ✅ aquí guardas el JSON para mostrarlo
+                st.session_state["last_json"] = res_json
 
-                # Mantener borrador interno (aunque UI sea solo chat)
                 items = res_json.get("items") or []
                 if items:
                     self._merge_draft(items)
@@ -189,10 +187,7 @@ class ChatTab:
                 st.session_state["status"] = res_json.get("status", "QUESTION")
 
         except Exception as e:
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": f"⚠️ Error en el motor de LAIA: {str(e)}"
-            })
+            st.session_state.messages.append({"role": "assistant", "content": f"⚠️ Error en el motor de LAIA: {str(e)}"})
             st.session_state["last_json"] = {"status": "ERROR", "error": str(e)}
 
     def _merge_draft(self, nuevos_items):
@@ -205,3 +200,58 @@ class ChatTab:
             key = item.get("serie") or item.get("modelo") or item.get("equipo")
             actual[key] = item
         st.session_state.draft = list(actual.values())
+
+    # ---------------------------
+    # Tabla de borrador
+    # ---------------------------
+    def _render_borrador(self):
+        st.markdown("---")
+
+        with st.container(border=True):
+            left, mid, right = st.columns([2.4, 1, 1], vertical_alignment="center")
+            with left:
+                st.markdown("#### 📊 Borrador de Movimientos")
+                st.caption("Revisa y corrige aquí. Se guarda en sesión.")
+            with mid:
+                st.metric("Items", len(st.session_state.draft))
+            with right:
+                st.caption(f"Estado: **{st.session_state.get('status', 'NEW')}**")
+
+        # columnas base (las que tu robot espera)
+        cols_base = [
+            "categoria_item", "equipo", "marca", "modelo", "serie", "cantidad", "estado",
+            "tipo", "origen", "destino", "pasillo", "estante", "repisa", "guia", "fecha_llegada",
+            "ram", "disco", "procesador", "reporte"
+        ]
+
+        df = pd.DataFrame(st.session_state.draft).copy()
+        for c in cols_base:
+            if c not in df.columns:
+                df[c] = ""
+
+        df = df.reindex(columns=cols_base).fillna("N/A")
+
+        with st.container(border=True):
+            edited = st.data_editor(
+                df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                key="editor_borrador_chat"
+            )
+
+        # sincronizar cambios
+        if not df.equals(edited):
+            st.session_state.draft = edited.to_dict("records")
+            st.session_state.status = "QUESTION"
+            st.rerun()
+
+        # botones mínimos
+        c1, c2 = st.columns([1.2, 2.8], vertical_alignment="center")
+        with c1:
+            if st.button("🗑️ Limpiar borrador", use_container_width=True):
+                st.session_state.draft = []
+                st.session_state.status = "NEW"
+                st.rerun()
+        with c2:
+            st.caption("Tip: si LAIA marca faltantes, completa aquí y vuelve a enviar un 'OK' para que re-audite.")
