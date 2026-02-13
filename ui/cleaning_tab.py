@@ -9,31 +9,37 @@ from modules.github_handler import GitHubHandler
 
 class CleaningTab:
     """
-    🗑️ Limpieza Inteligente (Modo asistido + SEGURO) — ULTRA PRO
+    🧹 Limpieza del Historial (Modo Usuario Final) — SIMPLE + POTENTE
 
-    ✅ Funciones:
-    - Detecta intención (serie / marca / equipo / destino / origen / tipo / estado / texto / vacios)
-    - Busca coincidencias (exacta + contains, según campo)
-    - Tabla editable con checkbox (selección múltiple)
-    - Acciones rápidas: Seleccionar todo / Invertir / Limpiar selección
-    - Preview de borrado: “Qué se va a borrar” antes de enviar
-    - Envía orden al robot con 2 esquemas (nuevo + compat)
-    - Evita NaN visual (rellena con N/A)
-    - Anti-basuara: detecta registros “vacíos” (>=80% campos N/A)
-    - FIX: keys únicos (StreamlitDuplicateElementId)
+    Objetivo: misma potencia que “ULTRA PRO”, pero para usuarios NO técnicos.
 
-    🔥 Mejoras “mamadas”:
-    - Modo “VACIOS” real (mata filas fantasma)
-    - Modo “RANGO_FECHA” por texto: "fecha: 2026-02-12" / "desde 2026-02-10 hasta 2026-02-12"
-    - Borrado por “firma” (matches) para robustez si cambian índices
-    - Seguridad extra: confirmación + doble confirmación opcional
+    ✅ UX para usuario final:
+    - 3 pasos claros: 1) Elegir qué limpiar  2) Ver resultados  3) Confirmar y enviar
+    - Botones grandes + textos claros (sin “modo”, sin jerga)
+    - Plantillas rápidas (limpiar vacíos, limpiar por fecha, limpiar por sede/destino/origen, etc.)
+    - Búsqueda “tipo Google” (escribes y listo) + filtros guiados
+    - Vista previa (resumen + tabla)
+    - “Deshacer” (si el robot soporta rollback NO; aquí guardamos el JSON de la orden para rehacer/revisar)
+    - Seguridad: confirmación y advertencias si es masivo
+
+    ✅ Funciones extra:
+    - “Limpieza automática recomendada” (sugerencias: vacíos, N/A, registros basura)
+    - “Eliminar duplicados” (por firma: fecha+serie+guia+equipo+marca+destino+origen+tipo)
+    - “Eliminar por rango de fechas” con selector calendario
+    - “Eliminar por categoría” (Periférico / Cómputo) si existe categoria_item
+    - “Eliminar por sede” (origen/destino)
+    - “Eliminar por texto” (en cualquier columna)
+    - Anti-filas fantasma (>=80% N/A)
+
+    Nota: Sigue enviando al robot la misma orden:
+    - action=delete + indices + matches
+    - accion=borrar_por_indices + idx_list (compat)
     """
 
     def __init__(self):
         self.ai_engine = AIEngine()
         self.github = GitHubHandler()
 
-        # Columnas “canon”
         self.base_cols = [
             "idx",
             "fecha_registro",
@@ -52,38 +58,46 @@ class CleaningTab:
             "reporte",
         ]
 
-        # Estado UI
+        # state
         st.session_state.setdefault("cln_df", pd.DataFrame())
         st.session_state.setdefault("cln_results", pd.DataFrame())
         st.session_state.setdefault("cln_selected_idx", set())
         st.session_state.setdefault("cln_last_query", "")
-        st.session_state.setdefault("cln_mode", "AUTO")
         st.session_state.setdefault("cln_last_order", None)
-        st.session_state.setdefault("cln_strict_confirm", False)
+
+        # UX state
+        st.session_state.setdefault("cln_flow_step", 1)
+        st.session_state.setdefault("cln_filter_type", "Recomendado (Automático)")
+        st.session_state.setdefault("cln_text_search", "")
+        st.session_state.setdefault("cln_date_from", None)
+        st.session_state.setdefault("cln_date_to", None)
+        st.session_state.setdefault("cln_pick_field", "Cualquier campo")
+        st.session_state.setdefault("cln_pick_value", "")
+        st.session_state.setdefault("cln_massive_lock", True)  # más seguro: bloquea masivo si no confirma extra
 
     # =========================================================
     # UI
     # =========================================================
     def render(self):
         with st.container(border=True):
-            st.markdown("## 🗑️ Limpieza Inteligente del Historial")
-            st.caption("Flujo seguro: buscar → seleccionar → confirmar → enviar orden al robot → refrescar.")
+            st.markdown("## 🧹 Limpieza del Historial (Fácil)")
+            st.caption("Pensado para usuarios finales: elige una opción, revisa, confirma y listo.")
 
-        # Aviso de “orden enviada”
+        # orden enviada
         if st.session_state.cln_last_order:
             with st.container(border=True):
-                st.success("✅ Orden enviada. Ahora el robot debe procesarla y actualizar historico.json.")
+                st.success("✅ Orden enviada. El robot debe procesarla y actualizar historico.json.")
                 c1, c2 = st.columns([1.2, 3.8], vertical_alignment="center")
                 with c1:
                     if st.button("🔄 Refrescar", key="cln_btn_refresh_after_send", use_container_width=True):
                         st.session_state.cln_last_order = None
                         st.rerun()
                 with c2:
-                    st.caption("Si el robot aún no corrió, verás el historial igual. Refresca después de que el robot procese.")
-                with st.expander("📦 Ver orden enviada", expanded=False):
+                    st.caption("Si el robot aún no corrió, verás lo mismo. Refresca luego de que procese.")
+                with st.expander("📦 Ver orden enviada (para soporte)", expanded=False):
                     st.json(st.session_state.cln_last_order)
 
-        # Cargar histórico
+        # cargar historial
         hist = self.github.obtener_historico()
         if hist is None:
             st.error("❌ No pude leer el historial (GitHub). Revisa tu token/secret.")
@@ -92,318 +106,348 @@ class CleaningTab:
             st.info("📭 El historial está vacío.")
             return
 
-        # ✅ Sanear “hist” antes de DataFrame (evita columnas 0,1,2… por listas raras)
         df = self._safe_hist_to_df(hist)
         df = self._normalize(df)
         st.session_state.cln_df = df
 
+        # =========================
+        # Paso a paso (wizard)
+        # =========================
+        self._render_steps_header()
+
+        step = st.session_state.cln_flow_step
+        if step == 1:
+            self._step_1_choose(df)
+        elif step == 2:
+            self._step_2_review()
+        else:
+            self._step_3_confirm_and_send()
+
+    def _render_steps_header(self):
         with st.container(border=True):
-            st.info(
-                "💡 Ejemplos:\n"
-                "- **elimina la serie 12345**\n"
-                "- **borra marca LG**\n"
-                "- **quita destino Puyo**\n"
-                "- **elimina origen bodega**\n"
-                "- **elimina tipo n/a**\n"
-                "- **modo VACIOS**: elimina filas fantasma\n"
-                "- **fecha: 2026-02-12** o **desde 2026-02-10 hasta 2026-02-12**"
+            s1, s2, s3 = st.columns(3)
+            step = st.session_state.cln_flow_step
+
+            def pill(label, active):
+                if active:
+                    st.markdown(f"### ✅ {label}")
+                else:
+                    st.markdown(f"### {label}")
+
+            with s1:
+                pill("1) Elegir limpieza", step == 1)
+            with s2:
+                pill("2) Revisar resultados", step == 2)
+            with s3:
+                pill("3) Confirmar y enviar", step == 3)
+
+    # =========================================================
+    # STEP 1
+    # =========================================================
+    def _step_1_choose(self, df: pd.DataFrame):
+        with st.container(border=True):
+            st.markdown("### 1) ¿Qué quieres limpiar?")
+
+            opciones = [
+                "Recomendado (Automático)",
+                "Registros vacíos / basura (N/A)",
+                "Duplicados (repetidos)",
+                "Por fecha (un día)",
+                "Por rango de fechas",
+                "Por sede (origen / destino)",
+                "Por tipo (Recibido / Enviado)",
+                "Por estado (Bueno / Dañado / Obsoleto / etc.)",
+                "Por texto (buscar en todo)",
+            ]
+
+            st.session_state.cln_filter_type = st.selectbox(
+                "Elige una opción",
+                opciones,
+                index=0,
+                key="cln_sel_filter_type_user",
+                help="Si no sabes, usa: Recomendado (Automático).",
             )
 
-            q = st.text_input(
-                "¿Qué deseas eliminar?",
-                placeholder="Ej: elimina serie 12345 / borra marca LG / tipo: n/a / fecha: 2026-02-12 ...",
-                key="cln_txt_query",
-            ).strip()
+            st.session_state.cln_massive_lock = st.toggle(
+                "🛡️ Bloquear borrados masivos (recomendado)",
+                value=bool(st.session_state.cln_massive_lock),
+                help="Evita borrar mucho por error. Puedes desactivarlo si sabes lo que haces.",
+                key="cln_tgl_massive_lock",
+            )
 
-            c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.8, 1.3, 1.8], vertical_alignment="center")
+        # Inputs guiados según opción
+        ft = st.session_state.cln_filter_type
+
+        with st.container(border=True):
+            st.markdown("### Configuración")
+
+            if ft == "Recomendado (Automático)":
+                st.caption("Detecta automáticamente: vacíos, N/A masivos, duplicados y basura común.")
+                st.session_state.cln_text_search = ""
+
+            elif ft == "Registros vacíos / basura (N/A)":
+                st.caption("Encuentra filas que tienen casi todo N/A (filas fantasma).")
+
+            elif ft == "Duplicados (repetidos)":
+                st.caption("Detecta registros repetidos por firma (fecha+serie+guia+equipo+marca+origen+destino+tipo).")
+
+            elif ft == "Por fecha (un día)":
+                d = st.date_input(
+                    "Selecciona la fecha",
+                    value=datetime.date.today(),
+                    key="cln_date_one_day",
+                )
+                st.session_state.cln_date_from = d
+                st.session_state.cln_date_to = d
+
+            elif ft == "Por rango de fechas":
+                c1, c2 = st.columns(2)
+                with c1:
+                    d1 = st.date_input("Desde", value=datetime.date.today() - datetime.timedelta(days=7), key="cln_date_from_user")
+                with c2:
+                    d2 = st.date_input("Hasta", value=datetime.date.today(), key="cln_date_to_user")
+                st.session_state.cln_date_from = d1
+                st.session_state.cln_date_to = d2
+
+            elif ft == "Por sede (origen / destino)":
+                # lista sugerida desde datos
+                sedes = self._unique_values(df, ["origen", "destino"], limit=250)
+                st.session_state.cln_pick_field = st.radio(
+                    "¿Dónde buscar?",
+                    ["Origen", "Destino"],
+                    horizontal=True,
+                    key="cln_radio_origen_destino",
+                )
+                st.session_state.cln_pick_value = st.selectbox(
+                    "Selecciona la sede",
+                    options=["(Escribir manual)"] + sedes,
+                    key="cln_sel_sede",
+                )
+                if st.session_state.cln_pick_value == "(Escribir manual)":
+                    st.session_state.cln_pick_value = st.text_input("Escribe la sede", key="cln_txt_sede_manual").strip()
+
+            elif ft == "Por tipo (Recibido / Enviado)":
+                st.session_state.cln_pick_value = st.selectbox(
+                    "Tipo",
+                    ["recibido", "enviado"],
+                    key="cln_sel_tipo_user",
+                )
+
+            elif ft == "Por estado (Bueno / Dañado / Obsoleto / etc.)":
+                estados = self._unique_values(df, ["estado"], limit=120)
+                st.session_state.cln_pick_value = st.selectbox(
+                    "Estado",
+                    options=["(Escribir manual)"] + estados,
+                    key="cln_sel_estado_user",
+                )
+                if st.session_state.cln_pick_value == "(Escribir manual)":
+                    st.session_state.cln_pick_value = st.text_input("Escribe el estado", key="cln_txt_estado_manual").strip()
+
+            elif ft == "Por texto (buscar en todo)":
+                st.session_state.cln_text_search = st.text_input(
+                    "Escribe lo que quieres buscar y eliminar",
+                    placeholder="Ej: puyo / hp / 6263... / teclado / n/a",
+                    key="cln_txt_search_all",
+                ).strip().lower()
+
+        # Botón: Generar resultados
+        with st.container(border=True):
+            c1, c2 = st.columns([1.4, 2.6], vertical_alignment="center")
             with c1:
-                if st.button("🔎 Buscar", key="cln_btn_search", type="secondary", use_container_width=True):
-                    if q:
-                        self._run_search(q)
-                    else:
-                        st.warning("Escribe una instrucción primero.")
+                if st.button("🔎 Buscar registros", key="cln_btn_generate_results", type="primary", use_container_width=True):
+                    self._generate_results_user(df)
             with c2:
-                if st.button("🧹 Limpiar", key="cln_btn_clear", use_container_width=True):
-                    self._reset()
-                    st.rerun()
-            with c3:
-                st.session_state.cln_mode = st.selectbox(
-                    "Modo",
-                    options=["AUTO", "SERIE", "MARCA", "EQUIPO", "DESTINO", "ORIGEN", "TIPO", "ESTADO", "FECHA", "RANGO_FECHA", "TEXTO", "VACIOS"],
-                    index=0,
-                    key="cln_sel_mode",
-                    help="AUTO detecta el campo. Los otros fuerzan dónde buscar.",
-                )
-            with c4:
-                st.session_state.cln_strict_confirm = st.toggle(
-                    "Doble confirmación",
-                    value=bool(st.session_state.cln_strict_confirm),
-                    help="Activa confirmación adicional (más seguro si vas a borrar mucho).",
-                    key="cln_tgl_strict_confirm",
-                )
-            with c5:
-                st.caption("🛡️ No se borra nada hasta que confirmes y envíes la orden.")
+                st.caption("Luego podrás revisar la lista, seleccionar y confirmar.")
 
-        if not st.session_state.cln_results.empty:
-            self._render_results()
+    def _generate_results_user(self, df: pd.DataFrame):
+        ft = st.session_state.cln_filter_type
 
-    # =========================================================
-    # Search pipeline
-    # =========================================================
-    def _run_search(self, q: str):
-        df = st.session_state.cln_df
-        mode = st.session_state.cln_mode
+        # Convertimos esto a una “consulta” interna (solo para trazabilidad)
+        q = ft
 
-        # Pista IA (opcional)
-        ai_hint = {}
-        try:
-            ai_hint = self.ai_engine.generar_orden_borrado(q, df.tail(300).to_dict("records")) or {}
-        except Exception:
-            ai_hint = {}
+        if ft == "Recomendado (Automático)":
+            results = self._recommended_cleanup(df)
+            q = "AUTO: recomendación"
 
-        field, value = self._detect_criterion(q, mode=mode, ai_hint=ai_hint)
-        results = self._search(df, field=field, value=value)
+        elif ft == "Registros vacíos / basura (N/A)":
+            results = self._search(df, "vacios", "1")
+            q = "VACIOS"
+
+        elif ft == "Duplicados (repetidos)":
+            results = self._find_duplicates(df)
+            q = "DUPLICADOS"
+
+        elif ft == "Por fecha (un día)":
+            d = st.session_state.cln_date_from
+            q = f"FECHA: {d}"
+            results = self._search_by_date_range(df, d, d)
+
+        elif ft == "Por rango de fechas":
+            d1 = st.session_state.cln_date_from
+            d2 = st.session_state.cln_date_to
+            q = f"RANGO: {d1} -> {d2}"
+            results = self._search_by_date_range(df, d1, d2)
+
+        elif ft == "Por sede (origen / destino)":
+            sede = (st.session_state.cln_pick_value or "").strip().lower()
+            campo = "origen" if st.session_state.cln_pick_field == "Origen" else "destino"
+            q = f"{campo.upper()}: {sede}"
+            results = self._search(df, campo, sede)
+
+        elif ft == "Por tipo (Recibido / Enviado)":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"TIPO: {v}"
+            results = self._search(df, "tipo", v)
+
+        elif ft == "Por estado (Bueno / Dañado / Obsoleto / etc.)":
+            v = (st.session_state.cln_pick_value or "").strip().lower()
+            q = f"ESTADO: {v}"
+            results = self._search(df, "estado", v)
+
+        else:  # Por texto (buscar en todo)
+            v = (st.session_state.cln_text_search or "").strip().lower()
+            q = f"TEXTO: {v}"
+            results = self._search(df, "texto", v)
 
         st.session_state.cln_last_query = q
         st.session_state.cln_results = results
         st.session_state.cln_selected_idx = set()
 
         if results.empty:
-            st.warning("❌ No he encontrado ningún elemento con esa descripción.")
-        elif len(results) == 1:
-            r = results.iloc[0]
-            st.success(f"✅ He encontrado 1 registro: **{self._pretty_row(r)}**. Selecciónalo abajo para eliminar.")
-        else:
-            st.success(f"✅ He encontrado **{len(results)}** registros. Elige cuáles eliminar abajo.")
+            st.warning("❌ No se encontraron registros con esa selección.")
+            return
 
-    def _detect_criterion(self, q: str, mode: str = "AUTO", ai_hint: dict | None = None):
-        ql = q.lower().strip()
-        ai_hint = ai_hint or {}
-
-        # ✅ Si el modo está forzado, usa ese
-        if mode != "AUTO":
-            return mode.lower(), self._extract_value(ql)
-
-        # ✅ fecha / rango fecha por texto
-        if re.search(r"\b(desde|hasta|fecha)\b", ql):
-            # modo automático de fecha
-            if "desde" in ql or "hasta" in ql:
-                return "rango_fecha", ql
-            return "fecha", ql
-
-        # ✅ serie/serial
-        m = re.search(r"(serie|serial)\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
-        if m:
-            return "serie", m.group(2).strip()
-
-        # ✅ soporta: marca/equipo/destino/origen/tipo/estado/guia
-        for k in ["marca", "equipo", "destino", "origen", "tipo", "estado", "guia"]:
-            m = re.search(rf"({k})\s*[:#-]?\s*([a-z0-9\-_/]+)", ql)
-            if m:
-                return k, m.group(2).strip()
-
-        # ✅ hint IA
-        for k in ["serie", "marca", "equipo", "destino", "origen", "tipo", "estado", "guia"]:
-            v = ai_hint.get(k) or ai_hint.get(k.upper())
-            if isinstance(v, str) and v.strip():
-                return k, v.strip().lower()
-
-        return "texto", self._extract_value(ql)
-
-    def _extract_value(self, ql: str):
-        stop = {
-            "elimina", "eliminar", "borra", "borrar", "quita", "quitar", "suprime", "suprimir",
-            "de", "la", "lo", "los", "las", "del", "al", "por", "para", "todo", "toda"
-        }
-        tokens = [t for t in re.split(r"\s+", ql) if t and t not in stop]
-        return " ".join(tokens).strip() if tokens else ql
-
-    def _parse_fecha_simple(self, text: str):
-        # Acepta yyyy-mm-dd o yyyy/mm/dd
-        m = re.search(r"(\d{4})[-/](\d{2})[-/](\d{2})", text)
-        if not m:
-            return None
-        try:
-            return pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)}", errors="coerce")
-        except Exception:
-            return None
-
-    def _parse_rango_fechas(self, text: str):
-        # "desde 2026-02-10 hasta 2026-02-12"
-        fechas = re.findall(r"(\d{4}[-/]\d{2}[-/]\d{2})", text)
-        if not fechas:
-            return (None, None)
-        if len(fechas) == 1:
-            f = pd.to_datetime(fechas[0].replace("/", "-"), errors="coerce")
-            return (f, f)
-        f1 = pd.to_datetime(fechas[0].replace("/", "-"), errors="coerce")
-        f2 = pd.to_datetime(fechas[1].replace("/", "-"), errors="coerce")
-        return (f1, f2)
-
-    def _search(self, df: pd.DataFrame, field: str, value: str):
-        field = (field or "").strip().lower()
-        value = (value or "").strip().lower()
-
-        if df is None or df.empty:
-            return pd.DataFrame()
-
-        # ✅ modo VACIOS: filas fantasma
-        if field == "vacios":
-            check_cols = [c for c in ["tipo","categoria_item","equipo","marca","modelo","serie","estado","origen","destino","guia","reporte"] if c in df.columns]
-            if not check_cols:
-                return pd.DataFrame()
-
-            tmp = df[check_cols].astype(str).apply(lambda col: col.str.strip().str.lower())
-            na_mask = tmp.isin(["n/a", "na", "", "none", "nan"])
-
-            ratio = na_mask.sum(axis=1) / max(1, len(check_cols))
-            out = df[ratio >= 0.8].copy()
-            return out.sort_values("fecha_registro_dt", ascending=False).head(1200)
-
-        # ✅ fecha exacta
-        if field == "fecha":
-            f = self._parse_fecha_simple(value)
-            if f is None or pd.isna(f):
-                return pd.DataFrame()
-            # por día completo
-            start = f.normalize()
-            end = start + pd.Timedelta(days=1)
-            out = df[(df["fecha_registro_dt"] >= start) & (df["fecha_registro_dt"] < end)].copy()
-            return out.sort_values("fecha_registro_dt", ascending=False).head(1200)
-
-        # ✅ rango fecha
-        if field == "rango_fecha":
-            f1, f2 = self._parse_rango_fechas(value)
-            if f1 is None or pd.isna(f1):
-                return pd.DataFrame()
-            if f2 is None or pd.isna(f2):
-                f2 = f1
-            start = min(f1, f2).normalize()
-            end = max(f1, f2).normalize() + pd.Timedelta(days=1)
-            out = df[(df["fecha_registro_dt"] >= start) & (df["fecha_registro_dt"] < end)].copy()
-            return out.sort_values("fecha_registro_dt", ascending=False).head(1200)
-
-        if not value:
-            return pd.DataFrame()
-
-        # ✅ búsqueda por campo directo
-        if field in df.columns and field != "texto":
-            s = df[field].astype(str).str.lower().str.strip()
-
-            # exactitud por campos críticos
-            if field in ["serie", "guia"]:
-                mask = (s == value) | s.str.contains(re.escape(value), na=False)
-            elif field in ["tipo", "estado"]:
-                # tipo/estado: exacto OR contiene (para "n/a", "obsoleto", "bueno")
-                mask = (s == value) | s.str.contains(re.escape(value), na=False)
-            else:
-                mask = s.str.contains(re.escape(value), na=False)
-
-            out = df[mask].copy()
-            return out.sort_values("fecha_registro_dt", ascending=False).head(1200)
-
-        # ✅ búsqueda texto (multi-col)
-        search_cols = [c for c in ["serie", "marca", "equipo", "modelo", "origen", "destino", "guia", "reporte", "tipo", "estado"] if c in df.columns]
-        if not search_cols:
-            search_cols = df.columns.tolist()
-
-        mask = pd.Series(False, index=df.index)
-        for c in search_cols:
-            try:
-                mask = mask | df[c].astype(str).str.lower().str.contains(re.escape(value), na=False)
-            except Exception:
-                pass
-
-        out = df[mask].copy()
-        return out.sort_values("fecha_registro_dt", ascending=False).head(1200)
+        st.session_state.cln_flow_step = 2
+        st.rerun()
 
     # =========================================================
-    # Results UI
+    # STEP 2
     # =========================================================
-    def _render_results(self):
+    def _step_2_review(self):
         dfres = st.session_state.cln_results.copy()
         q = st.session_state.cln_last_query
 
         with st.container(border=True):
-            st.markdown("### 📌 Resultados encontrados")
-            st.caption(f"Consulta: **{q}**")
+            st.markdown("### 2) Revisa y selecciona")
+            st.caption(f"Filtro aplicado: **{q}**")
 
-            cols_pref = [c for c in [
-                "idx", "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
-                "cantidad", "estado", "origen", "destino", "guia", "reporte"
-            ] if c in dfres.columns]
+        if dfres is None or dfres.empty:
+            st.warning("No hay resultados.")
+            st.session_state.cln_flow_step = 1
+            return
 
-            view = dfres[cols_pref].copy()
-            view.insert(0, "ELIMINAR", False)
-
-            edited = st.data_editor(
-                view,
-                use_container_width=True,
-                hide_index=True,
-                num_rows="fixed",
-                height=520,
-                key="cln_editor_results",
-            )
-
-            selected_idx = set(edited.loc[edited["ELIMINAR"] == True, "idx"].astype(int).tolist())
-            st.session_state.cln_selected_idx = selected_idx
-
-        # acciones rápidas
+        # resumen
         with st.container(border=True):
+            st.markdown("#### Resumen")
             total = len(dfres)
-            nsel = len(st.session_state.cln_selected_idx)
+            st.metric("Registros encontrados", total)
 
-            k1, k2, k3 = st.columns([1.2, 1.2, 2.6], vertical_alignment="center")
-            k1.metric("Encontrados", total)
-            k2.metric("Seleccionados", nsel)
-            k3.caption("Se enviará una orden al robot con IDX reales del historico.json.")
+            # warning masivo
+            if total >= 200:
+                st.warning("⚠️ Son muchos registros. Revisa bien antes de borrar.")
 
-            b1, b2, b3 = st.columns([1.2, 1.2, 1.6], vertical_alignment="center")
-            with b1:
-                if st.button("✅ Seleccionar TODO", key="cln_btn_sel_all", use_container_width=True):
+        cols_pref = [c for c in [
+            "idx", "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
+            "cantidad", "estado", "origen", "destino", "guia", "reporte"
+        ] if c in dfres.columns]
+
+        view = dfres[cols_pref].copy()
+        view.insert(0, "ELIMINAR", False)
+
+        edited = st.data_editor(
+            view,
+            use_container_width=True,
+            hide_index=True,
+            num_rows="fixed",
+            height=540,
+            key="cln_editor_results_user",
+        )
+
+        selected_idx = set(edited.loc[edited["ELIMINAR"] == True, "idx"].astype(int).tolist())
+        st.session_state.cln_selected_idx = selected_idx
+
+        with st.container(border=True):
+            c1, c2, c3, c4 = st.columns([1.2, 1.2, 1.6, 1.6], vertical_alignment="center")
+            with c1:
+                st.metric("Seleccionados", len(selected_idx))
+            with c2:
+                if st.button("✅ Seleccionar todo", key="cln_btn_sel_all_user", use_container_width=True):
                     st.session_state.cln_selected_idx = set(dfres["idx"].astype(int).tolist())
                     st.rerun()
-            with b2:
-                if st.button("🔁 Invertir selección", key="cln_btn_sel_inv", use_container_width=True):
+            with c3:
+                if st.button("🔁 Invertir", key="cln_btn_sel_inv_user", use_container_width=True):
                     all_idx = set(dfres["idx"].astype(int).tolist())
                     st.session_state.cln_selected_idx = all_idx - set(st.session_state.cln_selected_idx)
                     st.rerun()
-            with b3:
-                if st.button("🧽 Limpiar selección", key="cln_btn_sel_clear", use_container_width=True):
-                    st.session_state.cln_selected_idx = set()
+            with c4:
+                if st.button("⬅️ Volver", key="cln_btn_back_to_step1", use_container_width=True):
+                    st.session_state.cln_flow_step = 1
                     st.rerun()
 
-            if total >= 50:
-                st.warning("⚠️ Muchos resultados (≥ 50). Mejor filtra más específico (serie/guía/fecha).")
+        # pasar a confirmar
+        with st.container(border=True):
+            disabled = len(st.session_state.cln_selected_idx) == 0
+            if st.button("➡️ Continuar a Confirmación", key="cln_btn_go_step3", type="primary", use_container_width=True, disabled=disabled):
+                st.session_state.cln_flow_step = 3
+                st.rerun()
 
-            # preview
-            with st.expander("👁️ Preview de lo que se va a borrar", expanded=False):
-                sub = st.session_state.cln_df[st.session_state.cln_df["idx"].isin(list(st.session_state.cln_selected_idx))].copy()
-                sub_cols = [c for c in ["idx","fecha_registro","tipo","equipo","marca","modelo","serie","estado","origen","destino","guia"] if c in sub.columns]
-                st.dataframe(sub[sub_cols].head(200), use_container_width=True, hide_index=True)
-
-            confirm = st.checkbox("✅ Confirmo que deseo eliminar los registros seleccionados", key="cln_chk_confirm", value=False)
-
-            # confirmación estricta
-            confirm2 = True
-            if st.session_state.cln_strict_confirm:
-                confirm2 = st.text_input(
-                    "Escribe EXACTAMENTE: BORRAR",
-                    key="cln_txt_confirm2",
-                    placeholder="BORRAR",
-                ).strip().upper() == "BORRAR"
-
-            disabled = (nsel == 0) or (not confirm) or (not confirm2)
-            if st.button("🔥 ENVIAR ORDEN DE BORRADO", key="cln_btn_send_delete", type="primary", use_container_width=True, disabled=disabled):
-                self._send_delete_order()
-
-    def _send_delete_order(self):
+    # =========================================================
+    # STEP 3
+    # =========================================================
+    def _step_3_confirm_and_send(self):
         dfall = st.session_state.cln_df
         selected_idx = sorted(list(st.session_state.cln_selected_idx))
 
+        with st.container(border=True):
+            st.markdown("### 3) Confirmar y enviar")
+            st.caption("Aquí es donde realmente se envía la orden al robot.")
+
         if not selected_idx:
-            st.warning("Selecciona al menos 1 registro.")
+            st.warning("No hay registros seleccionados.")
+            st.session_state.cln_flow_step = 2
             return
+
+        sub = dfall[dfall["idx"].isin(selected_idx)].copy()
+
+        # preview
+        with st.container(border=True):
+            st.markdown("#### Vista previa (lo que se eliminará)")
+            sub_cols = [c for c in ["idx","fecha_registro","tipo","equipo","marca","modelo","serie","estado","origen","destino","guia"] if c in sub.columns]
+            st.dataframe(sub[sub_cols].head(250), use_container_width=True, hide_index=True)
+
+        # seguridad
+        with st.container(border=True):
+            total = len(selected_idx)
+            st.metric("Total a eliminar", total)
+
+            warn_massive = total >= 200
+            if warn_massive:
+                st.warning("⚠️ Esto es un borrado masivo. Confirma con cuidado.")
+
+            confirm = st.checkbox("✅ Sí, quiero eliminar estos registros", key="cln_chk_confirm_user", value=False)
+
+            confirm2 = True
+            if st.session_state.cln_massive_lock and warn_massive:
+                confirm2 = st.text_input(
+                    "Para borrar masivo, escribe EXACTAMENTE: ELIMINAR",
+                    key="cln_txt_confirm_massive",
+                    placeholder="ELIMINAR",
+                ).strip().upper() == "ELIMINAR"
+
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("⬅️ Volver", key="cln_btn_back_step2", use_container_width=True):
+                    st.session_state.cln_flow_step = 2
+                    st.rerun()
+
+            disabled = (not confirm) or (not confirm2)
+            with c2:
+                if st.button("🔥 Enviar al robot", key="cln_btn_send_user", type="primary", use_container_width=True, disabled=disabled):
+                    self._send_delete_order_user()
+
+    def _send_delete_order_user(self):
+        dfall = st.session_state.cln_df
+        selected_idx = sorted(list(st.session_state.cln_selected_idx))
 
         sub = dfall[dfall["idx"].isin(selected_idx)].copy()
 
@@ -424,15 +468,12 @@ class CleaningTab:
             })
 
         orden = {
-            # Nuevo
             "action": "delete",
             "source": "historico.json",
             "instruction": st.session_state.cln_last_query,
             "count": len(firmas),
             "indices": [int(x) for x in selected_idx],
             "matches": firmas,
-
-            # compat robot viejo
             "accion": "borrar_por_indices",
             "idx_list": [int(x) for x in selected_idx],
         }
@@ -442,27 +483,160 @@ class CleaningTab:
             st.session_state.cln_last_order = orden
             st.success("✅ Orden enviada. Refresca cuando el robot procese.")
             self._reset(keep_order=True)
+            st.session_state.cln_flow_step = 1
             st.rerun()
         else:
             st.error("❌ No se pudo enviar la orden. Revisa formato esperado por el robot.")
             st.json(orden)
 
     # =========================================================
-    # Utils / Normalización
+    # Recommended / extras
+    # =========================================================
+    def _recommended_cleanup(self, df: pd.DataFrame):
+        """
+        Recomendado:
+        - Vacíos (>=80% N/A)
+        - tipo n/a
+        - estado n/a
+        - equipo n/a
+        - registros con todo N/A (extremo)
+        """
+        vacios = self._search(df, "vacios", "1")
+
+        # “n/a” críticos
+        na_tipo = self._search(df, "tipo", "n/a")
+        na_estado = self._search(df, "estado", "n/a")
+        na_equipo = self._search(df, "equipo", "n/a")
+
+        out = pd.concat([vacios, na_tipo, na_estado, na_equipo], ignore_index=True) if not df.empty else pd.DataFrame()
+        if out.empty:
+            return out
+
+        # quitar duplicados por idx
+        out = out.drop_duplicates(subset=["idx"], keep="first").copy()
+        out = out.sort_values("fecha_registro_dt", ascending=False)
+        return out.head(2000)
+
+    def _find_duplicates(self, df: pd.DataFrame):
+        """
+        Duplicados por firma (campos principales).
+        Devuelve solo los duplicados (no el primero).
+        """
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        cols = [c for c in ["fecha_registro", "serie", "guia", "equipo", "marca", "origen", "destino", "tipo"] if c in df.columns]
+        if not cols:
+            return pd.DataFrame()
+
+        tmp = df.copy()
+        for c in cols:
+            tmp[c] = tmp[c].astype(str).str.strip().str.lower()
+
+        tmp["__sig__"] = tmp[cols].agg("|".join, axis=1)
+
+        # marca duplicados
+        dup_mask = tmp.duplicated(subset="__sig__", keep="first")
+        out = tmp[dup_mask].copy()
+        out = out.drop(columns=["__sig__"], errors="ignore")
+        return out.sort_values("fecha_registro_dt", ascending=False).head(2000)
+
+    def _search_by_date_range(self, df: pd.DataFrame, d1, d2):
+        if df is None or df.empty:
+            return pd.DataFrame()
+        if d1 is None or d2 is None:
+            return pd.DataFrame()
+
+        start = pd.to_datetime(d1)
+        end = pd.to_datetime(d2)
+        if pd.isna(start) or pd.isna(end):
+            return pd.DataFrame()
+
+        start = min(start, end).normalize()
+        end = max(start, end).normalize() + pd.Timedelta(days=1)
+
+        out = df[(df["fecha_registro_dt"] >= start) & (df["fecha_registro_dt"] < end)].copy()
+        return out.sort_values("fecha_registro_dt", ascending=False).head(3000)
+
+    def _unique_values(self, df: pd.DataFrame, cols, limit=200):
+        vals = []
+        for c in cols:
+            if c in df.columns:
+                v = (
+                    df[c].astype(str)
+                    .str.strip()
+                    .replace({"": "N/A", "nan": "N/A", "None": "N/A"})
+                    .fillna("N/A")
+                )
+                vals.extend(v.unique().tolist())
+        vals = [x for x in vals if x and str(x).strip()]
+        vals = sorted(list(dict.fromkeys(vals)))  # unique preserve
+        # quita N/A arriba de todo
+        vals = [x for x in vals if str(x).strip().lower() not in ["n/a", "na", "none", "nan"]]
+        return vals[:limit]
+
+    # =========================================================
+    # Core search (reutiliza lógica PRO)
+    # =========================================================
+    def _search(self, df: pd.DataFrame, field: str, value: str):
+        field = (field or "").strip().lower()
+        value = (value or "").strip().lower()
+
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        # vacíos
+        if field == "vacios":
+            check_cols = [c for c in ["tipo","categoria_item","equipo","marca","modelo","serie","estado","origen","destino","guia","reporte"] if c in df.columns]
+            if not check_cols:
+                return pd.DataFrame()
+
+            tmp = df[check_cols].astype(str).apply(lambda col: col.str.strip().str.lower())
+            na_mask = tmp.isin(["n/a", "na", "", "none", "nan"])
+            ratio = na_mask.sum(axis=1) / max(1, len(check_cols))
+            out = df[ratio >= 0.8].copy()
+            return out.sort_values("fecha_registro_dt", ascending=False).head(4000)
+
+        if not value:
+            return pd.DataFrame()
+
+        # campo directo
+        if field in df.columns and field != "texto":
+            s = df[field].astype(str).str.lower().str.strip()
+            if field in ["serie", "guia"]:
+                mask = (s == value) | s.str.contains(re.escape(value), na=False)
+            elif field in ["tipo", "estado"]:
+                mask = (s == value) | s.str.contains(re.escape(value), na=False)
+            else:
+                mask = s.str.contains(re.escape(value), na=False)
+
+            out = df[mask].copy()
+            return out.sort_values("fecha_registro_dt", ascending=False).head(4000)
+
+        # texto en todo
+        search_cols = [c for c in ["serie", "marca", "equipo", "modelo", "origen", "destino", "guia", "reporte", "tipo", "estado"] if c in df.columns]
+        if not search_cols:
+            search_cols = df.columns.tolist()
+
+        mask = pd.Series(False, index=df.index)
+        for c in search_cols:
+            try:
+                mask = mask | df[c].astype(str).str.lower().str.contains(re.escape(value), na=False)
+            except Exception:
+                pass
+
+        out = df[mask].copy()
+        return out.sort_values("fecha_registro_dt", ascending=False).head(4000)
+
+    # =========================================================
+    # Normalización (igual que PRO)
     # =========================================================
     def _safe_hist_to_df(self, hist):
-        """
-        ✅ Convierte 'hist' a DataFrame sin contaminarse con listas raras.
-        - Si llega dict -> ok
-        - Si llega list/tuple -> ignora (o intenta mapear si quieres)
-        """
         filas = []
         for x in hist:
             if isinstance(x, dict):
                 filas.append(x)
             elif isinstance(x, (list, tuple)):
-                # si te llega basura como lista, la ignoramos para evitar columnas 0,1,2...
-                # (si quieres mapearla, aquí sería el lugar)
                 continue
             else:
                 continue
@@ -472,11 +646,9 @@ class CleaningTab:
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
-        # idx real por posición
         if "idx" not in df.columns:
             df.insert(0, "idx", range(len(df)))
 
-        # asegurar columnas
         for c in [
             "fecha_registro", "tipo", "categoria_item", "equipo", "marca", "modelo", "serie",
             "cantidad", "estado", "origen", "destino", "guia", "reporte"
@@ -484,18 +656,15 @@ class CleaningTab:
             if c not in df.columns:
                 df[c] = ""
 
-        # fecha dt
         df["fecha_registro_dt"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
         df["fecha_registro"] = df["fecha_registro_dt"].dt.strftime("%Y-%m-%d %H:%M")
         df["fecha_registro"] = df["fecha_registro"].fillna("N/A")
 
-        # cantidad
         try:
             df["cantidad"] = pd.to_numeric(df["cantidad"], errors="coerce").fillna(1).astype(int)
         except Exception:
             df["cantidad"] = 1
 
-        # limpieza anti nan / none
         text_cols = ["tipo", "categoria_item", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia", "reporte"]
         for c in text_cols:
             df[c] = df[c].astype(str)
@@ -503,20 +672,10 @@ class CleaningTab:
             df[c] = df[c].fillna("").str.strip()
             df.loc[df[c] == "", c] = "N/A"
 
-        # recorta a columnas canon + extras permitidos
         keep = [c for c in self.base_cols if c in df.columns]
         df = df[keep].copy()
 
         return df
-
-    def _pretty_row(self, r: pd.Series):
-        return (
-            f"serie={str(r.get('serie', 'N/A'))} | "
-            f"equipo={str(r.get('equipo', 'N/A'))} | "
-            f"marca={str(r.get('marca', 'N/A'))} | "
-            f"destino={str(r.get('destino', 'N/A'))} | "
-            f"fecha={str(r.get('fecha_registro', 'N/A'))}"
-        )
 
     def _reset(self, keep_order: bool = False):
         st.session_state.cln_results = pd.DataFrame()
@@ -524,3 +683,4 @@ class CleaningTab:
         st.session_state.cln_last_query = ""
         if not keep_order:
             st.session_state.cln_last_order = None
+        st.session_state.cln_flow_step = 1
