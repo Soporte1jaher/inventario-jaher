@@ -1,6 +1,6 @@
 import streamlit as st
-import time
-import datetime
+import html
+import json
 
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -8,37 +8,42 @@ from modules.github_handler import GitHubHandler
 
 class ChatTab:
     """
-    LAIA — Chat Only (UI para usuarios finales)
-    ✅ Solo chat
-    ✅ Estética pro + UX para usuarios no técnicos
-    ✅ Manejo de "hola" / basura con guía de ejemplo
+    LAIA — Chat Only (Final)
+    ✅ Solo chat (sin ayuda)
+    ✅ Estética pro
+    ✅ Respeta saltos de línea del usuario
+    ✅ JSON visible SOLO en modo técnico (para ti)
     """
 
     def __init__(self):
         self.ai_engine = AIEngine()
         self.github = GitHubHandler()
 
-        # Opcional: logo flotante
         self.LOGO_URL = "https://raw.githubusercontent.com/Soporte1jaher/inventario-jaher/main/assets/logo_jaher.png"
 
-        # Session base
         st.session_state.setdefault("messages", [])
         st.session_state.setdefault("draft", [])
         st.session_state.setdefault("status", "NEW")
 
-        # UX flags
-        st.session_state.setdefault("show_examples", True)
+        # ✅ Para debug/JSON
+        st.session_state.setdefault("modo_tecnico", False)
+        st.session_state.setdefault("last_json", {})
 
     # ---------------------------
-    # UI style (pro, simple)
+    # UI style (más pro)
     # ---------------------------
     def _inject_style(self):
         st.markdown(
             """
             <style>
-              .block-container { padding-top: 1rem; padding-bottom: 1.2rem; max-width: 980px; }
-              [data-testid="stChatMessage"] { border-radius: 14px; }
-              .stButton button { border-radius: 12px !important; font-weight: 800 !important; }
+              .block-container { padding-top: 0.9rem; padding-bottom: 1.1rem; max-width: 980px; }
+
+              .stApp {
+                background: radial-gradient(1200px 600px at 15% 10%, rgba(46,125,50,0.12), transparent 60%),
+                            radial-gradient(900px 500px at 85% 15%, rgba(0,180,255,0.10), transparent 55%),
+                            #0e1117 !important;
+              }
+
               #jaher-logo{
                 position: fixed;
                 top: 14px;
@@ -46,32 +51,30 @@ class ChatTab:
                 z-index: 9999;
                 width: 110px;
                 opacity: 0.95;
-                filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+                filter: drop-shadow(0 8px 18px rgba(0,0,0,0.40));
               }
-              .hint-card{
-                border-radius: 14px;
-                border: 1px solid rgba(255,255,255,0.08);
+
+              [data-testid="stChatMessage"]{
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.06);
                 background: rgba(255,255,255,0.02);
-                padding: 12px 14px;
-                margin-bottom: 10px;
               }
-              .hint-title{ font-weight: 900; opacity: .95; margin-bottom: 6px; }
-              .hint-txt{ opacity: .85; font-size: .95rem; margin: 0; }
-              .chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-              .chip{
-                display:inline-block;
-                padding: 6px 10px;
-                border-radius: 999px;
-                border: 1px solid rgba(255,255,255,0.12);
-                background: rgba(255,255,255,0.03);
-                font-size: .9rem;
-                opacity: .9;
+
+              .user-pre{
+                white-space: pre-wrap;      /* ✅ respeta Enter */
+                word-wrap: break-word;
+                line-height: 1.35rem;
+                font-size: 0.98rem;
+                opacity: 0.98;
               }
-              .mini{
-                opacity:.7;
-                font-size:.85rem;
-                margin-top:6px;
+
+              .stButton button{
+                border-radius: 12px !important;
+                font-weight: 850 !important;
               }
+
+              /* Expander más limpio */
+              details summary { font-weight: 800; }
             </style>
             """,
             unsafe_allow_html=True,
@@ -80,6 +83,13 @@ class ChatTab:
     def _render_logo(self):
         if self.LOGO_URL:
             st.markdown(f"""<img id="jaher-logo" src="{self.LOGO_URL}" />""", unsafe_allow_html=True)
+
+    # ---------------------------
+    # Render helpers
+    # ---------------------------
+    def _render_user_text_preserving_lines(self, text: str):
+        safe = html.escape(text or "")
+        st.markdown(f"<div class='user-pre'>{safe}</div>", unsafe_allow_html=True)
 
     # ---------------------------
     # UX helpers
@@ -91,47 +101,9 @@ class ChatTab:
         saludos = ["hola", "buenas", "buenos dias", "buen día", "buenas tardes", "buenas noches", "hey", "qe tal", "que tal", "holi", "ola"]
         if any(s == t or t.startswith(s + " ") for s in saludos):
             return True
-        # Mensajes típicos sin contenido operativo
         if t in ["ok", "dale", "aja", "sí", "si", "ya", "listo", "gracias", "xd", ":v"]:
             return True
         return False
-
-    def _render_examples_card(self):
-        if not st.session_state.get("show_examples", True):
-            return
-
-        st.markdown(
-            """
-            <div class="hint-card">
-              <div class="hint-title">🧠 ¿Qué debo escribir?</div>
-              <p class="hint-txt">
-                Escribe tal como lo dirías por WhatsApp. Incluye <b>tipo</b> (recibido/enviado), <b>equipo</b>,
-                y si es envío: <b>destino + guía</b>. Si tienes series, pégalas una por línea.
-              </p>
-              <div class="chip-row">
-                <span class="chip">Recibí 2 laptops Dell 5420 desde Bodega</span>
-                <span class="chip">Envié 1 laptop a Babahoyo guía 12345</span>
-                <span class="chip">Registrar lote: equipo laptop, marca HP, modelo 440 G8 + series...</span>
-              </div>
-              <div class="mini">Tip: si solo escribes “hola”, LAIA te pedirá datos.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        c1, c2 = st.columns([1.4, 1.0])
-        with c1:
-            if st.button("🙋‍♂️ Pegar ejemplo de 'ENVIADO'", use_container_width=True):
-                self._prefill_and_fire("Enviado: 1 laptop a Babahoyo guía 12345")
-        with c2:
-            if st.button("✅ Ocultar ayuda", use_container_width=True):
-                st.session_state["show_examples"] = False
-                st.rerun()
-
-    def _prefill_and_fire(self, prompt: str):
-        # No existe prefill nativo en chat_input; lo disparo procesando el prompt directamente
-        self._procesar_mensaje(prompt)
-        st.rerun()
 
     # ---------------------------
     # Main render
@@ -140,44 +112,57 @@ class ChatTab:
         self._inject_style()
         self._render_logo()
 
-        # Card de ayuda arriba (para usuarios finales)
-        self._render_examples_card()
+        # ✅ Toggle discreto SOLO para ti (arriba)
+        top_l, top_r = st.columns([3.5, 1.3], vertical_alignment="center")
+        with top_r:
+            st.session_state["modo_tecnico"] = st.toggle("🛠️ Modo técnico", value=bool(st.session_state.get("modo_tecnico", False)))
 
         # Chat
         for m in st.session_state.messages:
-            with st.chat_message(m["role"]):
-                st.markdown(m["content"])
+            role = m.get("role", "assistant")
+            content = m.get("content", "")
 
-        if prompt := st.chat_input("Dime qué llegó o qué enviaste..."):
+            with st.chat_message(role):
+                if role == "user":
+                    self._render_user_text_preserving_lines(content)
+                else:
+                    st.markdown(content)
+
+        if prompt := st.chat_input("Dime qué llegó o qué enviaste (puedes pegar varias líneas)..."):
             self._procesar_mensaje(prompt)
+            st.rerun()
+
+        # ✅ Mostrar JSON SOLO si modo técnico está activo
+        if st.session_state.get("modo_tecnico", False):
+            last = st.session_state.get("last_json", {}) or {}
+            with st.expander("🧾 JSON (debug)", expanded=False):
+                st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
 
     # ---------------------------
     # Core
     # ---------------------------
     def _procesar_mensaje(self, prompt: str):
-        prompt = (prompt or "").strip()
+        prompt = (prompt or "").rstrip()
         if not prompt:
-            return
-
-        # Si es “hola” o mensaje vacío de negocio, responde guiando
-        if self._is_saludo_o_basura(prompt):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": (
-                    "Necesito datos de inventario.\n\n"
-                    "**Escribe así (ejemplos):**\n"
-                    "- `Recibí 2 laptops Dell 5420 desde Bodega`\n"
-                    "- `Envié 1 laptop a Babahoyo guía 12345`\n"
-                    "- `Registrar lote: equipo laptop, marca HP, modelo 440 G8` + pega series\n"
-                )
-            })
             return
 
         # Guardar user msg
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+
+        # Respuesta rápida si ponen “hola”
+        if self._is_saludo_o_basura(prompt):
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": (
+                    "Dime un movimiento de inventario.\n\n"
+                    "Ejemplos:\n"
+                    "- `Recibí 1 laptop Dell serie 099209`\n"
+                    "- `Envié 1 CPU a Pedernales guía 12345`\n"
+                    "- Puedes pegar varios movimientos, uno por línea."
+                )
+            })
+            st.session_state["last_json"] = {"status": "QUESTION", "missing_info": "Falta movimiento de inventario"}
+            return
 
         try:
             with st.spinner("🧠 LAIA auditando..."):
@@ -192,10 +177,9 @@ class ChatTab:
 
                 mensaje = resultado.get("mensaje", "Sin respuesta.")
                 st.session_state.messages.append({"role": "assistant", "content": mensaje})
-                with st.chat_message("assistant"):
-                    st.markdown(mensaje)
 
                 res_json = resultado.get("json_response", {}) or {}
+                st.session_state["last_json"] = res_json  # ✅ aquí guardas el JSON para mostrarlo
 
                 # Mantener borrador interno (aunque UI sea solo chat)
                 items = res_json.get("items") or []
@@ -209,13 +193,13 @@ class ChatTab:
                 "role": "assistant",
                 "content": f"⚠️ Error en el motor de LAIA: {str(e)}"
             })
+            st.session_state["last_json"] = {"status": "ERROR", "error": str(e)}
 
     def _merge_draft(self, nuevos_items):
         if not st.session_state.draft:
             st.session_state.draft = nuevos_items
             return
 
-        # Merge por clave: serie > modelo > equipo
         actual = {(i.get("serie") or i.get("modelo") or i.get("equipo")): i for i in st.session_state.draft}
         for item in nuevos_items:
             key = item.get("serie") or item.get("modelo") or item.get("equipo")
