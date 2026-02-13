@@ -3,6 +3,7 @@ import html
 import json
 import pandas as pd
 import re
+from datetime import datetime, timezone, timedelta
 
 from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
@@ -10,12 +11,13 @@ from modules.github_handler import GitHubHandler
 
 class ChatTab:
     """
-    LAIA — Chat + Tabla (Borrador) [CORREGIDO]
+    LAIA — Chat + Tabla (Borrador) [FINAL]
     ✅ Respeta saltos de línea del usuario
-    ✅ La respuesta del assistant se muestra como JSON (según SYSTEM_PROMPT)
-    ✅ Tabla de borrador (data_editor) como antes
-    ✅ Vista simple opcional (para usuarios finales)
-    ✅ Cinturón de seguridad: Intel <= 9th Gen => CHATARRA/BAJA siempre
+    ✅ Vista simple REAL (se nota)
+    ✅ Modo técnico (JSON crudo)
+    ✅ Tabla borrador (data_editor)
+    ✅ Botón GUARDAR Y ENVIAR AL ROBOT
+    ✅ Cinturón de seguridad: Intel <= 9 => CHATARRA/BAJA (si no hay override)
     """
 
     def __init__(self):
@@ -28,11 +30,12 @@ class ChatTab:
         st.session_state.setdefault("draft", [])
         st.session_state.setdefault("status", "NEW")
 
-        # UI toggles
-        st.session_state.setdefault("modo_tecnico", False)     # muestra JSON debug abajo
-        st.session_state.setdefault("vista_simple", True)      # usuarios finales: resumen corto (opcional)
+        # toggles
+        st.session_state.setdefault("modo_tecnico", False)
+        st.session_state.setdefault("vista_simple", True)
 
         st.session_state.setdefault("last_json", {})
+        st.session_state.setdefault("forzar_guardado", False)
 
     # ---------------------------
     # UI style
@@ -81,6 +84,27 @@ class ChatTab:
               }
 
               details summary { font-weight: 800; }
+
+              .simple-card{
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.02);
+                padding: 12px 14px;
+              }
+              .simple-title{ font-weight: 900; margin-bottom: 6px; }
+              .simple-muted{ opacity: .78; font-size: .95rem; }
+              .badge{
+                display:inline-block;
+                padding: 3px 10px;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.12);
+                background: rgba(255,255,255,0.03);
+                font-size: .85rem;
+                opacity: .95;
+              }
+              .b-ok{ border-color: rgba(0,230,118,0.35); }
+              .b-warn{ border-color: rgba(255,179,0,0.35); }
+              .b-bad{ border-color: rgba(255,82,82,0.35); }
             </style>
             """,
             unsafe_allow_html=True,
@@ -94,6 +118,9 @@ class ChatTab:
         safe = html.escape(text or "")
         st.markdown(f"<div class='user-pre'>{safe}</div>", unsafe_allow_html=True)
 
+    # ---------------------------
+    # Helpers
+    # ---------------------------
     def _is_saludo_o_basura(self, text: str) -> bool:
         t = (text or "").strip().lower()
         if len(t) <= 2:
@@ -105,22 +132,24 @@ class ChatTab:
             return True
         return False
 
-    # =========================================================
-    # ✅ CINTURÓN DE SEGURIDAD (PROMPT NO SIEMPRE OBEDECE)
-    # =========================================================
+    def _is_force_override(self, user_text: str) -> bool:
+        t = (user_text or "").lower()
+        triggers = ["enviar así", "guarda eso", "no importa", "asi esta bien", "así está bien", "asi nomas", "así nomás", "forzar ready"]
+        return any(x in t for x in triggers)
+
     def _infer_intel_gen(self, proc: str):
         """
-        Devuelve gen Intel como int (8, 10, etc) o None.
+        Devuelve gen Intel como int (8,10,11,12...) o None.
         Soporta:
-          - 'Intel Core i5 - 10th Gen'
-          - 'core i3 de octava'
-          - 'i5-10210u', 'i7 8565u'
+        - "Intel Core i5 - 10th Gen"
+        - "core i3 de octava"
+        - "i5-10210u", "i7 8565u", "i3 8130U"
         """
         if not proc:
             return None
         p = str(proc).lower().strip()
 
-        # "10th gen", "8th gen"
+        # "10th gen", "8th gen", "12 gen"
         m = re.search(r'(\d{1,2})\s*(?:th)?\s*gen', p)
         if m:
             try:
@@ -128,7 +157,7 @@ class ChatTab:
             except:
                 pass
 
-        # español: "octava", "8va", "10ma"
+        # español
         if any(x in p for x in ["octava", "8va", "8a", "8ª"]):
             return 8
         if any(x in p for x in ["novena", "9na", "9a", "9ª"]):
@@ -139,41 +168,47 @@ class ChatTab:
             return 11
         if any(x in p for x in ["12ma", "12a", "12ª"]) or "12th" in p:
             return 12
+        if any(x in p for x in ["13ma", "13a", "13ª"]) or "13th" in p:
+            return 13
+        if any(x in p for x in ["14ma", "14a", "14ª"]) or "14th" in p:
+            return 14
 
-        # i5-10210u / i7-8565u
+        # i5-10210u / i7-8565u / i3-8130u
         m2 = re.search(r'i[3579]\s*[- ]?\s*(\d{4,5})', p)
         if m2:
             code = m2.group(1)
             try:
                 if len(code) == 4:
-                    return int(code[0])         # 8565 -> 8
+                    # 8565 -> 8
+                    return int(code[0])
                 if len(code) == 5:
-                    return int(code[:2])        # 10210 -> 10
+                    # 10210 -> 10, 1135 -> en 4digits ya cae arriba, 12345 -> 12
+                    return int(code[:2])
+            except:
+                return None
+
+        # fallback: 8xxxU / 10xxxU / 11xxxU / 12xxxU si viene sin i5
+        m3 = re.search(r'\b(\d{4,5})[a-z]?\b', p)
+        if m3:
+            code = m3.group(1)
+            try:
+                if len(code) == 4:
+                    return int(code[0])
+                if len(code) == 5:
+                    return int(code[:2])
             except:
                 return None
 
         return None
 
-    def _is_force_override(self, user_text: str) -> bool:
-        """
-        Regla #5 del prompt: si el usuario dice 'así está bien' etc => READY y N/A.
-        Aquí solo detectamos para NO pelear la corrección si el usuario lo ordenó.
-        """
-        t = (user_text or "").lower()
-        triggers = ["enviar así", "guarda eso", "no importa", "asi esta bien", "así está bien"]
-        return any(x in t for x in triggers)
-
     def _enforce_chatarrizacion_rule(self, items: list, user_text: str) -> list:
         """
-        Aplica regla #1: Intel <= 9 => CHATARRA/BAJA + estado obsoleto.
-        Esto es post-check, no depende del modelo.
-        Solo se evita si el usuario está activando OVERRIDE (#5).
+        Intel <= 9 => estado obsoleto + destino CHATARRA/BAJA
+        NO se aplica si el usuario activó override (#5).
         """
         if not items:
             return items
-
         if self._is_force_override(user_text):
-            # si el usuario forzó, no tocamos nada: el prompt manda READY + N/A
             return items
 
         fixed = []
@@ -194,8 +229,41 @@ class ChatTab:
 
         return fixed
 
+    def _render_simple_assistant(self, res_json: dict):
+        status = (res_json.get("status") or "QUESTION").upper()
+        missing = (res_json.get("missing_info") or "").strip()
+        items = res_json.get("items") or []
+
+        if status == "READY":
+            badge = "<span class='badge b-ok'>READY</span>"
+            title = f"{badge} Listo para enviar"
+            subtitle = f"Items: {len(items)}. Si está correcto, presiona **GUARDAR Y ENVIAR**."
+        else:
+            badge = "<span class='badge b-warn'>QUESTION</span>"
+            title = f"{badge} Faltan datos"
+            subtitle = "Completa lo faltante en la tabla o escribe la corrección."
+
+        st.markdown(
+            f"""
+            <div class="simple-card">
+              <div class="simple-title">{title}</div>
+              <div class="simple-muted">{html.escape(subtitle)}</div>
+              {"<div style='margin-top:10px; white-space:pre-wrap;'>" + html.escape(missing) + "</div>" if missing else ""}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # Acciones rápidas visibles SOLO en vista simple
+        c1, c2 = st.columns([1.4, 1.6])
+        with c1:
+            if st.button("📋 Copiar comando: 'así está bien'", use_container_width=True, key="btn_copy_force"):
+                st.toast("Copia y pega: así está bien", icon="📋")
+        with c2:
+            st.caption("Tip: si dices **así está bien**, LAIA debe rellenar N/A y poner READY.")
+
     # ---------------------------
-    # Main render
+    # Render
     # ---------------------------
     def render(self):
         self._inject_style()
@@ -206,12 +274,12 @@ class ChatTab:
             st.session_state["vista_simple"] = st.toggle(
                 "👤 Vista simple (usuarios)",
                 value=bool(st.session_state.get("vista_simple", True)),
-                help="ON: muestra un resumen corto. OFF: muestra el JSON en el chat."
+                help="ON: tarjeta resumida + acciones. OFF: JSON completo en el chat."
             )
             st.session_state["modo_tecnico"] = st.toggle(
                 "🛠️ Modo técnico",
                 value=bool(st.session_state.get("modo_tecnico", False)),
-                help="Muestra el JSON crudo también abajo (debug)."
+                help="Muestra JSON crudo también abajo (debug)."
             )
 
         # CHAT
@@ -226,6 +294,12 @@ class ChatTab:
                 else:
                     if fmt == "json":
                         st.code(content, language="json")
+                    elif fmt == "simple":
+                        # content aquí guardamos dict serializado
+                        try:
+                            self._render_simple_assistant(json.loads(content))
+                        except:
+                            st.markdown(content)
                     else:
                         st.markdown(content)
 
@@ -233,11 +307,13 @@ class ChatTab:
             self._procesar_mensaje(prompt)
             st.rerun()
 
+        # Debug extra abajo (solo técnico)
         if st.session_state.get("modo_tecnico", False):
             last = st.session_state.get("last_json", {}) or {}
             with st.expander("🧾 JSON (debug)", expanded=False):
                 st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
 
+        # TABLA
         if st.session_state.get("draft"):
             self._render_borrador()
 
@@ -260,17 +336,9 @@ class ChatTab:
             st.session_state["last_json"] = res_json
 
             if st.session_state.get("vista_simple", True):
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": "Necesito un movimiento. Ej: `Recibí 1 laptop Dell serie 099209` o `Envié 1 CPU a Pedernales guía 12345`.",
-                    "format": "md"
-                })
+                st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False), "format": "simple"})
             else:
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": json.dumps(res_json, ensure_ascii=False, indent=2),
-                    "format": "json"
-                })
+                st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"})
             return
 
         try:
@@ -292,7 +360,7 @@ class ChatTab:
                         "items": st.session_state.draft or []
                     }
 
-                # ✅ APLICAR REGLA SUPREMA EN CÓDIGO
+                # ✅ cinturón supremo
                 items = res_json.get("items") or []
                 if items:
                     items = self._enforce_chatarrizacion_rule(items, prompt)
@@ -302,34 +370,45 @@ class ChatTab:
                 st.session_state["last_json"] = res_json
                 st.session_state["status"] = res_json.get("status", "QUESTION")
 
+                # Render assistant
                 if st.session_state.get("vista_simple", True):
-                    missing = (res_json.get("missing_info") or "").strip()
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": missing if missing else "READY: sin faltantes.",
-                        "format": "md"
-                    })
+                    st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False), "format": "simple"})
                 else:
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": json.dumps(res_json, ensure_ascii=False, indent=2),
-                        "format": "json"
-                    })
+                    st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"})
 
         except Exception as e:
             res_json = {"status": "ERROR", "missing_info": "", "error": str(e), "items": st.session_state.draft or []}
             st.session_state["last_json"] = res_json
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": json.dumps(res_json, ensure_ascii=False, indent=2),
-                "format": "json"
-            })
+            st.session_state.messages.append({"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"})
 
     def _set_draft(self, items):
         st.session_state.draft = items
 
     # ---------------------------
-    # Tabla de borrador
+    # Guardar / Enviar
+    # ---------------------------
+    def _guardar_y_enviar(self):
+        # Hora Ecuador (UTC-5)
+        ahora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+
+        payload = []
+        for item in (st.session_state.draft or []):
+            x = dict(item)
+            x["fecha_registro"] = x.get("fecha_registro") or ahora
+            payload.append(x)
+
+        ok = self.github.enviar_a_buzon(payload)
+        if ok:
+            st.success("✅ Enviado al Robot de la PC", icon="✅")
+            st.session_state.draft = []
+            st.session_state.status = "NEW"
+            st.session_state.forzar_guardado = False
+            st.rerun()
+        else:
+            st.error("❌ No se pudo enviar al buzón. Revisa token/permiso/red.")
+
+    # ---------------------------
+    # Tabla borrador
     # ---------------------------
     def _render_borrador(self):
         st.markdown("---")
@@ -363,7 +442,7 @@ class ChatTab:
                 num_rows="dynamic",
                 use_container_width=True,
                 hide_index=True,
-                key="editor_borrador_chat_v2"
+                key="editor_borrador_chat_final"
             )
 
         if not df.equals(edited):
@@ -371,11 +450,28 @@ class ChatTab:
             st.session_state.status = "QUESTION"
             st.rerun()
 
-        c1, c2 = st.columns([1.2, 2.8], vertical_alignment="center")
+        c1, c2, c3 = st.columns([1.2, 1.8, 1.8], vertical_alignment="center")
+
         with c1:
-            if st.button("🗑️ Limpiar borrador", use_container_width=True):
+            st.session_state["forzar_guardado"] = st.checkbox(
+                "🔓 Forzar",
+                value=bool(st.session_state.get("forzar_guardado", False)),
+                help="Permite enviar aunque el estado sea QUESTION (bajo tu responsabilidad).",
+                key="chk_forzar_guardado"
+            )
+
+        allow_save = (st.session_state.get("status") == "READY") or bool(st.session_state.get("forzar_guardado", False))
+
+        with c2:
+            if allow_save:
+                if st.button("🚀 GUARDAR Y ENVIAR AL ROBOT", type="primary", use_container_width=True, key="btn_send_robot"):
+                    self._guardar_y_enviar()
+            else:
+                st.button("🚀 GUARDAR (FALTAN DATOS)", disabled=True, use_container_width=True, key="btn_send_robot_disabled")
+
+        with c3:
+            if st.button("🗑️ Limpiar borrador", use_container_width=True, key="btn_clear_draft"):
                 st.session_state.draft = []
                 st.session_state.status = "NEW"
+                st.session_state.forzar_guardado = False
                 st.rerun()
-        with c2:
-            st.caption("Completa faltantes en la tabla. Luego envía: `así está bien` para forzar READY.")
