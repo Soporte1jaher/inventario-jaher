@@ -1,474 +1,444 @@
-# ui/stock_tab.py
-"""
-ui/stock_tab.py
-Stock Real — Control & Reportes (PRO)
-
-Mejoras clave:
-- 4 vistas: Movimientos / Stock / Bodega / Dañados
-- Regla JAHER:
-  - si DESTINO == "bodega" -> solo se ve en BODEGA (no en MOVIMIENTOS)
-  - si ORIGEN == "bodega" -> se ve normal en MOVIMIENTOS
-- Métricas top + resumen por equipo
-- Debug opcional
-- Export Excel 4 hojas (RAW)
-
-FIX aplicado:
-✅ 1) Filtrar “comandos” (action/accion delete/borrar_*)
-✅ 2) Sanear histórico: eliminar filas raras (listas/columnas 0,1,2...) que contaminan UI
-✅ 3) Forzar columnas de vista (las mismas del Excel)
-"""
-
 import streamlit as st
 import pandas as pd
-import datetime
-import io
+import re
+from datetime import datetime
 
+from modules.ai_engine import AIEngine
 from modules.github_handler import GitHubHandler
-from modules.stock_calculator import StockCalculator
 
 
-class StockTab:
+class CleaningTab:
+    """
+    🧹 Limpieza de Historial — v5 (Usuario Final + Viñetas tipo Stock Real)
+
+    UI:
+      - 3 viñetas (tabs): Buscar / Seleccionar / Acciones
+      - Métricas arriba: Total / Resultados / Seleccionados
+      - FIX BORRAR TODO: manda TODOS los idx al robot (borrado por índices)
+
+    Mantiene:
+      - búsqueda por serie/guía/texto
+      - data_editor con checkbox
+      - envío de orden al robot via github.enviar_orden_limpieza()
+    """
+
     def __init__(self):
+        self.ai_engine = AIEngine()
         self.github = GitHubHandler()
-        self.stock_calc = StockCalculator()
 
-        # Columnas “oficiales” (las que quieres ver igual que Excel)
-        self.base_cols = [
-            "fecha_registro",
-            "guia",
-            "tipo",
-            "origen",
-            "destino",
-            "categoria_item",
-            "equipo",
-            "marca",
-            "modelo",
-            "serie",
-            "estado",
-            "procesador",
-            "ram",
-            "disco",
-            "reporte",
-            "cantidad",
-        ]
+        # state
+        st.session_state.setdefault("cln_df", pd.DataFrame())
+        st.session_state.setdefault("cln_view", pd.DataFrame())
+        st.session_state.setdefault("cln_selected_idx", set())
+        st.session_state.setdefault("cln_query", "")
+        st.session_state.setdefault("cln_last_order", None)
+        st.session_state.setdefault("cln_editor_key", "0")
+        st.session_state.setdefault("cln_active_tab", "🔎 Buscar")  # para mantener la viñeta
 
-    # ---------------------------------------------------------
-    # ✅ FIX 1: Filtrar filas comando dentro del histórico
-    # ---------------------------------------------------------
-    def _filtrar_comandos(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df is None or df.empty:
+    # =========================
+    # UI
+    # =========================
+    def render(self):
+        self._inject_css()
+
+        # Header tipo Stock Real
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([3.2, 1.1, 1.1], vertical_alignment="center")
+            with c1:
+                st.markdown("## 🧹 Limpieza de Historial")
+                st.caption("Busca registros, selecciona y elimina (pensado para usuario final).")
+            with c2:
+                if st.button("🔄 Refrescar", use_container_width=True, type="primary", key="cln_refresh_btn"):
+                    # reset suave visual
+                    st.session_state["cln_last_order"] = None
+                    st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                    st.rerun()
+            with c3:
+                if st.button("🧼 Reiniciar", use_container_width=True, key="cln_reset_btn"):
+                    self._reset_ui(full=True)
+                    st.rerun()
+
+        # Mensaje post orden
+        if st.session_state.get("cln_last_order"):
+            with st.container(border=True):
+                st.success("✅ Orden enviada. Cuando el robot termine, presiona **Refrescar**.")
+                b1, b2 = st.columns([1, 1], vertical_alignment="center")
+                with b1:
+                    if st.button("🔄 Refrescar ahora", use_container_width=True, key="cln_ref_now"):
+                        st.session_state["cln_last_order"] = None
+                        st.rerun()
+                with b2:
+                    if st.button("Ocultar mensaje", use_container_width=True, key="cln_hide_msg"):
+                        st.session_state["cln_last_order"] = None
+                        st.rerun()
+
+        # Cargar histórico desde GitHub
+        hist = self.github.obtener_historico()
+        if hist is None:
+            st.error("❌ No pude leer el historial. Revisa conexión/token.")
+            return
+        if len(hist) == 0:
+            st.info("📭 El historial está vacío.")
+            return
+
+        df_all = self._normalize(self._safe_hist_to_df(hist))
+        st.session_state["cln_df"] = df_all
+
+        # Vista por defecto (si no existe)
+        if st.session_state.get("cln_view") is None or st.session_state.get("cln_view", pd.DataFrame()).empty:
+            st.session_state["cln_view"] = df_all
+
+        df_view = st.session_state["cln_view"].copy()
+
+        # Métricas TOP (siempre visibles)
+        total = int(len(df_all))
+        results = int(len(df_view)) if isinstance(df_view, pd.DataFrame) else 0
+        selected = int(len(st.session_state.get("cln_selected_idx", set())))
+
+        with st.container(border=True):
+            m1, m2, m3 = st.columns(3, vertical_alignment="center")
+            m1.metric("📦 Total registros", total)
+            m2.metric("🔎 Resultados", results)
+            m3.metric("✅ Seleccionados", selected)
+
+        # Viñetas (tabs)
+        tabs = ["🔎 Buscar", "✅ Seleccionar", "🗑️ Acciones"]
+        t_search, t_select, t_actions = st.tabs(tabs)
+
+        # -------------------------
+        # TAB 1: BUSCAR
+        # -------------------------
+        with t_search:
+            with st.container(border=True):
+                st.markdown("### 🔎 Buscar en el historial")
+                st.caption("Puedes escribir una serie, guía o texto (marca, agencia, estado, etc.).")
+
+                q = st.text_input(
+                    "Buscar",
+                    value=st.session_state.get("cln_query", ""),
+                    placeholder="Ej: 5CD4098M63 | guia 031002... | HP | Ambato | teclado | obsoleto ...",
+                    key="cln_input_query_v5",
+                ).strip()
+                st.session_state["cln_query"] = q
+
+                c1, c2, c3 = st.columns([1.2, 1.2, 1.6], vertical_alignment="center")
+                with c1:
+                    if st.button("Buscar", type="primary", use_container_width=True, key="cln_btn_search_v5"):
+                        view = self._apply_query(df_all, q)
+                        st.session_state["cln_view"] = view
+                        st.session_state["cln_selected_idx"] = set()
+                        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                        st.success("✅ Listo. Ve a la viñeta **Seleccionar**.")
+                with c2:
+                    if st.button("Ver todo", use_container_width=True, key="cln_btn_all_v5"):
+                        st.session_state["cln_view"] = df_all
+                        st.session_state["cln_selected_idx"] = set()
+                        st.session_state["cln_query"] = ""
+                        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                        st.success("✅ Mostrando todo. Ve a **Seleccionar**.")
+                with c3:
+                    st.info("Tip: escribe `guia 0310...` o `serie 5CD...` para afinar.", icon="💡")
+
+            # Preview pequeño (no tabla gigante)
+            if isinstance(df_view, pd.DataFrame) and not df_view.empty:
+                with st.expander("👀 Vista rápida (últimos 12 resultados)", expanded=False):
+                    cols_preview = [c for c in ["fecha_registro", "tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia"] if c in df_view.columns]
+                    st.dataframe(df_view[cols_preview].head(12), use_container_width=True, hide_index=True)
+
+        # -------------------------
+        # TAB 2: SELECCIONAR
+        # -------------------------
+        with t_select:
+            with st.container(border=True):
+                st.markdown("### ✅ Seleccionar registros a eliminar")
+                st.caption("Marca **Eliminar** solo lo que realmente deseas borrar.")
+
+            if df_view is None or df_view.empty:
+                st.warning("No hay resultados para seleccionar. Ve a **Buscar**.")
+            else:
+                cols_show = [c for c in [
+                    "idx", "fecha_registro", "tipo", "equipo", "marca", "modelo", "serie",
+                    "estado", "origen", "destino", "guia"
+                ] if c in df_view.columns]
+
+                table = df_view[cols_show].copy()
+                table.insert(0, "Eliminar", False)
+
+                edited = st.data_editor(
+                    table,
+                    use_container_width=True,
+                    hide_index=True,
+                    num_rows="fixed",
+                    height=560,
+                    key=f"cln_editor_v5_{st.session_state['cln_editor_key']}",
+                )
+
+                selected_idx = set(edited.loc[edited["Eliminar"] == True, "idx"].astype(int).tolist())
+                st.session_state["cln_selected_idx"] = selected_idx
+
+                with st.container(border=True):
+                    c1, c2 = st.columns([1.2, 2.2], vertical_alignment="center")
+                    with c1:
+                        st.metric("Seleccionados", len(selected_idx))
+                    with c2:
+                        if st.button("🧽 Limpiar selección", use_container_width=True, key="cln_clear_sel_v5"):
+                            st.session_state["cln_selected_idx"] = set()
+                            st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                            st.rerun()
+
+                st.info("Cuando termines, ve a la viñeta **Acciones** para eliminar.", icon="➡️")
+
+        # -------------------------
+        # TAB 3: ACCIONES
+        # -------------------------
+        with t_actions:
+            with st.container(border=True):
+                st.markdown("### 🗑️ Acciones")
+                st.caption("Elimina seleccionados o elimina todo el historial.")
+
+            sel = st.session_state.get("cln_selected_idx", set())
+
+            a1, a2 = st.columns([1.6, 1.6], vertical_alignment="center")
+
+            with a1:
+                self._ui_delete_selected(df_all, sel)
+
+            with a2:
+                self._ui_delete_all(df_all)
+
+    # =========================
+    # UI: borrar seleccionados
+    # =========================
+    def _ui_delete_selected(self, dfall: pd.DataFrame, selected_idx: set):
+        disabled = len(selected_idx) == 0
+
+        with st.container(border=True):
+            st.markdown("#### 🧹 Eliminar seleccionados")
+            st.caption("Solo elimina los registros que marcaste en la viñeta **Seleccionar**.")
+            st.write(f"Seleccionados: **{len(selected_idx)}**")
+
+            with st.popover("🗑️ Eliminar seleccionados", use_container_width=True, disabled=disabled):
+                st.warning("Esto no se puede deshacer.")
+                confirm = st.checkbox("Confirmo eliminar los seleccionados", value=False, key="cln_chk_confirm_selected_v5")
+
+                if st.button("Eliminar ahora", type="primary", use_container_width=True, disabled=(not confirm)):
+                    self._send_delete_order_indices(dfall, sorted(list(selected_idx)), instruction="BORRAR_SELECCIONADOS")
+                    st.rerun()
+
+            if disabled:
+                st.info("Marca registros en **Seleccionar** para habilitar este botón.", icon="ℹ️")
+
+    # =========================
+    # UI: borrar todo (fuerte)
+    # =========================
+    def _ui_delete_all(self, dfall: pd.DataFrame):
+        with st.container(border=True):
+            st.markdown("#### 🔥 Eliminar TODO")
+            st.caption("Borra el historial completo (uso restringido).")
+            st.write(f"Total actual: **{len(dfall)}**")
+
+            with st.popover("🔥 Eliminar TODO", use_container_width=True):
+                st.error("Acción irreversible. Solo úsalo si estás seguro.")
+                text = st.text_input(
+                    "Escribe: BORRAR TODO",
+                    placeholder="BORRAR TODO",
+                    key="cln_txt_confirm_delete_all_v5",
+                ).strip().upper()
+
+                disabled = text != "BORRAR TODO"
+                if st.button("Eliminar TODO ahora", type="primary", use_container_width=True, disabled=disabled):
+                    self._send_delete_order_all(dfall)  # ✅ borrado real
+                    st.rerun()
+
+    # =========================
+    # lógica de búsqueda
+    # =========================
+    def _apply_query(self, df: pd.DataFrame, q: str) -> pd.DataFrame:
+        q = (q or "").strip()
+        if not q:
             return df
 
-        d = df.copy()
-        d.columns = [str(c).strip().lower() for c in d.columns]
+        field, value = self._detect_intent(q)
+        return self._search(df, field, value)
 
-        col_acc = None
-        if "action" in d.columns:
-            col_acc = "action"
-        elif "accion" in d.columns:
-            col_acc = "accion"
+    def _detect_intent(self, q: str):
+        ql = q.lower().strip()
 
-        if col_acc:
-            acc = d[col_acc].astype(str).str.strip().str.lower()
-            comandos = acc.isin(["delete", "borrar_por_indices", "borrar_todo", "borrar"])
-            return d[~comandos].copy()
+        m = re.search(r"\b(serie|serial)\s*[:#-]?\s*([a-z0-9\-_/]+)\b", ql)
+        if m:
+            return "serie", m.group(2).strip()
 
-        # Fallback por indices + source/instruction
-        if "indices" in d.columns:
-            ind = d["indices"].astype(str).str.strip()
-            comandos = ind.str.startswith("[") & ind.str.endswith("]") & (ind != "[]")
-            if "instruction" in d.columns or "source" in d.columns:
-                return d[~comandos].copy()
+        m = re.search(r"\b(guia|guía)\s*[:#-]?\s*([a-z0-9\-_/]+)\b", ql)
+        if m:
+            return "guia", m.group(2).strip()
 
-        return d
+        # si parece un código sin espacios -> serie
+        if re.fullmatch(r"[a-z0-9\-_/]{4,}", ql) and " " not in ql:
+            return "serie", ql
 
-    # ---------------------------------------------------------
-    # ✅ FIX 2: Sanear histórico antes del cálculo/UI
-    # - Si vienen listas -> mapear a schema
-    # - Si vienen dicts con columnas 0,1,2... -> limpiar
-    # ---------------------------------------------------------
-    def _sanear_historial(self, hist) -> pd.DataFrame:
-        if not hist:
+        return "texto", ql
+
+    def _search(self, df: pd.DataFrame, field: str, value: str) -> pd.DataFrame:
+        field = (field or "").strip().lower()
+        value = (value or "").strip().lower()
+
+        if df is None or df.empty:
             return pd.DataFrame()
 
-        filas = []
-        schema = self.base_cols[:]  # mismo orden
+        if not value:
+            return pd.DataFrame()
 
+        if field in df.columns and field != "texto":
+            s = df[field].astype(str).str.lower().str.strip()
+            if field in ["serie", "guia"]:
+                mask = (s == value) | s.str.contains(re.escape(value), na=False)
+            else:
+                mask = s.str.contains(re.escape(value), na=False)
+            out = df[mask].copy()
+            return out.sort_values("fecha_registro_dt", ascending=False)
+
+        # texto global
+        search_cols = [c for c in ["serie", "marca", "equipo", "modelo", "origen", "destino", "guia", "reporte", "tipo", "estado"] if c in df.columns]
+        if not search_cols:
+            search_cols = df.columns.tolist()
+
+        mask = pd.Series(False, index=df.index)
+        for c in search_cols:
+            try:
+                mask = mask | df[c].astype(str).str.lower().str.contains(re.escape(value), na=False)
+            except Exception:
+                pass
+
+        out = df[mask].copy()
+        return out.sort_values("fecha_registro_dt", ascending=False)
+
+    # =========================
+    # enviar órdenes al robot
+    # =========================
+    def _send_delete_order_indices(self, dfall: pd.DataFrame, idx_list: list, instruction: str):
+        sub = dfall[dfall["idx"].isin(idx_list)].copy()
+
+        matches = []
+        for _, r in sub.iterrows():
+            matches.append({
+                "idx": int(r.get("idx")),
+                "serie": str(r.get("serie", "N/A")).strip(),
+                "guia": str(r.get("guia", "N/A")).strip(),
+                "fecha_registro": str(r.get("fecha_registro", "N/A")).strip(),
+                "equipo": str(r.get("equipo", "N/A")).strip(),
+                "marca": str(r.get("marca", "N/A")).strip(),
+                "modelo": str(r.get("modelo", "N/A")).strip(),
+                "origen": str(r.get("origen", "N/A")).strip(),
+                "destino": str(r.get("destino", "N/A")).strip(),
+                "tipo": str(r.get("tipo", "N/A")).strip(),
+                "estado": str(r.get("estado", "N/A")).strip(),
+            })
+
+        orden = {
+            "action": "delete",
+            "source": "historico.json",
+            "instruction": instruction,  # BORRAR_SELECCIONADOS o BORRAR TODO
+            "count": len(idx_list),
+            "accion": "borrar_por_indices",
+            "idx_list": [int(x) for x in idx_list],
+            "matches": matches,
+        }
+
+        ok = self.github.enviar_orden_limpieza(orden)
+        if ok:
+            st.session_state["cln_last_order"] = orden
+            self._reset_ui(full=False)
+            st.success("✅ Orden enviada. Espera al robot y luego presiona Refrescar.")
+        else:
+            st.error("❌ No se pudo enviar la orden. Revisa conexión/permiso.")
+            st.json(orden)
+
+    def _send_delete_order_all(self, dfall: pd.DataFrame):
+        """
+        FIX REAL:
+        Tu robot borra POR INDICES.
+        Antes mandabas idx_list vacío => eliminados 0.
+        Ahora mandamos TODOS los idx para borrar todo usando el flujo existente.
+        """
+        if dfall is None or dfall.empty or "idx" not in dfall.columns:
+            st.error("❌ No hay registros para borrar.")
+            return
+
+        all_idx = dfall["idx"].astype(int).tolist()
+        self._send_delete_order_indices(
+            dfall=dfall,
+            idx_list=sorted(all_idx),
+            instruction="BORRAR TODO"
+        )
+
+    # =========================
+    # Normalización
+    # =========================
+    def _safe_hist_to_df(self, hist):
+        filas = []
         for x in hist:
             if isinstance(x, dict):
                 filas.append(x)
-                continue
+            elif isinstance(x, (list, tuple)):
+                # Si te llega sucio tipo lista, lo ignoramos aquí (limpieza solo para dicts)
+                # (Si quieres mapearlo a schema como StockTab, me dices y lo adapto)
+                pass
+        return pd.DataFrame(filas)
 
-            # Si te llegó como lista/tuple => convertir a dict por orden
-            if isinstance(x, (list, tuple)):
-                d = {}
-                for i, k in enumerate(schema):
-                    d[k] = x[i] if i < len(x) else ""
-                filas.append(d)
-
-        df = pd.DataFrame(filas)
-        if df.empty:
-            return df
-
-        # Normalizar nombres de columnas
-        df.columns = [str(c).strip().lower() for c in df.columns]
-
-        # ❌ eliminar columnas basura típicas que aparecen en tu web
-        # (columnas numéricas 0,1,2,3... y comandos)
-        cols_drop = []
-        for c in df.columns:
-            cs = str(c).strip().lower()
-            if cs.isdigit():  # "0","1","2"...
-                cols_drop.append(c)
-            if cs in ["action", "accion", "source", "instruction", "count", "indices", "idx_list", "mat", "meta"]:
-                cols_drop.append(c)
-
-        if cols_drop:
-            df = df.drop(columns=list(set(cols_drop)), errors="ignore")
-
-        return df
-
-    # ---------------------------------------------------------
-    # UI
-    # ---------------------------------------------------------
-    def render(self):
-        with st.container(border=True):
-            c1, c2, c3 = st.columns([3, 1.1, 1.1], vertical_alignment="center")
-
-            with c1:
-                st.markdown("## 📊 Stock Real — Control & Reportes")
-                st.caption("Fuente: historico.json (GitHub) → cálculo modular → vistas + Excel (4 hojas)")
-
-            with c2:
-                if st.button("🔄 Refrescar", use_container_width=True, key="stk_refresh_btn"):
-                    st.rerun()
-
-            with c3:
-                show_debug = st.toggle(
-                    "🧪 Debug",
-                    value=False,
-                    help="Muestra dataframes crudos/post-cálculo (solo para revisión).",
-                    key="stk_debug_toggle",
-                )
-
-        hist = self.github.obtener_historico()
-        if not hist:
-            st.info("Aún no hay datos en el histórico.")
-            return
-
-        self._mostrar_datos(hist, show_debug=show_debug)
-
-    # ---------------------------------------------------------
-    # Core
-    # ---------------------------------------------------------
-    def _mostrar_datos(self, hist, show_debug=False):
-        # ✅ SANEAR primero (mata las columnas 0,1,2... y filas raras)
-        df_h_raw = self._sanear_historial(hist)
-        if df_h_raw.empty:
-            st.info("Histórico vacío.")
-            return
-
-        # ✅ Filtrar comandos (por si quedaron dicts con action/accion)
-        df_h_raw = self._filtrar_comandos(df_h_raw)
-
-        # Cálculo modular (tu lógica)
-        st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out = self.stock_calc.calcular_stock_completo(df_h_raw)
-
-        # ✅ doble sanitización por seguridad
-        if isinstance(df_h_raw_out, pd.DataFrame):
-            df_h_raw_out = self._filtrar_comandos(df_h_raw_out)
-            # también recortar basura si el calculador reintroduce columnas extra
-            df_h_raw_out.columns = [str(c).strip().lower() for c in df_h_raw_out.columns]
-            for extra in ["action", "accion", "source", "instruction", "count", "indices"]:
-                if extra in df_h_raw_out.columns:
-                    df_h_raw_out = df_h_raw_out.drop(columns=[extra], errors="ignore")
-
-        # Vista normalizada (UI)
-        df_h_view = self._normalize_historial(df_h_raw_out)
-
-        # ✅ Regla JAHER: si destino=bodega => sale de Movimientos
-        df_mov_view = self._movimientos_sin_destino_bodega(df_h_view)
-
-        # Normalizar tablas para UI (y limpiar NaN)
-        st_res_view = self._normalize_stock(st_res_raw, mode="stock")
-        bod_res_view = self._normalize_stock(bod_res_raw, mode="bodega")
-        danados_res_view = self._normalize_stock(danados_res_raw, mode="danados")
-
-        # Métricas + resumen por equipo
-        self._mostrar_metricas_top(df_h_view, df_mov_view, st_res_view, bod_res_view, danados_res_view)
-
-        # Export (RAW) pero ya limpio
-        self._crear_boton_descarga(st_res_raw, bod_res_raw, danados_res_raw, df_h_raw_out)
-
-        # Tabs internas
-        t_mov, t_stock, t_bod, t_dan = st.tabs(
-            ["🧾 Movimientos", "📦 Stock (Periféricos)", "🏢 Bodega (Cómputo)", "🧯 Dañados/Chatarras"]
-        )
-
-        with t_mov:
-            self._tab_movimientos(df_mov_view)
-
-        with t_stock:
-            self._tab_stock(st_res_view)
-
-        with t_bod:
-            self._tab_bodega(bod_res_view)
-
-        with t_dan:
-            self._tab_danados(danados_res_view)
-
-        if show_debug:
-            with st.expander("🧪 Debug (revisión técnica)", expanded=False):
-                st.write("df_h_raw (saneado):", df_h_raw.shape)
-                st.dataframe(df_h_raw.head(30), use_container_width=True)
-
-                if isinstance(df_h_raw_out, pd.DataFrame):
-                    st.write("df_h_raw_out:", df_h_raw_out.shape)
-                    st.dataframe(df_h_raw_out.head(30), use_container_width=True)
-
-                st.write("df_h_view:", df_h_view.shape)
-                st.dataframe(df_h_view.head(30), use_container_width=True)
-
-                st.write("df_mov_view:", df_mov_view.shape)
-                st.dataframe(df_mov_view.head(30), use_container_width=True)
-
-                if isinstance(st_res_raw, pd.DataFrame):
-                    st.write("st_res_raw:", st_res_raw.shape)
-                    st.dataframe(st_res_raw.head(30), use_container_width=True)
-
-    # ---------------------------------------------------------
-    # Métricas + resumen
-    # ---------------------------------------------------------
-    def _mostrar_metricas_top(self, df_h_view, df_mov_view, st_res_view, bod_res_view, danados_res_view):
-        total_hist = len(df_h_view)
-        total_mov = len(df_mov_view)
-
-        total_stock = 0
-        if isinstance(st_res_view, pd.DataFrame) and not st_res_view.empty:
-            if "cantidad_disponible" in st_res_view.columns:
-                total_stock = int(pd.to_numeric(st_res_view["cantidad_disponible"], errors="coerce").fillna(0).sum())
-
-        total_bodega = len(bod_res_view) if isinstance(bod_res_view, pd.DataFrame) else 0
-        total_danados = len(danados_res_view) if isinstance(danados_res_view, pd.DataFrame) else 0
-
-        ultimo = ""
-        if "fecha_registro" in df_h_view.columns:
-            try:
-                ultimo_dt = pd.to_datetime(df_h_view["fecha_registro"], errors="coerce").max()
-                if pd.notna(ultimo_dt):
-                    ultimo = ultimo_dt.strftime("%Y-%m-%d %H:%M")
-            except Exception:
-                ultimo = ""
-
-        with st.container(border=True):
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric("📜 Movimientos (vista)", total_mov, help="Movimientos visibles (EXCLUYE destino=bodega).")
-            k2.metric("📦 Periféricos en Stock", total_stock, help="Total disponible en stock (suma).")
-            k3.metric("🏢 Registros en Bodega", total_bodega, help="Items que caen en la vista Bodega.")
-            k4.metric("🧯 Dañados/Chatarras", total_danados, help="Items marcados como dañados/obsoletos/chatarras.")
-
-            if ultimo:
-                st.caption(f"🕒 Última actividad detectada: **{ultimo}** | Histórico total: **{total_hist}**")
-
-        if isinstance(st_res_view, pd.DataFrame) and (not st_res_view.empty):
-            if "equipo" in st_res_view.columns and "cantidad_disponible" in st_res_view.columns:
-                with st.container(border=True):
-                    st.markdown("### 📌 Resumen rápido (por equipo)")
-                    st.caption("Ej: TECLADO 11, MOUSE 3… (calculado desde la tabla de Stock)")
-
-                    df = st_res_view.copy()
-                    df["cantidad_disponible"] = pd.to_numeric(df["cantidad_disponible"], errors="coerce").fillna(0).astype(int)
-
-                    resumen = (
-                        df.groupby("equipo")["cantidad_disponible"]
-                        .sum()
-                        .reset_index()
-                        .sort_values("cantidad_disponible", ascending=False)
-                    )
-
-                    if resumen.empty:
-                        st.info("No hay datos suficientes para resumen por equipo.")
-                    else:
-                        top = resumen.head(10)
-                        cols = st.columns(min(5, len(top)))
-                        for i, (_, row) in enumerate(top.iterrows()):
-                            with cols[i % len(cols)]:
-                                st.metric(str(row["equipo"]).upper(), int(row["cantidad_disponible"]))
-
-                        with st.expander("Ver detalle completo (tabla)", expanded=False):
-                            st.dataframe(resumen, use_container_width=True, hide_index=True)
-
-        st.divider()
-
-    # ---------------------------------------------------------
-    # Tabs
-    # ---------------------------------------------------------
-    def _tab_movimientos(self, df_view):
-        with st.container(border=True):
-            st.markdown("### 🧾 Movimientos (Histórico)")
-            st.caption("Regla: DESTINO='bodega' NO se muestra aquí (solo en Bodega).")
-
-            if df_view is None or df_view.empty:
-                st.warning("No hay movimientos para mostrar.")
-                return
-
-            df_show = self._clean_nan_to_na(df_view.copy())
-            st.dataframe(df_show.tail(250), use_container_width=True, hide_index=True, height=520)
-
-    def _tab_stock(self, st_res):
-        with st.container(border=True):
-            st.markdown("### 📦 Stock (Periféricos)")
-            if st_res is None or st_res.empty:
-                st.info("No hay stock disponible (o no se han registrado periféricos).")
-                return
-
-            df = self._clean_nan_to_na(st_res.copy())
-
-            if "cantidad_disponible" in df.columns:
-                df["cantidad_disponible"] = pd.to_numeric(df["cantidad_disponible"], errors="coerce").fillna(0).astype(int)
-                df = df.sort_values("cantidad_disponible", ascending=False)
-
-            st.dataframe(df, use_container_width=True, hide_index=True, height=560)
-
-    def _tab_bodega(self, bod_res):
-        with st.container(border=True):
-            st.markdown("### 🏢 Bodega (Cómputo)")
-            st.caption("Aquí se muestran registros que caen en Bodega (incluye DESTINO='bodega').")
-
-            if bod_res is None or bod_res.empty:
-                st.info("No hay registros que caigan en Bodega.")
-                return
-
-            df = self._clean_nan_to_na(bod_res.copy())
-            st.dataframe(df, use_container_width=True, hide_index=True, height=560)
-
-    def _tab_danados(self, danados_res):
-        with st.container(border=True):
-            st.markdown("### 🧯 Dañados / Chatarras / Bajas")
-            if danados_res is None or danados_res.empty:
-                st.info("No hay registros marcados como dañados/chatarras/bajas.")
-                return
-
-            df = self._clean_nan_to_na(danados_res.copy())
-            st.dataframe(df, use_container_width=True, hide_index=True, height=560)
-
-    # ---------------------------------------------------------
-    # Export
-    # ---------------------------------------------------------
-    def _crear_boton_descarga(self, st_res, bod_res, danados_res, df_h):
-        with st.container(border=True):
-            c1, c2 = st.columns([3, 1.4], vertical_alignment="center")
-            with c1:
-                st.markdown("### 📥 Exportación Excel")
-                st.caption("Descarga el Excel con 4 hojas: MOVIMIENTOS, STOCK_SALDOS, BODEGA, DANADOS_CHATARRA.")
-            with c2:
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                    pd.DataFrame(df_h).to_excel(writer, index=False, sheet_name="MOVIMIENTOS")
-
-                    if isinstance(st_res, pd.DataFrame) and not st_res.empty:
-                        st_res.to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
-                    else:
-                        pd.DataFrame().to_excel(writer, index=False, sheet_name="STOCK_SALDOS")
-
-                    if isinstance(bod_res, pd.DataFrame) and not bod_res.empty:
-                        bod_res.to_excel(writer, index=False, sheet_name="BODEGA")
-                    else:
-                        pd.DataFrame().to_excel(writer, index=False, sheet_name="BODEGA")
-
-                    if isinstance(danados_res, pd.DataFrame) and not danados_res.empty:
-                        danados_res.to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
-                    else:
-                        pd.DataFrame().to_excel(writer, index=False, sheet_name="DANADOS_CHATARRA")
-
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-                st.download_button(
-                    label="📥 Descargar Excel (4 hojas)",
-                    data=buffer.getvalue(),
-                    file_name=f"Inventario_Jaher_{timestamp}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    type="primary",
-                    use_container_width=True,
-                    key="stk_download_excel",
-                )
-
-    # ---------------------------------------------------------
-    # Helpers
-    # ---------------------------------------------------------
-    def _clean_nan_to_na(self, df: pd.DataFrame):
-        if df is None or df.empty:
-            return df
-        df = df.replace({pd.NA: "", "nan": ""}).fillna("")
-        df = df.replace("", "N/A")
-        return df
-
-    def _normalize_historial(self, df: pd.DataFrame):
+    def _normalize(self, df: pd.DataFrame):
         df = df.copy()
         df.columns = [str(c).strip().lower() for c in df.columns]
 
-        # compat: si viene fecha_llegada
-        if "fecha_llegada" in df.columns and "fecha_registro" not in df.columns:
-            df["fecha_registro"] = df["fecha_llegada"]
+        if "idx" not in df.columns:
+            df.insert(0, "idx", range(len(df)))
 
-        # Asegurar columnas base
-        for c in self.base_cols:
+        for c in ["fecha_registro", "tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia", "reporte"]:
             if c not in df.columns:
-                df[c] = ""
-
-        # Forzar SOLO columnas base para que nunca se cuelen extras
-        df = df[self.base_cols].copy()
+                df[c] = "N/A"
 
         df["fecha_registro_dt"] = pd.to_datetime(df["fecha_registro"], errors="coerce")
-        df = df.sort_values("fecha_registro_dt", ascending=True)
+        df = df.sort_values("fecha_registro_dt", ascending=False, na_position="last")
 
-        df["fecha_registro"] = df["fecha_registro_dt"].dt.strftime("%Y-%m-%d %H:%M").fillna("N/A")
+        # limpiar strings
+        text_cols = ["tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia", "reporte"]
+        for c in text_cols:
+            df[c] = df[c].astype(str).replace({"nan": "N/A", "None": "N/A", "": "N/A"}).fillna("N/A").str.strip()
+            df.loc[df[c] == "", c] = "N/A"
 
-        try:
-            df["cantidad"] = pd.to_numeric(df["cantidad"], errors="coerce").fillna(1).astype(int)
-        except Exception:
-            df["cantidad"] = 1
+        # fecha visual
+        df["fecha_registro"] = df["fecha_registro_dt"].dt.strftime("%Y-%m-%d %H:%M")
+        df["fecha_registro"] = df["fecha_registro"].fillna("N/A")
 
-        # Quitar helper dt antes de mostrar
-        df = df.drop(columns=["fecha_registro_dt"], errors="ignore")
-        return self._clean_nan_to_na(df)
+        return df
 
-    def _normalize_stock(self, df, mode="stock"):
-        if df is None:
-            return pd.DataFrame()
+    # =========================
+    # Helpers UI
+    # =========================
+    def _reset_ui(self, full: bool = False):
+        # reset editor + selección (no toques df)
+        st.session_state["cln_selected_idx"] = set()
+        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+        if full:
+            st.session_state["cln_query"] = ""
+            st.session_state["cln_view"] = pd.DataFrame()
 
-        if not isinstance(df, pd.DataFrame):
-            try:
-                df = pd.DataFrame(df)
-            except Exception:
-                return pd.DataFrame()
-
-        df = df.copy()
-        df.columns = [str(c).strip().lower() for c in df.columns]
-
-        if "valor_final" in df.columns and "val" not in df.columns:
-            df["val"] = df["valor_final"]
-
-        if mode == "stock":
-            if "equipo_f" in df.columns and "equipo" not in df.columns:
-                df["equipo"] = df["equipo_f"]
-            if "marca_f" in df.columns and "marca" not in df.columns:
-                df["marca"] = df["marca_f"]
-
-            cols = [c for c in ["equipo", "marca", "val"] if c in df.columns]
-            if cols:
-                df = df[cols]
-
-            if "val" in df.columns:
-                df = df.rename(columns={"val": "cantidad_disponible"})
-
-        return self._clean_nan_to_na(df)
-
-    def _movimientos_sin_destino_bodega(self, df_view: pd.DataFrame):
-        if df_view is None or df_view.empty:
-            return df_view
-        if "destino" not in df_view.columns:
-            return df_view
-
-        df = df_view.copy()
-        dest = df["destino"].astype(str).str.strip().str.lower()
-        return df[dest != "bodega"]
+    # =========================
+    # CSS (más pro, menos técnico)
+    # =========================
+    def _inject_css(self):
+        st.markdown(
+            """
+            <style>
+              .stApp { background-color: #0e1117; }
+              .block-container { max-width: 1100px; padding-top: 1rem; }
+              [data-testid="stDataEditor"] { border-radius: 14px; overflow: hidden; }
+              [data-testid="stMetric"] {
+                border: 1px solid rgba(255,255,255,0.07);
+                border-radius: 14px;
+                padding: 10px 12px;
+                background: rgba(255,255,255,0.02);
+              }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
