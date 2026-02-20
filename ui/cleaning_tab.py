@@ -9,17 +9,17 @@ from modules.github_handler import GitHubHandler
 
 class CleaningTab:
     """
-    🧹 Limpieza de Historial — v4 (Usuario Final)
+    🧹 Limpieza de Historial — v5 (Usuario Final + Viñetas tipo Stock Real)
 
-    Objetivo:
-    - Que cualquiera pueda buscar, seleccionar y borrar sin ver cosas técnicas.
-    - Mantiene tu funcionalidad (mismo flujo, mismas keys, mismo GitHubHandler).
-    - FIX real: "BORRAR TODO" ahora borra de verdad (manda TODOS los idx al robot).
+    UI:
+      - 3 viñetas (tabs): Buscar / Seleccionar / Acciones
+      - Métricas arriba: Total / Resultados / Seleccionados
+      - FIX BORRAR TODO: manda TODOS los idx al robot (borrado por índices)
 
-    Flujo:
-      1) Buscar (serie/guía/texto)
-      2) Marcar lo que se quiere borrar
-      3) Borrar seleccionados / Borrar todo (confirmaciones)
+    Mantiene:
+      - búsqueda por serie/guía/texto
+      - data_editor con checkbox
+      - envío de orden al robot via github.enviar_orden_limpieza()
     """
 
     def __init__(self):
@@ -32,7 +32,8 @@ class CleaningTab:
         st.session_state.setdefault("cln_selected_idx", set())
         st.session_state.setdefault("cln_query", "")
         st.session_state.setdefault("cln_last_order", None)
-        st.session_state.setdefault("cln_editor_key", "0")  # para reset editor
+        st.session_state.setdefault("cln_editor_key", "0")
+        st.session_state.setdefault("cln_active_tab", "🔎 Buscar")  # para mantener la viñeta
 
     # =========================
     # UI
@@ -40,24 +41,38 @@ class CleaningTab:
     def render(self):
         self._inject_css()
 
-        st.markdown("## 🧹 Limpieza de Historial")
-        st.caption("Busca registros, selecciona y elimina. Diseñado para usuario final.")
+        # Header tipo Stock Real
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([3.2, 1.1, 1.1], vertical_alignment="center")
+            with c1:
+                st.markdown("## 🧹 Limpieza de Historial")
+                st.caption("Busca registros, selecciona y elimina (pensado para usuario final).")
+            with c2:
+                if st.button("🔄 Refrescar", use_container_width=True, type="primary", key="cln_refresh_btn"):
+                    # reset suave visual
+                    st.session_state["cln_last_order"] = None
+                    st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                    st.rerun()
+            with c3:
+                if st.button("🧼 Reiniciar", use_container_width=True, key="cln_reset_btn"):
+                    self._reset_ui(full=True)
+                    st.rerun()
 
-        # Aviso de orden enviada
+        # Mensaje post orden
         if st.session_state.get("cln_last_order"):
             with st.container(border=True):
-                st.success("✅ Orden enviada. Presiona **Refrescar** cuando el robot termine de procesar.")
-                c1, c2 = st.columns([1, 1], vertical_alignment="center")
-                with c1:
-                    if st.button("🔄 Refrescar", use_container_width=True, type="primary"):
+                st.success("✅ Orden enviada. Cuando el robot termine, presiona **Refrescar**.")
+                b1, b2 = st.columns([1, 1], vertical_alignment="center")
+                with b1:
+                    if st.button("🔄 Refrescar ahora", use_container_width=True, key="cln_ref_now"):
                         st.session_state["cln_last_order"] = None
                         st.rerun()
-                with c2:
-                    if st.button("Ocultar", use_container_width=True):
+                with b2:
+                    if st.button("Ocultar mensaje", use_container_width=True, key="cln_hide_msg"):
                         st.session_state["cln_last_order"] = None
                         st.rerun()
 
-        # Cargar historial
+        # Cargar histórico desde GitHub
         hist = self.github.obtener_historico()
         if hist is None:
             st.error("❌ No pude leer el historial. Revisa conexión/token.")
@@ -66,91 +81,130 @@ class CleaningTab:
             st.info("📭 El historial está vacío.")
             return
 
-        df = self._normalize(self._safe_hist_to_df(hist))
-        st.session_state["cln_df"] = df
+        df_all = self._normalize(self._safe_hist_to_df(hist))
+        st.session_state["cln_df"] = df_all
 
-        # Panel superior: búsqueda
+        # Vista por defecto (si no existe)
+        if st.session_state.get("cln_view") is None or st.session_state.get("cln_view", pd.DataFrame()).empty:
+            st.session_state["cln_view"] = df_all
+
+        df_view = st.session_state["cln_view"].copy()
+
+        # Métricas TOP (siempre visibles)
+        total = int(len(df_all))
+        results = int(len(df_view)) if isinstance(df_view, pd.DataFrame) else 0
+        selected = int(len(st.session_state.get("cln_selected_idx", set())))
+
         with st.container(border=True):
-            st.markdown("### 🔎 Buscar")
-            c1, c2, c3 = st.columns([3.2, 1.2, 1.2], vertical_alignment="center")
+            m1, m2, m3 = st.columns(3, vertical_alignment="center")
+            m1.metric("📦 Total registros", total)
+            m2.metric("🔎 Resultados", results)
+            m3.metric("✅ Seleccionados", selected)
 
-            with c1:
+        # Viñetas (tabs)
+        tabs = ["🔎 Buscar", "✅ Seleccionar", "🗑️ Acciones"]
+        t_search, t_select, t_actions = st.tabs(tabs)
+
+        # -------------------------
+        # TAB 1: BUSCAR
+        # -------------------------
+        with t_search:
+            with st.container(border=True):
+                st.markdown("### 🔎 Buscar en el historial")
+                st.caption("Puedes escribir una serie, guía o texto (marca, agencia, estado, etc.).")
+
                 q = st.text_input(
-                    "Escribe una serie, guía o cualquier texto",
+                    "Buscar",
                     value=st.session_state.get("cln_query", ""),
                     placeholder="Ej: 5CD4098M63 | guia 031002... | HP | Ambato | teclado | obsoleto ...",
-                    key="cln_input_query_min",
-                    label_visibility="visible",
+                    key="cln_input_query_v5",
                 ).strip()
                 st.session_state["cln_query"] = q
 
-            with c2:
-                if st.button("Buscar", type="primary", use_container_width=True):
-                    view = self._apply_query(df, q)
-                    st.session_state["cln_view"] = view
-                    st.session_state["cln_selected_idx"] = set()
-                    st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
-                    st.rerun()
+                c1, c2, c3 = st.columns([1.2, 1.2, 1.6], vertical_alignment="center")
+                with c1:
+                    if st.button("Buscar", type="primary", use_container_width=True, key="cln_btn_search_v5"):
+                        view = self._apply_query(df_all, q)
+                        st.session_state["cln_view"] = view
+                        st.session_state["cln_selected_idx"] = set()
+                        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                        st.success("✅ Listo. Ve a la viñeta **Seleccionar**.")
+                with c2:
+                    if st.button("Ver todo", use_container_width=True, key="cln_btn_all_v5"):
+                        st.session_state["cln_view"] = df_all
+                        st.session_state["cln_selected_idx"] = set()
+                        st.session_state["cln_query"] = ""
+                        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                        st.success("✅ Mostrando todo. Ve a **Seleccionar**.")
+                with c3:
+                    st.info("Tip: escribe `guia 0310...` o `serie 5CD...` para afinar.", icon="💡")
 
-            with c3:
-                if st.button("Ver todo", use_container_width=True):
-                    st.session_state["cln_view"] = df
-                    st.session_state["cln_selected_idx"] = set()
-                    st.session_state["cln_query"] = ""
-                    st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
-                    st.rerun()
+            # Preview pequeño (no tabla gigante)
+            if isinstance(df_view, pd.DataFrame) and not df_view.empty:
+                with st.expander("👀 Vista rápida (últimos 12 resultados)", expanded=False):
+                    cols_preview = [c for c in ["fecha_registro", "tipo", "equipo", "marca", "modelo", "serie", "estado", "origen", "destino", "guia"] if c in df_view.columns]
+                    st.dataframe(df_view[cols_preview].head(12), use_container_width=True, hide_index=True)
 
-        # Vista por defecto
-        if st.session_state.get("cln_view") is None or st.session_state.get("cln_view", pd.DataFrame()).empty:
-            st.session_state["cln_view"] = df
+        # -------------------------
+        # TAB 2: SELECCIONAR
+        # -------------------------
+        with t_select:
+            with st.container(border=True):
+                st.markdown("### ✅ Seleccionar registros a eliminar")
+                st.caption("Marca **Eliminar** solo lo que realmente deseas borrar.")
 
-        viewdf = st.session_state["cln_view"].copy()
-        if viewdf.empty:
-            st.warning("No hay resultados con esa búsqueda.")
-            return
+            if df_view is None or df_view.empty:
+                st.warning("No hay resultados para seleccionar. Ve a **Buscar**.")
+            else:
+                cols_show = [c for c in [
+                    "idx", "fecha_registro", "tipo", "equipo", "marca", "modelo", "serie",
+                    "estado", "origen", "destino", "guia"
+                ] if c in df_view.columns]
 
-        # Tabla
-        st.markdown("### 📋 Resultados")
-        st.caption("Marca **Eliminar** solo los registros que quieras borrar.")
+                table = df_view[cols_show].copy()
+                table.insert(0, "Eliminar", False)
 
-        cols_show = [c for c in [
-            "idx", "fecha_registro", "tipo", "equipo", "marca", "modelo", "serie",
-            "estado", "origen", "destino", "guia"
-        ] if c in viewdf.columns]
+                edited = st.data_editor(
+                    table,
+                    use_container_width=True,
+                    hide_index=True,
+                    num_rows="fixed",
+                    height=560,
+                    key=f"cln_editor_v5_{st.session_state['cln_editor_key']}",
+                )
 
-        table = viewdf[cols_show].copy()
-        table.insert(0, "Eliminar", False)
+                selected_idx = set(edited.loc[edited["Eliminar"] == True, "idx"].astype(int).tolist())
+                st.session_state["cln_selected_idx"] = selected_idx
 
-        edited = st.data_editor(
-            table,
-            use_container_width=True,
-            hide_index=True,
-            num_rows="fixed",
-            height=520,
-            key=f"cln_editor_min_{st.session_state['cln_editor_key']}",
-        )
+                with st.container(border=True):
+                    c1, c2 = st.columns([1.2, 2.2], vertical_alignment="center")
+                    with c1:
+                        st.metric("Seleccionados", len(selected_idx))
+                    with c2:
+                        if st.button("🧽 Limpiar selección", use_container_width=True, key="cln_clear_sel_v5"):
+                            st.session_state["cln_selected_idx"] = set()
+                            st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+                            st.rerun()
 
-        selected_idx = set(edited.loc[edited["Eliminar"] == True, "idx"].astype(int).tolist())
-        st.session_state["cln_selected_idx"] = selected_idx
+                st.info("Cuando termines, ve a la viñeta **Acciones** para eliminar.", icon="➡️")
 
-        # Acciones
-        with st.container(border=True):
-            a1, a2, a3, a4 = st.columns([1.1, 1.4, 1.8, 2.1], vertical_alignment="center")
+        # -------------------------
+        # TAB 3: ACCIONES
+        # -------------------------
+        with t_actions:
+            with st.container(border=True):
+                st.markdown("### 🗑️ Acciones")
+                st.caption("Elimina seleccionados o elimina todo el historial.")
+
+            sel = st.session_state.get("cln_selected_idx", set())
+
+            a1, a2 = st.columns([1.6, 1.6], vertical_alignment="center")
 
             with a1:
-                st.metric("Seleccionados", len(selected_idx))
+                self._ui_delete_selected(df_all, sel)
 
             with a2:
-                if st.button("Limpiar selección", use_container_width=True):
-                    st.session_state["cln_selected_idx"] = set()
-                    st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
-                    st.rerun()
-
-            with a3:
-                self._ui_delete_selected(df, selected_idx)
-
-            with a4:
-                self._ui_delete_all(df)
+                self._ui_delete_all(df_all)
 
     # =========================
     # UI: borrar seleccionados
@@ -158,35 +212,43 @@ class CleaningTab:
     def _ui_delete_selected(self, dfall: pd.DataFrame, selected_idx: set):
         disabled = len(selected_idx) == 0
 
-        with st.popover("🗑️ Borrar seleccionados", use_container_width=True, disabled=disabled):
-            st.write(f"Vas a borrar **{len(selected_idx)}** registro(s).")
-            st.caption("Esto no se puede deshacer.")
-            confirm = st.checkbox("Confirmo borrar los seleccionados", value=False, key="cln_chk_confirm_selected_min")
+        with st.container(border=True):
+            st.markdown("#### 🧹 Eliminar seleccionados")
+            st.caption("Solo elimina los registros que marcaste en la viñeta **Seleccionar**.")
+            st.write(f"Seleccionados: **{len(selected_idx)}**")
 
-            if st.button("Eliminar ahora", type="primary", use_container_width=True, disabled=(not confirm)):
-                # Se mantiene el instruction que ya usas
-                self._send_delete_order_indices(dfall, sorted(list(selected_idx)), instruction="BORRAR_SELECCIONADOS")
-                st.rerun()
+            with st.popover("🗑️ Eliminar seleccionados", use_container_width=True, disabled=disabled):
+                st.warning("Esto no se puede deshacer.")
+                confirm = st.checkbox("Confirmo eliminar los seleccionados", value=False, key="cln_chk_confirm_selected_v5")
+
+                if st.button("Eliminar ahora", type="primary", use_container_width=True, disabled=(not confirm)):
+                    self._send_delete_order_indices(dfall, sorted(list(selected_idx)), instruction="BORRAR_SELECCIONADOS")
+                    st.rerun()
+
+            if disabled:
+                st.info("Marca registros en **Seleccionar** para habilitar este botón.", icon="ℹ️")
 
     # =========================
     # UI: borrar todo (fuerte)
     # =========================
     def _ui_delete_all(self, dfall: pd.DataFrame):
-        with st.popover("🔥 Borrar TODO", use_container_width=True):
-            st.warning("Esto elimina TODO el historial. Acción irreversible.")
-            total = len(dfall)
-            st.write(f"Total actual: **{total}** registros.")
+        with st.container(border=True):
+            st.markdown("#### 🔥 Eliminar TODO")
+            st.caption("Borra el historial completo (uso restringido).")
+            st.write(f"Total actual: **{len(dfall)}**")
 
-            text = st.text_input(
-                "Para confirmar, escribe: BORRAR TODO",
-                placeholder="BORRAR TODO",
-                key="cln_txt_confirm_delete_all_min",
-            ).strip().upper()
+            with st.popover("🔥 Eliminar TODO", use_container_width=True):
+                st.error("Acción irreversible. Solo úsalo si estás seguro.")
+                text = st.text_input(
+                    "Escribe: BORRAR TODO",
+                    placeholder="BORRAR TODO",
+                    key="cln_txt_confirm_delete_all_v5",
+                ).strip().upper()
 
-            disabled = text != "BORRAR TODO"
-            if st.button("Eliminar TODO ahora", type="primary", use_container_width=True, disabled=disabled):
-                self._send_delete_order_all(dfall)  # ✅ ahora sí borra
-                st.rerun()
+                disabled = text != "BORRAR TODO"
+                if st.button("Eliminar TODO ahora", type="primary", use_container_width=True, disabled=disabled):
+                    self._send_delete_order_all(dfall)  # ✅ borrado real
+                    st.rerun()
 
     # =========================
     # lógica de búsqueda
@@ -285,12 +347,8 @@ class CleaningTab:
         ok = self.github.enviar_orden_limpieza(orden)
         if ok:
             st.session_state["cln_last_order"] = orden
-            # limpiar UI
-            st.session_state["cln_selected_idx"] = set()
-            st.session_state["cln_view"] = pd.DataFrame()
-            st.session_state["cln_query"] = ""
-            st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
-            st.success("✅ Listo. Orden enviada.")
+            self._reset_ui(full=False)
+            st.success("✅ Orden enviada. Espera al robot y luego presiona Refrescar.")
         else:
             st.error("❌ No se pudo enviar la orden. Revisa conexión/permiso.")
             st.json(orden)
@@ -298,7 +356,7 @@ class CleaningTab:
     def _send_delete_order_all(self, dfall: pd.DataFrame):
         """
         FIX REAL:
-        Tu robot (por tus logs) borra POR INDICES.
+        Tu robot borra POR INDICES.
         Antes mandabas idx_list vacío => eliminados 0.
         Ahora mandamos TODOS los idx para borrar todo usando el flujo existente.
         """
@@ -310,7 +368,7 @@ class CleaningTab:
         self._send_delete_order_indices(
             dfall=dfall,
             idx_list=sorted(all_idx),
-            instruction="BORRAR TODO"  # ✅ mismo texto que exige el usuario
+            instruction="BORRAR TODO"
         )
 
     # =========================
@@ -321,6 +379,10 @@ class CleaningTab:
         for x in hist:
             if isinstance(x, dict):
                 filas.append(x)
+            elif isinstance(x, (list, tuple)):
+                # Si te llega sucio tipo lista, lo ignoramos aquí (limpieza solo para dicts)
+                # (Si quieres mapearlo a schema como StockTab, me dices y lo adapto)
+                pass
         return pd.DataFrame(filas)
 
     def _normalize(self, df: pd.DataFrame):
@@ -350,15 +412,32 @@ class CleaningTab:
         return df
 
     # =========================
-    # CSS (usuario final)
+    # Helpers UI
+    # =========================
+    def _reset_ui(self, full: bool = False):
+        # reset editor + selección (no toques df)
+        st.session_state["cln_selected_idx"] = set()
+        st.session_state["cln_editor_key"] = str(datetime.now().timestamp())
+        if full:
+            st.session_state["cln_query"] = ""
+            st.session_state["cln_view"] = pd.DataFrame()
+
+    # =========================
+    # CSS (más pro, menos técnico)
     # =========================
     def _inject_css(self):
         st.markdown(
             """
             <style>
               .stApp { background-color: #0e1117; }
-              [data-testid="stDataEditor"] { border-radius: 14px; overflow: hidden; }
               .block-container { max-width: 1100px; padding-top: 1rem; }
+              [data-testid="stDataEditor"] { border-radius: 14px; overflow: hidden; }
+              [data-testid="stMetric"] {
+                border: 1px solid rgba(255,255,255,0.07);
+                border-radius: 14px;
+                padding: 10px 12px;
+                background: rgba(255,255,255,0.02);
+              }
             </style>
             """,
             unsafe_allow_html=True,
