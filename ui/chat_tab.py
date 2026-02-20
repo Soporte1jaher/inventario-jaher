@@ -11,7 +11,7 @@ from modules.github_handler import GitHubHandler
 
 class ChatTab:
     """
-    LAIA — Chat + Tabla (Borrador) [FIX]
+    LAIA — Chat + Tabla (Borrador) [FIXED]
     ✅ Respeta saltos de línea del usuario
     ✅ Vista simple REAL (tarjeta) vs JSON crudo (code)
     ✅ Modo técnico (JSON crudo abajo)
@@ -21,6 +21,9 @@ class ChatTab:
     ✅ NO rompe con: "Motor no devolvió json_response"
     ✅ IDLE para charla/preguntas (frío) como tu prompt v14
     ✅ Al enviar: limpia borrador + chat + reset del editor
+    ✅ Preview SIEMPRE (aunque status=QUESTION)
+    ✅ Al editar tabla: recalcula READY/QUESTION automáticamente
+    ✅ No manda JSON del asistente como historial al modelo
     """
 
     def __init__(self):
@@ -131,6 +134,51 @@ class ChatTab:
         st.markdown(f"<div class='user-pre'>{safe}</div>", unsafe_allow_html=True)
 
     # ---------------------------
+    # Helpers de estado / validación (IU)
+    # ---------------------------
+    def _is_missing(self, v) -> bool:
+        s = str(v or "").strip().lower()
+        return (s == "" or s in ["n/a", "na", "none", "null"])
+
+    def _compute_status_from_draft(self, items: list) -> str:
+        """
+        Regla mínima de IU (NO reemplaza a LAIA):
+        - Si hay algún Computo con campos obligatorios faltantes => QUESTION
+        - Si no falta nada => READY
+        - Sin items => NEW
+        """
+        if not items:
+            return "NEW"
+
+        required_computo = ["modelo", "serie", "procesador", "ram", "disco"]
+        for it in items:
+            categoria = str(it.get("categoria_item", "") or "").lower()
+            equipo = str(it.get("equipo", "") or "").lower()
+
+            es_computo = ("computo" in categoria) or any(
+                k in equipo for k in ["laptop", "cpu", "servidor", "aio", "all-in-one", "tablet"]
+            )
+
+            if es_computo:
+                for k in required_computo:
+                    if self._is_missing(it.get(k)):
+                        return "QUESTION"
+
+                tipo = str(it.get("tipo", "") or "").lower()
+                if ("recib" in tipo) and self._is_missing(it.get("fecha_llegada")):
+                    return "QUESTION"
+
+        return "READY"
+
+    def _filter_history_for_ai(self, messages: list, max_user_msgs: int = 8) -> list:
+        """
+        Evita mandar JSON del asistente al modelo:
+        solo últimos mensajes del usuario.
+        """
+        users = [m for m in (messages or []) if m.get("role") == "user" and (m.get("content") or "").strip()]
+        return users[-max_user_msgs:]
+
+    # ---------------------------
     # Detecciones (NO secuestrar la IA)
     # ---------------------------
     def _is_force_override(self, user_text: str) -> bool:
@@ -214,12 +262,12 @@ class ChatTab:
             return None
         try:
             return json.loads(s)
-        except:
+        except Exception:
             try:
                 m = re.search(r"\{.*\}", s, flags=re.DOTALL)
                 if m:
                     return json.loads(m.group(0))
-            except:
+            except Exception:
                 return None
         return None
 
@@ -235,7 +283,7 @@ class ChatTab:
         if m:
             try:
                 return int(m.group(1))
-            except:
+            except Exception:
                 pass
 
         if any(x in p for x in ["octava", "8va", "8a", "8ª"]):
@@ -261,7 +309,7 @@ class ChatTab:
                     return int(code[0])
                 if len(code) == 5:
                     return int(code[:2])
-            except:
+            except Exception:
                 return None
 
         return None
@@ -308,6 +356,10 @@ class ChatTab:
             badge = "<span class='badge b-idle'>IDLE</span>"
             title = f"{badge} Sin movimiento"
             subtitle = "Reporta movimientos (recibido/enviado) con series/guías."
+        elif status == "ERROR":
+            badge = "<span class='badge b-bad'>ERROR</span>"
+            title = f"{badge} Falla del motor"
+            subtitle = "Revisa el JSON debug y corrige el input."
         else:
             badge = "<span class='badge b-warn'>QUESTION</span>"
             title = f"{badge} Faltan datos"
@@ -350,7 +402,8 @@ class ChatTab:
                 unsafe_allow_html=True,
             )
 
-        for m in st.session_state.messages:
+        # Chat render
+        for m in st.session_state.get("messages", []):
             role = m.get("role", "assistant")
             content = m.get("content", "")
             fmt = m.get("format", "md")
@@ -364,7 +417,7 @@ class ChatTab:
                     elif fmt == "simple":
                         try:
                             self._render_simple_assistant(json.loads(content))
-                        except:
+                        except Exception:
                             st.markdown(content)
                     else:
                         st.markdown(content)
@@ -378,6 +431,7 @@ class ChatTab:
             with st.expander("🧾 JSON (debug)", expanded=False):
                 st.code(json.dumps(last, ensure_ascii=False, indent=2), language="json")
 
+        # ✅ Mostrar borrador SIEMPRE que exista draft (aunque status=QUESTION)
         if st.session_state.get("draft"):
             self._render_borrador()
 
@@ -385,15 +439,19 @@ class ChatTab:
     # Core
     # ---------------------------
     def _reply(self, res_json: dict):
+        # Normaliza status
+        status = (res_json.get("status") or "QUESTION").upper()
+        res_json["status"] = status
+
         st.session_state["last_json"] = res_json
-        st.session_state["status"] = res_json.get("status", "QUESTION")
+        st.session_state["status"] = status
 
         if st.session_state.get("vista_simple", True):
-            st.session_state.messages.append(
+            st.session_state["messages"].append(
                 {"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False), "format": "simple"}
             )
         else:
-            st.session_state.messages.append(
+            st.session_state["messages"].append(
                 {"role": "assistant", "content": json.dumps(res_json, ensure_ascii=False, indent=2), "format": "json"}
             )
 
@@ -402,13 +460,14 @@ class ChatTab:
         if not prompt:
             return
 
-        st.session_state.messages.append({"role": "user", "content": prompt, "format": "text"})
+        st.session_state["messages"].append({"role": "user", "content": prompt, "format": "text"})
 
+        # Smalltalk / About me => IDLE, pero mantiene borrador existente
         if self._is_about_me(prompt):
             res_json = {
                 "status": "IDLE",
                 "missing_info": "Soy LAIA v14.0. Audito hardware y registro movimientos (recibido/enviado), validando series, guías, specs y destino. Reporta los movimientos pendientes.",
-                "items": st.session_state.draft or [],
+                "items": st.session_state.get("draft") or [],
             }
             self._reply(res_json)
             return
@@ -417,7 +476,7 @@ class ChatTab:
             res_json = {
                 "status": "IDLE",
                 "missing_info": "Ese mensaje no es un movimiento. Reporta recepción o envío con equipo/serie/guía/destino.",
-                "items": st.session_state.draft or [],
+                "items": st.session_state.get("draft") or [],
             }
             self._reply(res_json)
             return
@@ -431,56 +490,47 @@ class ChatTab:
                 resultado = self.ai_engine.procesar_input(
                     user_input=prompt,
                     lecciones=lecciones,
-                    borrador_actual=st.session_state.draft,
-                    historial_mensajes=st.session_state.messages,
+                    borrador_actual=st.session_state.get("draft"),
+                    historial_mensajes=self._filter_history_for_ai(st.session_state.get("messages", [])),
                 )
 
                 res_json = self._extract_json(resultado)
 
+                # Si no hubo JSON => fallback
                 if not res_json:
                     if self._looks_like_inventory(prompt):
                         res_json = {
                             "status": "QUESTION" if not forced else "READY",
                             "missing_info": "Motor no devolvió JSON. Se creó borrador mínimo. Completa datos en la tabla.",
-                            "items": [
-                                {
-                                    "categoria_item": "Computo",
-                                    "tipo": "Recibido",
-                                    "equipo": "N/A",
-                                    "marca": "N/A",
-                                    "modelo": "N/A",
-                                    "serie": "N/A",
-                                    "cantidad": 1,
-                                    "estado": "N/A",
-                                    "procesador": "N/A",
-                                    "ram": "N/A",
-                                    "disco": "N/A",
-                                    "reporte": "",
-                                    "origen": "N/A",
-                                    "destino": "Bodega",
-                                    "pasillo": "N/A",
-                                    "estante": "N/A",
-                                    "repisa": "N/A",
-                                    "guia": "N/A",
-                                    "fecha_llegada": "N/A",
-                                }
-                            ],
+                            "items": [self._minimal_item()],
                         }
                     else:
                         res_json = {
                             "status": "IDLE",
                             "missing_info": "Ese mensaje no contiene un movimiento inventariable. Reporta equipos/series/guías.",
-                            "items": st.session_state.draft or [],
+                            "items": st.session_state.get("draft") or [],
                         }
 
+                # ✅ Si sí hubo JSON pero vino sin items y parece inventario => crea borrador mínimo
+                items = res_json.get("items") or []
+                if (not items) and self._looks_like_inventory(prompt):
+                    items = st.session_state.get("draft") or [self._minimal_item()]
+                    res_json["items"] = items
+
+                # Aplica cinturón + set draft
                 items = res_json.get("items") or []
                 if items:
                     items = self._enforce_chatarrizacion_rule(items, prompt)
                     res_json["items"] = items
                     self._set_draft(items)
 
+                # Override explícito del usuario
                 if forced:
                     res_json["status"] = "READY"
+
+                # Si el modelo no puso READY/QUESTION coherente, IU recalcula (solo cuando no es IDLE/ERROR)
+                if str(res_json.get("status", "")).upper() in ["QUESTION", "READY", "NEW", ""]:
+                    res_json["status"] = self._compute_status_from_draft(res_json.get("items") or [])
 
                 self._reply(res_json)
 
@@ -489,12 +539,35 @@ class ChatTab:
                 "status": "ERROR",
                 "missing_info": "Error en motor.",
                 "error": str(e),
-                "items": st.session_state.draft or [],
+                "items": st.session_state.get("draft") or [],
             }
             self._reply(res_json)
 
     def _set_draft(self, items):
-        st.session_state.draft = items
+        st.session_state["draft"] = items
+
+    def _minimal_item(self) -> dict:
+        return {
+            "categoria_item": "Computo",
+            "tipo": "Recibido",
+            "equipo": "N/A",
+            "marca": "N/A",
+            "modelo": "N/A",
+            "serie": "N/A",
+            "cantidad": 1,
+            "estado": "N/A",
+            "procesador": "N/A",
+            "ram": "N/A",
+            "disco": "N/A",
+            "reporte": "",
+            "origen": "N/A",
+            "destino": "Bodega",
+            "pasillo": "N/A",
+            "estante": "N/A",
+            "repisa": "N/A",
+            "guia": "N/A",
+            "fecha_llegada": "N/A",
+        }
 
     # ---------------------------
     # Guardar / Enviar
@@ -504,7 +577,7 @@ class ChatTab:
         ahora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
 
         payload = []
-        for item in (st.session_state.draft or []):
+        for item in (st.session_state.get("draft") or []):
             x = dict(item)
             x["fecha_registro"] = x.get("fecha_registro") or ahora
             payload.append(x)
@@ -541,7 +614,7 @@ class ChatTab:
                 st.markdown("#### 📊 Borrador de Movimientos")
                 st.caption("Revisa y corrige aquí. Se guarda en sesión.")
             with mid:
-                st.metric("Items", len(st.session_state.draft))
+                st.metric("Items", len(st.session_state.get("draft") or []))
             with right:
                 st.caption(f"Estado: **{st.session_state.get('status', 'NEW')}**")
 
@@ -551,12 +624,14 @@ class ChatTab:
             "ram", "disco", "procesador", "reporte",
         ]
 
-        df = pd.DataFrame(st.session_state.draft).copy()
+        df = pd.DataFrame(st.session_state.get("draft") or []).copy()
         for c in cols_base:
             if c not in df.columns:
-                df[c] = ""
+                df[c] = "N/A"
 
-        df = df.reindex(columns=cols_base).fillna("N/A")
+        # Normaliza y evita NaN
+        df = df.reindex(columns=cols_base)
+        df = df.fillna("N/A").astype(str)
 
         with st.container(border=True):
             edited = st.data_editor(
@@ -564,12 +639,19 @@ class ChatTab:
                 num_rows="dynamic",
                 use_container_width=True,
                 hide_index=True,
-                key=f"editor_borrador_chat_final_fix_{st.session_state['editor_reset_key']}",
+                key=f"editor_borrador_chat_final_fix_{st.session_state.get('editor_reset_key', '0')}",
             )
 
+        # Si cambió: persiste y recalcula READY/QUESTION
         if not df.equals(edited):
-            st.session_state.draft = edited.to_dict("records")
-            st.session_state.status = "QUESTION"
+            st.session_state["draft"] = edited.fillna("N/A").astype(str).to_dict("records")
+
+            # Si está forzando, READY. Si no, recalcula.
+            if bool(st.session_state.get("forzar_guardado", False)):
+                st.session_state["status"] = "READY"
+            else:
+                st.session_state["status"] = self._compute_status_from_draft(st.session_state["draft"])
+
             st.rerun()
 
         c1, c2, c3 = st.columns([1.2, 1.8, 1.8], vertical_alignment="center")
@@ -581,6 +663,10 @@ class ChatTab:
                 help="Permite enviar aunque el estado sea QUESTION (bajo tu responsabilidad).",
                 key="chk_forzar_guardado",
             )
+
+            # Si activó forzar, reflejar READY en UI
+            if bool(st.session_state.get("forzar_guardado", False)):
+                st.session_state["status"] = "READY"
 
         allow_save = (st.session_state.get("status") == "READY") or bool(st.session_state.get("forzar_guardado", False))
 
@@ -598,9 +684,9 @@ class ChatTab:
 
         with c3:
             if st.button("🗑️ Limpiar borrador", use_container_width=True, key="btn_clear_draft"):
-                st.session_state.draft = []
-                st.session_state.status = "NEW"
-                st.session_state.forzar_guardado = False
+                st.session_state["draft"] = []
+                st.session_state["status"] = "NEW"
+                st.session_state["forzar_guardado"] = False
                 st.session_state["messages"] = []
                 st.session_state["last_json"] = {}
                 st.session_state["editor_reset_key"] = str(datetime.now().timestamp())
