@@ -1,1 +1,69 @@
-[]
+[
+    {
+        "action": "delete",
+        "source": "historico.json",
+        "instruction": "BORRAR TODO",
+        "count": 4,
+        "accion": "borrar_por_indices",
+        "idx_list": [
+            0,
+            1,
+            2,
+            3
+        ],
+        "matches": [
+            {
+                "idx": 0,
+                "serie": "099209",
+                "guia": "9032903902",
+                "fecha_registro": "2026-02-20 11:22",
+                "equipo": "Laptop",
+                "marca": "Dell",
+                "modelo": "N/A",
+                "origen": "N/A",
+                "destino": "Bodega",
+                "tipo": "Recibido",
+                "estado": "N/A"
+            },
+            {
+                "idx": 1,
+                "serie": "N/A",
+                "guia": "N/A",
+                "fecha_registro": "2026-02-20 11:22",
+                "equipo": "Teclado",
+                "marca": "N/A",
+                "modelo": "N/A",
+                "origen": "N/A",
+                "destino": "Stock",
+                "tipo": "Recibido",
+                "estado": "Bueno"
+            },
+            {
+                "idx": 2,
+                "serie": "89238928",
+                "guia": "62637332328",
+                "fecha_registro": "2026-02-20 11:22",
+                "equipo": "CPU",
+                "marca": "Xtratech",
+                "modelo": "N/A",
+                "origen": "Bodega",
+                "destino": "Pedernales",
+                "tipo": "Enviado",
+                "estado": "Bueno"
+            },
+            {
+                "idx": 3,
+                "serie": "19091090",
+                "guia": "N/A",
+                "fecha_registro": "2026-02-20 11:22",
+                "equipo": "Laptop",
+                "marca": "HP",
+                "modelo": "N/A",
+                "origen": "N/A",
+                "destino": "CHATARRA / BAJA",
+                "tipo": "Recibido",
+                "estado": "Obsoleto / Pendiente Chatarrizaci\u00f3n"
+            }
+        ]
+    }
+]
