@@ -1,1 +1,24 @@
-[]
+[
+    {
+        "categoria_item": "Periferico",
+        "tipo": "Recibido",
+        "equipo": "Mouse",
+        "marca": "N/A",
+        "modelo": "N/A",
+        "serie": "N/A",
+        "cantidad": 20,
+        "estado": "Nuevo",
+        "procesador": "",
+        "ram": "",
+        "disco": "",
+        "reporte": "",
+        "origen": "Elizabeth Barros",
+        "destino": "Stock",
+        "pasillo": "",
+        "estante": "",
+        "repisa": "",
+        "guia": "",
+        "fecha_llegada": "",
+        "fecha_registro": "2026-02-20 12:01"
+    }
+]
